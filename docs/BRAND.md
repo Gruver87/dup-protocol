@@ -26,7 +26,8 @@ Former GitHub names (redirects may work): `Absolute_Blockchain_Ultimate_Hybrid`,
 - Evidence pack IDs and historical “Absolute…” strings inside sealed packs
 - Docker compose project names / `ghcr.io` image refs until planned
 
-## Historical product name
+## Agent / operator note
 
-Former public name: **Absolute Blockchain** (Ultimate Hybrid / Experimental).  
-Same product line under **DUP Protocol**.
+**Always link:** `Gruver87/dup-protocol` · `Gruver87/dup-protocol-experimental`  
+**Never reintroduce as current:** `Gruver87/experimental` · `Gruver87/Absolute_Blockchain_Ultimate_Hybrid`  
+Cursor rule: `.cursor/rules/dup-brand-urls.mdc` (both trees).
