@@ -13,7 +13,7 @@ This project is a **production-hardened R&D / devnet** stack. It is **not** a la
 
 1. **Do not** open a public issue with exploit details that could harm operators.
 2. Prefer private reporting:
-   - [Open a private vulnerability report](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/security/advisories/new)
+   - [Open a private vulnerability report](https://github.com/Gruver87/dup-protocol/security/advisories/new)
    - Or contact the repository owner **Gruver87** via GitHub
 3. Include: affected version/tag, reproduction steps, impact, and whether a fix is proposed.
 

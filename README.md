@@ -1,22 +1,24 @@
-# Absolute Blockchain Ultimate Hybrid
+# DUP Protocol — industrial pin (DUP Labs)
 
-![Absolute Blockchain Ultimate Hybrid — Python + Rust L1](docs/assets/repo-banner.svg)
+![DUP Protocol — industrial pin](docs/assets/repo-banner.svg)
 
-**Python orchestrates. Rust owns the hot path.** Local prod-profile L1 mesh with evidence you can re-run — **not** a launched public mainnet.
+**Brand:** DUP Labs · **DUP Protocol** · author Uladzimir Dabranski (D.U.P.).  
+**Python orchestrates. Rust owns the hot path.** Local prod-profile L1 mesh with evidence you can re-run — **not** a launched public mainnet.  
+Former name: Absolute Blockchain Ultimate Hybrid (same pin; repo renamed to `dup-protocol`).
 
 Canonical docs language is **English**. If GitHub shows a translation, open **View original**.
 
-[![Release](https://img.shields.io/github/v/release/Gruver87/Absolute_Blockchain_Ultimate_Hybrid?include_prereleases&sort=semver&label=release)](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/releases/tag/v1.3.1339-tip-v2-industrial)
+[![Release](https://img.shields.io/github/v/release/Gruver87/dup-protocol?include_prereleases&sort=semver&label=release)](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests CI](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/actions/workflows/test.yml)
-[![Docker CI](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/actions/workflows/docker-prod-image.yml/badge.svg?branch=master)](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/actions/workflows/docker-prod-image.yml)
-[![Security checks](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/actions/workflows/security-audit.yml/badge.svg?branch=master)](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/actions/workflows/security-audit.yml)
-[![Community health](https://img.shields.io/badge/community%20health-100%25-brightgreen)](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid#docs-map)
+[![Tests CI](https://github.com/Gruver87/dup-protocol/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/Gruver87/dup-protocol/actions/workflows/test.yml)
+[![Docker CI](https://github.com/Gruver87/dup-protocol/actions/workflows/docker-prod-image.yml/badge.svg?branch=master)](https://github.com/Gruver87/dup-protocol/actions/workflows/docker-prod-image.yml)
+[![Security checks](https://github.com/Gruver87/dup-protocol/actions/workflows/security-audit.yml/badge.svg?branch=master)](https://github.com/Gruver87/dup-protocol/actions/workflows/security-audit.yml)
+[![Community health](https://img.shields.io/badge/community%20health-100%25-brightgreen)](https://github.com/Gruver87/dup-protocol#docs-map)
 
-> **Industrial pin:** [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/releases/tag/v1.3.1339-tip-v2-industrial) · tip-v2 48h soak **PASS** · Phase 3–4 ops/audit binder **READY** · external firm audit **still pending**  
+> **Industrial pin:** [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) · tip-v2 48h soak **PASS** · Phase 3–4 ops/audit binder **READY** · external firm audit **still pending**  
 > **Vision (honest scope):** [VISION](docs/VISION.md) · Auditor one-pager → [AUDIT_ENGAGEMENT_BRIEF](docs/AUDIT_ENGAGEMENT_BRIEF.md) · one-screen card → [AT_A_GLANCE](docs/AT_A_GLANCE.md) · proof ledger → [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md)
 
-**Sibling R&D (not this freeze):** [`Gruver87/experimental`](https://github.com/Gruver87/experimental) — B1/B2/Phase3 **closed** (`3c801b87`, `lr48pass1`, `evm48pass1`); next ADR 0021. Default industrial transport **here** remains **TCP+TLS**. Do not port Experimental kernels onto this pin. Experimental soaks ≠ Hybrid tip-v2 evidence.
+**Sibling R&D (not this freeze):** [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — B1/B2/Phase3 **closed** (`3c801b87`, `lr48pass1`, `evm48pass1`); next ADR 0021. Default industrial transport **here** remains **TCP+TLS**. Do not port Experimental kernels onto this pin. Experimental soaks ≠ Hybrid tip-v2 evidence.
 
 ---
 
@@ -34,7 +36,7 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 ## Start in 60 seconds
 
 ```bash
-git clone https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid.git
+git clone https://github.com/Gruver87/dup-protocol.git
 cd Absolute_Blockchain_Ultimate_Hybrid
 pip install -r requirements.txt && cp .env.example .env
 ```
@@ -75,7 +77,7 @@ Not an investment product. **ABS** = in-repo tokenomics model (221M) — **not**
 | Phase 4 audit binder | **READY** | [phase4-691329c](docs/evidence/runs/phase4-691329c/) |
 | Public mainnet / listed ABS / firm audit PDF | **No** | [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
 | Bridge on live mesh | **OFF** | by design until L1 cutover |
-| rust-libp2p / Long-Range on this pin | **No** | R&D in [experimental](https://github.com/Gruver87/experimental) |
+| rust-libp2p / Long-Range on this pin | **No** | R&D in [experimental](https://github.com/Gruver87/dup-protocol-experimental) |
 
 **Jump:** [Architecture](#architecture) · [Layout](#repo-layout) · [Ops](#operator-cheatsheet) · [Docs](#docs-map) · [Contribute](CONTRIBUTING.md)
 

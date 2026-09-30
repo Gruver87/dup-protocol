@@ -1,8 +1,8 @@
-﻿# Contributing — Absolute Blockchain Ultimate Hybrid
+# Contributing — Absolute Blockchain Ultimate Hybrid
 
 Thank you. This is a **production-hardened R&D / devnet** stack (local prod-mesh evidence). It is **not** a launched public mainnet.
 
-R&D for rust-libp2p / Long-Range / EVM depth lives in [`Gruver87/experimental`](https://github.com/Gruver87/experimental). Do **not** port those kernels onto this audit pin.
+R&D for rust-libp2p / Long-Range / EVM depth lives in [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental). Do **not** port those kernels onto this audit pin.
 
 ## Before you start
 
@@ -13,7 +13,7 @@ R&D for rust-libp2p / Long-Range / EVM depth lives in [`Gruver87/experimental`](
 ## 60-second setup
 
 ```bash
-git clone https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid.git
+git clone https://github.com/Gruver87/dup-protocol.git
 cd Absolute_Blockchain_Ultimate_Hybrid
 pip install -r requirements.txt && cp .env.example .env
 # Linux/macOS:  make build && make test-quick && python main.py
@@ -79,7 +79,7 @@ test: merkle light client cases
 
 ## Questions
 
-- Issues: https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/issues
+- Issues: https://github.com/Gruver87/dup-protocol/issues
 - Author: [@Gruver87](https://github.com/Gruver87)
 
 Thank you for keeping Absolute Blockchain Ultimate honest — green gates are not public mainnet.

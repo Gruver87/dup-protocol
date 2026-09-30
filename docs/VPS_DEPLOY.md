@@ -19,7 +19,7 @@ Local proof already done: `testnet_evidence_suite.ps1` on `:19080`.
 **Seed only:**
 
 ```bash
-git clone https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid.git
+git clone https://github.com/Gruver87/dup-protocol.git
 cd Absolute_Blockchain_Ultimate_Hybrid
 cp .env.testnet.example .env.testnet
 # edit .env.testnet: JWT_SECRET, RPC_API_KEYS, CORS_ORIGINS=https://your-domain

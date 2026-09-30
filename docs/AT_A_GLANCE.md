@@ -14,10 +14,10 @@ Public audited mainnet · listed ABS token · investment product · bridge ON on
 
 | | |
 |---|---|
-| Tag | **[v1.3.1339-tip-v2-industrial](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/releases/tag/v1.3.1339-tip-v2-industrial)** (audit pin) · prior [v1.3.1338](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/releases/tag/v1.3.1338-deterministic-core) |
+| Tag | **[v1.3.1339-tip-v2-industrial](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial)** (audit pin) · prior [v1.3.1338](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1338-deterministic-core) |
 | Prior industrial | [v1.3.206](../RELEASE_NOTES_v1.3.206.md) tip-safety / P2P |
 | ADR stack | **0001–0016** ([docs/adr/](adr/); **0013 unused**) |
-| R&D fork | [`Gruver87/experimental`](https://github.com/Gruver87/experimental) — ADR 0017–0021; B1/B2/Phase3 closed (`3c801b87`, `lr48pass1`, `evm48pass1`) · **not** this pin |
+| R&D fork | [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — ADR 0017–0021; B1/B2/Phase3 closed (`3c801b87`, `lr48pass1`, `evm48pass1`) · **not** this pin |
 | Auditor | [AUDIT_ENGAGEMENT_BRIEF](AUDIT_ENGAGEMENT_BRIEF.md) |
 | CI | Ubuntu `test.yml` + docker + security + fuzz (tip-v2 soak gates on `master`) |
 | 48h soak (Jul float) | **PASS** (historical / operator-local) |
@@ -35,7 +35,7 @@ Public audited mainnet · listed ABS token · investment product · bridge ON on
 | 3-node prod-profile bring-up + chain sync | Public mainnet |
 | Shared ceremony genesis artifact → followers | Always-green `/health/ready` under TLS churn forever |
 | 48h soak PASS (Jul float tip, historical) | External L1 / contract audit |
-| Failover + signed tx + EVM on mesh | Tip proof / Long-Range / libp2p (see [experimental](https://github.com/Gruver87/experimental)) |
+| Failover + signed tx + EVM on mesh | Tip proof / Long-Range / libp2p (see [experimental](https://github.com/Gruver87/dup-protocol-experimental)) |
 | Forest-stable LMD-GHOST + satoshi storage | Full Rust P2P transport claim |
 | **Wave C** tip+apply: tip v2 `b_satoshi` + satoshi apply (fresh mesh) | Public mainnet cutover |
 | **tip-v2 48h soak PASS** (Aug 5–7, operator-local) | Listed ABS / investment product |

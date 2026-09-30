@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="Absolute Blockchain Ultimate Hybrid">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="DUP Protocol â€” industrial pin (DUP Labs)">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#071018"/>
@@ -30,10 +30,10 @@
     <path d="M980 380 L1080 460 L900 470 Z"/>
   </g>
   <rect x="72" y="96" width="8" height="78" rx="4" fill="url(#accent)"/>
-  <text x="100" y="136" fill="#f8fafc" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="52" font-weight="700">Absolute Blockchain</text>
-  <text x="100" y="192" fill="#94a3b8" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="500">Ultimate Hybrid — Python orchestrates · Rust owns hot paths</text>
+  <text x="100" y="136" fill="#f8fafc" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="52" font-weight="700">DUP Protocol</text>
+  <text x="100" y="192" fill="#94a3b8" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" font-weight="500">DUP Labs &#8212; industrial pin &#8212; Python orchestrates &#8212; Rust hot path</text>
   <rect x="100" y="230" width="720" height="2" fill="url(#line)"/>
-  <text x="100" y="278" fill="#cbd5e1" font-family="Consolas, Menlo, monospace" font-size="18">prod-profile mesh · tip-v2 satoshi · RocksDB · REST/JSON-RPC · abs_native</text>
+  <text x="100" y="278" fill="#cbd5e1" font-family="Consolas, Menlo, monospace" font-size="18">prod-profile mesh ï¿½ tip-v2 satoshi ï¿½ RocksDB ï¿½ REST/JSON-RPC ï¿½ abs_native</text>
   <g font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="17" fill="#e2e8f0">
     <rect x="100" y="320" width="228" height="44" rx="8" fill="#134e4a" stroke="#2dd4bf" stroke-width="1.4"/>
     <text x="118" y="348">Evidence over claims</text>
@@ -42,7 +42,7 @@
     <rect x="604" y="320" width="250" height="44" rx="8" fill="#1e293b" stroke="#64748b" stroke-width="1.4"/>
     <text x="622" y="348">Not a public mainnet</text>
   </g>
-  <text x="100" y="420" fill="#94a3b8" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="17">Industrial pin ready for firm audit · gaps listed · bridge OFF on live mesh</text>
-  <text x="100" y="560" fill="#64748b" font-family="Consolas, Menlo, monospace" font-size="15">github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid</text>
-  <text x="100" y="592" fill="#475569" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15">Author: ULADZIMIR DABRANSKI (D.U.P.) · Owner: Gruver87</text>
+  <text x="100" y="420" fill="#94a3b8" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="17">Industrial pin ready for firm audit ï¿½ gaps listed ï¿½ bridge OFF on live mesh</text>
+  <text x="100" y="560" fill="#64748b" font-family="Consolas, Menlo, monospace" font-size="15">github.com/Gruver87/dup-protocol</text>
+  <text x="100" y="592" fill="#475569" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15">Author: ULADZIMIR DABRANSKI (D.U.P.) ï¿½ Owner: Gruver87</text>
 </svg>

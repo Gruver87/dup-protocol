@@ -7,11 +7,11 @@
 # ДВА РЕПОЗИТОРИЯ (не путать):
 #   HYBRID  — audit-pin, TCP+TLS mesh
 #             C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
-#             https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid  (master)
+#             https://github.com/Gruver87/dup-protocol  (master)
 
 #   EXPERIMENTAL — R&D: libp2p, Long-Range lab, council NFT, EVM depth
 #             C:\Users\vovun\Desktop\Absolute_Blockchain_Experimental
-#             https://github.com/Gruver87/experimental  (main)
+#             https://github.com/Gruver87/dup-protocol-experimental  (main)
 
 # Личная копия (Desktop, не в git): Absolute_Blockchain_All_Commands_FIXED.txt
 # Краткая шпаргалка: docs/COMMANDS_REFERENCE.md

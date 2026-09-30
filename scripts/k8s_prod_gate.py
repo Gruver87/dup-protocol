@@ -92,7 +92,7 @@ def main() -> int:
             if cfg.get(key) is not False:
                 errors.append(
                     f"node.prod.k8s.json: {key} must be explicit false "
-                    f"(Hybrid freeze; R&D is Gruver87/experimental)"
+                    f"(Hybrid freeze; R&D is Gruver87/dup-protocol-experimental)"
                 )
         for key in ("p2p_tls_cert_path", "p2p_tls_key_path", "p2p_tls_ca_path"):
             if not str(cfg.get(key) or "").strip():

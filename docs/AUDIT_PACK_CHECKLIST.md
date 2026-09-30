@@ -89,7 +89,7 @@ If no ceremony dir on this machine, expect a **warning** (not necessarily FAIL) 
 | Static pack zip | Operator-local `logs/audit_pack_*.zip` |
 | Tip-v2 48h soak | `docs/evidence/runs/375d14f/` |
 
-**Honesty:** Jul float-tip 48h PASS is historical. Aug 2–4 tip-v2 soak FAIL is superseded by Aug 5–7 PASS (`375d14f`). Experimental libp2p / Long-Range work lives in [Gruver87/experimental](https://github.com/Gruver87/experimental) — **out of scope** for this pin.
+**Honesty:** Jul float-tip 48h PASS is historical. Aug 2–4 tip-v2 soak FAIL is superseded by Aug 5–7 PASS (`375d14f`). Experimental libp2p / Long-Range work lives in [Gruver87/dup-protocol-experimental](https://github.com/Gruver87/dup-protocol-experimental) — **out of scope** for this pin.
 
 ---
 

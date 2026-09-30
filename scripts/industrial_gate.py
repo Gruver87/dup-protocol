@@ -254,7 +254,7 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
             if prod_cfg.get(fk) is not False:
                 errors.append(
                     f"{rel}: {fk} must be explicit false "
-                    "(Hybrid freeze; R&D is Gruver87/experimental)"
+                    "(Hybrid freeze; R&D is Gruver87/dup-protocol-experimental)"
                 )
         if prod_cfg.get("allow_state_root_rewrite") is True:
             errors.append(

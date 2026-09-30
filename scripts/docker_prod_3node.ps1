@@ -1,4 +1,4 @@
-﻿# Three-node production mesh (ceremony manifest + per-validator wallets)
+# Three-node production mesh (ceremony manifest + per-validator wallets)
 param(
     [string]$CeremonyDir = "data/ceremony_keys",
     [switch]$NoCloneDb,
@@ -150,7 +150,7 @@ if ($PullLatest) {
     if ($LASTEXITCODE -ne 0) {
         Write-Host "FAIL: could not pull $ProdImage" -ForegroundColor Red
         Write-Host "  Image is published after CI workflow 'Docker prod image' succeeds on master." -ForegroundColor Yellow
-        Write-Host "  Check: https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/actions" -ForegroundColor Yellow
+        Write-Host "  Check: https://github.com/Gruver87/dup-protocol/actions" -ForegroundColor Yellow
         Write-Host "  Or build locally: .\scripts\docker_prod_3node.ps1" -ForegroundColor Yellow
         exit 1
     }

@@ -1,17 +1,18 @@
 cff-version: 1.2.0
-title: "Absolute Blockchain Ultimate Hybrid"
+title: "DUP Protocol (Industrial Pin)"
 message: "If you use this software in research, audit engagement, or diligence, please cite it using these metadata."
 type: software
 authors:
   - family-names: Dabranski
     given-names: Uladzimir
     alias: Gruver87
-repository-code: "https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid"
-url: "https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid"
+repository-code: "https://github.com/Gruver87/dup-protocol"
+url: "https://github.com/Gruver87/dup-protocol"
 abstract: >-
-  Hybrid Python + Rust L1 node with prod-profile Docker mesh, tip-v2 satoshi soak evidence,
-  fail-closed industrial gates, and an audit engagement binder. External firm audit pending.
-  Not a launched public mainnet; ABS is an in-repo tokenomics model, not a listed asset.
+  DUP Protocol industrial pin (DUP Labs) — hybrid Python + Rust L1 with prod-profile
+  Docker mesh, tip-v2 satoshi soak evidence, fail-closed industrial gates, and an audit
+  engagement binder. Formerly Absolute Blockchain Ultimate Hybrid. External firm audit
+  pending. Not a launched public mainnet.
 keywords:
   - blockchain
   - layer1
@@ -21,6 +22,8 @@ keywords:
   - evm
   - p2p
   - soak-test
+  - dup-protocol
+  - dup-labs
 license: MIT
 version: "1.3.1339"
 date-released: "2026-08-07"

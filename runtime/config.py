@@ -219,7 +219,7 @@ class Config:
     feature_smart_accounts: bool = True
     feature_validator_selection: bool = True
     # Not implemented here. validate() refuses True in every mode.
-    # R&D: Gruver87/experimental. Default transport remains TCP+TLS.
+    # R&D: Gruver87/dup-protocol-experimental. Default transport remains TCP+TLS.
     feature_libp2p: bool = False
     feature_long_range: bool = False
 
@@ -1023,12 +1023,12 @@ class Config:
         if self.feature_libp2p:
             errors.append(
                 "FEATURE_LIBP2P is not implemented in this audit-freeze repo "
-                "(use Gruver87/experimental; default transport remains TCP+TLS)"
+                "(use Gruver87/dup-protocol-experimental; default transport remains TCP+TLS)"
             )
         if self.feature_long_range:
             errors.append(
                 "FEATURE_LONG_RANGE is not implemented in this audit-freeze repo "
-                "(use Gruver87/experimental)"
+                "(use Gruver87/dup-protocol-experimental)"
             )
         if self.is_production:
             backend = str(self.secret_backend or "env").strip().lower()

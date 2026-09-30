@@ -13,7 +13,7 @@ It is **not** a launched public mainnet and **not** an investment product.
 | Bugs / evidence | GitHub Issues ([bug report](.github/ISSUE_TEMPLATE/bug_report.md)) |
 | Security vulnerability | [SECURITY.md](SECURITY.md) — **private** disclosure only |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Releases | [CHANGELOG.md](CHANGELOG.md) · [GitHub Releases](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/releases) |
+| Releases | [CHANGELOG.md](CHANGELOG.md) · [GitHub Releases](https://github.com/Gruver87/dup-protocol/releases) |
 
 ## What we do **not** provide here
 

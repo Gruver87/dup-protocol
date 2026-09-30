@@ -2,8 +2,8 @@
 
 **Updated:** 2026-08-13  
 **Scope:** Absolute Blockchain Ultimate Hybrid — domain ports + adapters (ADR **0001–0016**; **0013 unused**). Devnet + mainnet-v1 **prep**, not a launched public mainnet.  
-**Industrial pin:** tag [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/releases/tag/v1.3.1339-tip-v2-industrial) (tip-v2 `b_satoshi` 48h soak PASS + Phase 3–4 binder READY).  
-**This pin refuses** `FEATURE_LIBP2P` / `FEATURE_LONG_RANGE` and `SECRET_BACKEND=file` in prod. rust-libp2p lives in [experimental](https://github.com/Gruver87/experimental) only.
+**Industrial pin:** tag [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) (tip-v2 `b_satoshi` 48h soak PASS + Phase 3–4 binder READY).  
+**This pin refuses** `FEATURE_LIBP2P` / `FEATURE_LONG_RANGE` and `SECRET_BACKEND=file` in prod. rust-libp2p lives in [experimental](https://github.com/Gruver87/dup-protocol-experimental) only.
 
 ---
 

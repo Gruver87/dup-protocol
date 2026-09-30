@@ -3,14 +3,14 @@
 Apply with:
 
 ```powershell
-gh repo edit Gruver87/Absolute_Blockchain_Ultimate_Hybrid --description "Absolute Blockchain Ultimate Hybrid — Python+Rust L1, tip-v2 soak PASS, evidence-first industrial pin. External audit pending. Not a public mainnet."
-gh repo edit Gruver87/Absolute_Blockchain_Ultimate_Hybrid --homepage "https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/blob/master/docs/AUDIT_ENGAGEMENT_BRIEF.md"
+gh repo edit Gruver87/dup-protocol --description "Absolute Blockchain Ultimate Hybrid — Python+Rust L1, tip-v2 soak PASS, evidence-first industrial pin. External audit pending. Not a public mainnet."
+gh repo edit Gruver87/dup-protocol --homepage "https://github.com/Gruver87/dup-protocol/blob/master/docs/AUDIT_ENGAGEMENT_BRIEF.md"
 # topics (idempotent add):
 @(
   "absolute-blockchain","blockchain","blockchain-node","layer1","python","rust","pyo3",
   "p2p","evm","rocksdb","docker","kubernetes","json-rpc","rest-api","devnet",
   "soak-test","cryptography","web3","hybrid-blockchain","blockchain-development"
-) | ForEach-Object { gh repo edit Gruver87/Absolute_Blockchain_Ultimate_Hybrid --add-topic $_ }
+) | ForEach-Object { gh repo edit Gruver87/dup-protocol --add-topic $_ }
 ```
 
 Or paste into **Settings → General → About**.
@@ -18,7 +18,7 @@ Or paste into **Settings → General → About**.
 | Field | Value |
 |-------|-------|
 | **Description** | Absolute Blockchain Ultimate Hybrid — Python+Rust L1, tip-v2 soak PASS, evidence-first industrial pin. External audit pending. Not a public mainnet. |
-| **Website** | https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/blob/master/docs/VISION.md |
+| **Website** | https://github.com/Gruver87/dup-protocol/blob/master/docs/VISION.md |
 | **Social preview** | Upload evergreen `docs/assets/repo-social-preview.png` in **Settings → General · Social preview** |
 | **Skimmer card** | [docs/AT_A_GLANCE.md](../docs/AT_A_GLANCE.md) |
 | **Vision** | [docs/VISION.md](../docs/VISION.md) |
@@ -70,7 +70,7 @@ blockchain-development
 | **ADR stack** | **0001–0016** (0013 unused) · [docs/adr/](../docs/adr/) |
 | **Auditor entry** | [AUDIT_ENGAGEMENT_BRIEF](../docs/AUDIT_ENGAGEMENT_BRIEF.md) |
 | **Notes** | [CHANGELOG](../CHANGELOG.md) · [DISASTER_RECOVERY](../docs/DISASTER_RECOVERY.md) |
-| **R&D sibling** | [`Gruver87/experimental`](https://github.com/Gruver87/experimental) — B1/B2/Phase3 closed (`3c801b87`, `lr48pass1`, `evm48pass1`); next ADR 0021; not the audit pin |
+| **R&D sibling** | [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — B1/B2/Phase3 closed (`3c801b87`, `lr48pass1`, `evm48pass1`); next ADR 0021; not the audit pin |
 | **Self-check** | `.\scripts\operator_verify.ps1 -SkipNativeBuild` · `.\scripts\check_all.ps1` |
 | **CI** | `test.yml`, `docker-prod-image.yml`, `security-audit.yml` (displayed as **Security checks**) |
 | **Community health** | **100%** (GitHub community profile) |

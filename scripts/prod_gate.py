@@ -27,7 +27,7 @@ BRIDGE_PROD_FILES = [
 
 # Align with Config.validate() prod blocks + ADR 0016 kitchen-sink freeze.
 # feature_libp2p / feature_long_range are unimplemented on this freeze;
-# R&D lives in Gruver87/experimental. Prod JSON must not copy true.
+# R&D lives in Gruver87/dup-protocol-experimental. Prod JSON must not copy true.
 BLOCKED_FEATURES = [
     "feature_zk",
     "feature_minivm",

@@ -1,17 +1,17 @@
 blank_issues_enabled: false
 contact_links:
   - name: At a glance (30-second card)
-    url: https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/blob/master/docs/AT_A_GLANCE.md
+    url: https://github.com/Gruver87/dup-protocol/blob/master/docs/AT_A_GLANCE.md
     about: Proven vs not — read before filing “mainnet ready” issues.
   - name: Evidence matrix (what is proven)
-    url: https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/blob/master/docs/EVIDENCE_MATRIX.md
+    url: https://github.com/Gruver87/dup-protocol/blob/master/docs/EVIDENCE_MATRIX.md
     about: Check live ops evidence before feature claims.
   - name: Operator verify (self-check)
-    url: https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/blob/master/docs/COMMANDS_REFERENCE.md
+    url: https://github.com/Gruver87/dup-protocol/blob/master/docs/COMMANDS_REFERENCE.md
     about: Run .\scripts\operator_verify.ps1 before opening an ops bug.
   - name: Security / secrets policy
-    url: https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/blob/master/SECURITY.md
+    url: https://github.com/Gruver87/dup-protocol/blob/master/SECURITY.md
     about: Never paste private keys, .env contents, or wallet files into issues.
   - name: Private vulnerability report
-    url: https://github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid/security/advisories/new
+    url: https://github.com/Gruver87/dup-protocol/security/advisories/new
     about: Report security issues privately (not in public issues).
