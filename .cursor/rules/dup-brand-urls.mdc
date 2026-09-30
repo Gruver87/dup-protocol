@@ -1,0 +1,48 @@
+---
+description: Permanent DUP Labs / DUP Protocol GitHub URLs — never revert to Absolute repo names
+alwaysApply: true
+---
+
+# Brand & repository URLs (permanent, 2026-10-01)
+
+## Public brand
+
+- **Org:** DUP Labs
+- **Product:** DUP Protocol
+- **Author:** Uladzimir Dabranski (D.U.P. = Dabranski · Uladzimir · Petrovich)
+- Detail: `docs/BRAND.md`
+
+## Canonical GitHub repos (ALWAYS use these)
+
+| Role | URL |
+|------|-----|
+| Industrial pin | https://github.com/Gruver87/dup-protocol |
+| R&D / experimental | https://github.com/Gruver87/dup-protocol-experimental |
+
+In markdown / CITATION / About / badges / clone instructions / `gh` commands: **only** `Gruver87/dup-protocol` and `Gruver87/dup-protocol-experimental`.
+
+## FORBIDDEN in new edits (old names)
+
+Do **not** write these as current repo links (redirects may exist; still obsolete):
+
+- `Gruver87/experimental`
+- `Gruver87/Absolute_Blockchain_Ultimate_Hybrid`
+- `github.com/Gruver87/experimental`
+- `github.com/Gruver87/Absolute_Blockchain_Ultimate_Hybrid`
+
+Historical mention is OK only as *formerly …* next to the new URL.
+
+## Unchanged on purpose (do not “fix” URLs into these)
+
+- `abs_native` / Cargo / PyO3
+- Chain IDs `778888` / `77777`
+- Tag `v1.3.1339-tip-v2-industrial`
+- Local Desktop folder names may still be `Absolute_Blockchain_*` — that is path only, not the GitHub name
+- Sealed evidence pack text may still say Absolute — leave sealed packs alone unless packaging a new run
+
+## Remotes
+
+```text
+pin origin     → https://github.com/Gruver87/dup-protocol.git
+experimental   → https://github.com/Gruver87/dup-protocol-experimental.git
+```
