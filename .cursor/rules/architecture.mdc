@@ -1,0 +1,29 @@
+---
+description: Layered architecture, ports/adapters, ADR 0016 profiles, FEATURE flags off in prod
+alwaysApply: true
+---
+
+# Architecture
+
+Layers (no cross-layer shortcuts): **API → Core → Consensus/Network/Storage → Native (Rust)**. Transport (API/P2P) must not touch raw storage or core state without a port/adapter. No new cyclic imports.
+
+## Ports & adapters
+
+Public contracts live in `*/ports.py` (ADRs 0001–0015), e.g. `StoragePort`, `SecretManagerPort`, `MetricsExporterPort`. Implement behind adapters; do not reach around the port.
+
+```python
+# ❌ BAD
+from storage.rocks import db
+db.put(key, value)  # from API/P2P handler
+
+# ✅ GOOD
+class StoragePort(Protocol):
+    def put(self, key: bytes, value: bytes) -> None: ...
+# handler depends on StoragePort only
+```
+
+## Profiles & flags (ADR 0016)
+
+- Never mix ADR 0016 profiles in the same config.
+- `FEATURE_*` flags are **off by default** in production JSON (`feature_libp2p=false`, etc.).
+- Public APIs: docstrings. Architecture changes: cite the ADR.

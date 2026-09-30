@@ -1,0 +1,20 @@
+---
+description: Long-Range is lab-only until ADR 0017 is complete — never enable in industrial prod
+alwaysApply: true
+---
+
+# Long-Range (ADR 0017)
+
+`FEATURE_LONG_RANGE` / `feature_long_range` stays **off** in production JSON. Long-Range / weak-subjectivity work is **lab-only** until ADR 0017 is complete on disk.
+
+- Do not mix Long-Range into the audit-pin mesh or `v1.3.1339-tip-v2-industrial`.
+- Experimental labs must not be reported as industrial evidence.
+- Tip-safety remains ADR 0001 / bounded `AncestryWindow` until 0017 lands.
+
+```json
+// ❌ BAD (prod)
+{ "feature_long_range": true }
+
+// ✅ GOOD (prod)
+{ "feature_long_range": false }
+```

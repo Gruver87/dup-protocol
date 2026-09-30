@@ -1,0 +1,25 @@
+---
+description: ADR 0019 libp2p — verify slice on disk; TCP+TLS default; hard verify before claiming done
+globs: scripts/**/*libp2p*,docs/adr/0019*,docs/adr/0018*,network/transport/libp2p*/**,native/**/*libp2p*
+alwaysApply: false
+---
+
+# libp2p (ADR 0019)
+
+TCP+TLS remains the industrial default. libp2p is opt-in `FEATURE_LIBP2P` / `feature_libp2p=false` in prod JSON. Experimental sandbox only — never flip audit-pin / `v1.3.1339-tip-v2-industrial`.
+
+## Slice claims
+
+ADR text on disk is the source of truth (slices continue past BM/BN). **Do not** hardcode a phase number (e.g. "65 of 76") in status or docs. Read `docs/adr/0019-rust-libp2p-industrial.md` and **never claim a slice complete** without:
+
+```powershell
+.\scripts\verify_adr0019_libp2p_hard.ps1
+```
+
+Lab PASS with `FEATURE_LIBP2P=true` does **not** authorize industrial compose.
+
+## After changes
+
+1. Run the hard verify script (not only the soft/Python lab).
+2. Document the new slice in ADR 0019 (table + status).
+3. Keep Absolute wire as protocol-on-streams; do not replace TCP+TLS by accident.

@@ -1,0 +1,29 @@
+---
+description: L1 QC — Docker mesh probe is the only acceptance gate (no pytest-as-green)
+alwaysApply: true
+---
+
+# L1 Integration Gate (mandatory)
+
+Isolated pytest / unit tests are **not** acceptance criteria for core, EVM, NFT UoW, P2P, or sync changes. They do not catch runtime deadlocks, P2P races, or PyO3 marshalling failures.
+
+## Required verification (Windows)
+
+After any such change, run **in order**:
+
+```powershell
+.\scripts\build_native.ps1
+.\scripts\docker_prod_3node.ps1 -SkipBuild -KeepVolumes
+.\scripts\probe_prod_mesh.ps1 -Quick
+python scripts/industrial_gate.py
+```
+
+## Pass / fail
+
+- `probe_prod_mesh.ps1` → `RESULT: FAIL`, or ports `18180–18182` unreachable / not ready → **REJECT**. Do not claim pass from pytest alone.
+- On container crash: `docker logs` on the failed node, extract the real stack trace, fix the runtime root cause.
+- Do not claim 48h soak unless it was run (`hard_fails=0` only).
+
+## Reporting
+
+Always show actual shell/probe output. Never report green based only on unit tests.

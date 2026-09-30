@@ -1,0 +1,27 @@
+---
+description: Fail-closed defaults — no stubs, no silent success, satoshi integers, evidence for claims
+alwaysApply: true
+---
+
+# Fail-closed
+
+Fail closed by default. Prefer refuse/error over silent success (`deployment_mode=prod`, tip-safety, state-root, health honesty).
+
+## Non-negotiable
+
+- No placeholders, stubs, `TODO`, `pass`, or "implement later" on consensus, crypto, storage, P2P, bridge, or prod config. Ship complete, tested logic.
+- Every claim needs evidence: tests, lab scripts, probe output, or `docs/EVIDENCE_MATRIX.md`. Do not invent "mainnet ready".
+- All monetary values are **satoshi integers** — never floats.
+
+```python
+# ❌ BAD
+balance = 0.00000001
+amount = float(user_input)
+
+# ✅ GOOD
+balance_sats: int = 1
+amount_sats = int(user_input)
+```
+
+- Prod config must overlay **only keys present in JSON**. Do not resurrect dataclass defaults that undo fail-closed env.
+- Never paint green via silent fallback. If native/probe/gate is unavailable, **fail**.

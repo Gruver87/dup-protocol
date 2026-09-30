@@ -1,0 +1,34 @@
+---
+description: Rust/Python quality — errors, structured logs, tests, lab scripts, API docs
+alwaysApply: true
+---
+
+# Code quality
+
+## Rust
+
+- `anyhow` / `thiserror` for errors.
+- Never `.unwrap()` / `.expect()` without explicit context that a crash is the correct fail-closed outcome.
+- Avoid heavy `.clone()` and oversized lock critical sections.
+- Structured logs via `tracing`.
+
+## Python
+
+- Custom exception types (not bare `Exception` / `pass` in `except`).
+- Do not block the asyncio event loop on hot paths; keep GIL/marshal boundaries tight.
+- Explicit types at public ports.
+- Structured logs via `logging` (extra/context), not ad-hoc print on industrial paths.
+
+## Tests & APIs
+
+- Unit + integration. Experimental surfaces also need `scripts/*_lab.py`.
+- Public APIs: docstrings. Behavior changes: extend tests/gates.
+- Ops/scripts/docs: industrial honesty; pragmatic diffs OK (PowerShell/Docker DX is not consensus).
+
+```rust
+// ❌ BAD
+let v = map.get(&k).unwrap();
+
+// ✅ GOOD
+let v = map.get(&k).ok_or_else(|| anyhow!("missing key {k}"))?;
+```

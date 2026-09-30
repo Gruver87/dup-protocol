@@ -1,0 +1,21 @@
+---
+description: EVM claims must match EVM_COMPAT_MATRIX.md — no silent opcode completeness
+globs: **/evm*,**/evm/**,docs/sprouts/EVM_COMPAT_MATRIX.md,docs/sprouts/EVM_DEPTH.md
+alwaysApply: false
+---
+
+# EVM compatibility
+
+Source of truth: `docs/sprouts/EVM_COMPAT_MATRIX.md` when present (experimental). Hybrid also uses `docs/sprouts/EVM_DEPTH.md`. Do not claim opcode/precompile/fork completeness unless the matrix (or depth doc) row says so.
+
+- Rust owns EVM kernels; Python orchestrates.
+- Isolated pytest is **not** EVM acceptance — run the mesh/industrial gate after kernel changes.
+- FEATURE/profile: follow ADR 0016; do not mix EVM depth flags into industrial JSON by default.
+
+```text
+# ❌ BAD
+"EVM is complete / mainnet-equivalent"
+
+# ✅ GOOD
+"Opcode X: matrix status <row>. Gaps remain per EVM_COMPAT_MATRIX.md / EVM_DEPTH.md."
+```

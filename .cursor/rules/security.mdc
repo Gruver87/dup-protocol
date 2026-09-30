@@ -1,0 +1,32 @@
+---
+description: Secrets, TLS, JWT/CORS, and P2P validation — never bypass verification
+alwaysApply: true
+---
+
+# Security
+
+- Never hardcode secrets. Never commit `.env`, key files, or credentials.
+- Never disable TLS/HTTPS verification (no `verify=False`, no insecure SSL context).
+- Secrets: `SecretManagerPort` (Vault / K8s). **File-based secrets are refused in production.**
+- Validate external payloads at the input boundary.
+
+```python
+# ❌ BAD
+ssl._create_unverified_context()
+requests.get(url, verify=False)
+SECRET = "sk-live-..."
+
+# ✅ GOOD
+# TLS verify on; secrets from SecretManagerPort / env / ceremony only
+```
+
+## API / admin
+
+- JWT for admin, API keys for RPC.
+- CORS: never hardcode `*`. Allow-list explicit origins.
+
+## P2P
+
+- Rate-limit inbound traffic.
+- Semantic validation of messages.
+- Soft-refuse (drop / score) — **not** hard bans as the default policy.

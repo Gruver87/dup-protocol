@@ -1,0 +1,26 @@
+---
+description: Rust native hot-path — crypto, state roots, RocksDB, EVM kernels; no unjustified unwrap
+globs: native/**/*.rs,**/abs_native/**
+alwaysApply: false
+---
+
+# Rust hot path
+
+Rust owns: crypto, state roots, RocksDB, EVM kernels. Python orchestrates; do not move orchestration into `abs_native` without an ADR.
+
+- Fail-closed errors: `thiserror` / `anyhow`. No unjustified `.unwrap()` / `.expect()`.
+- Keep lock sections short. Avoid clone-as-default on hot loops.
+- Structured `tracing` spans on I/O and consensus-adjacent paths.
+- PyO3 marshalling: tight boundaries; do not hold the GIL across blocking RocksDB/EVM work.
+- Cargo features (e.g. `libp2p`) stay opt-in; default wheel stays lean.
+
+```rust
+// ❌ BAD
+let root = compute_state_root(batch).unwrap();
+
+// ✅ GOOD
+let root = compute_state_root(batch)
+    .context("state root for batch")?;
+```
+
+When behavior changes, extend native tests **and** the industrial/mesh gate — pytest-only is not acceptance.

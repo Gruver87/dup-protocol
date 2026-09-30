@@ -1,0 +1,28 @@
+---
+description: Explain before coding; ADR/tests after; flag shortcuts; never claim unrun soak
+alwaysApply: true
+---
+
+# Review process
+
+## Before writing
+
+Explain **what** you will change and **why** (invariant, ADR, fail-closed reason). Do not start with a clever shortcut.
+
+## After writing
+
+Check: ADR match, tests/labs/gates, error handling, no cross-layer shortcuts. Flag any simplification that weakens an invariant.
+
+## Honesty
+
+- Match `docs/EVIDENCE_MATRIX.md` / ADRs. Do not hide gaps in `MAINNET_GAP_ANALYSIS.md`.
+- Correct over quick. Brutally honest about gaps.
+- **Soak:** after a major change, 48h soak with `hard_fails=0` is the only acceptable soak claim. **Do not claim soak unless it was actually run.**
+
+```text
+# ❌ BAD
+"Soak passed" (no run, or pytest-only)
+
+# ✅ GOOD
+"Soak not run this change. Unit/lab evidence: <paths>. Mesh probe: <output>."
+```

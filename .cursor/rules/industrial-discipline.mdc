@@ -36,7 +36,7 @@ Do not open parallel fronts (oracles/bridge/sharding/prod Long-Range/Great Merge
 plan / invariant  →  surgical code  →  tests+gate/probe  →  docs sync  →  commit
 ```
 
-- Docs must match disk: `EVIDENCE_MATRIX`, audit/diligence surfaces, `CHANGELOG`, pack README when evidence changes.
+- Docs must match disk: `EVIDENCE_MATRIX`, `FUND_READINESS` / `DILIGENCE_BRIEF`, `CHANGELOG`, pack README when evidence changes.
 - Do not leave READY/⏳ after a PASS is packaged; do not leave PASS claims without packs.
 - Brand/URLs: only `Gruver87/dup-protocol` and `Gruver87/dup-protocol-experimental` (see `dup-brand-urls`).
 
@@ -45,4 +45,3 @@ plan / invariant  →  surgical code  →  tests+gate/probe  →  docs sync  →
 - Surgical diffs; no drive-by refactors.
 - No big-bang rewrites or “cleanup” that mixes unrelated layers.
 - Local Desktop folder names may still say `Absolute_*` — GitHub names are DUP; do not confuse paths with repo URLs.
-- This tree is the **industrial pin** — do not port Experimental-only kernels here without an explicit ordered task.
