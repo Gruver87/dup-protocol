@@ -1,0 +1,48 @@
+---
+description: Operating discipline — industrial code only, deep verify, critical-first, strict docs/code order
+alwaysApply: true
+---
+
+# Industrial operating discipline
+
+How we work on **DUP Protocol** (DUP Labs). Complements `fail-closed`, `industrial-l1-engineer`, `review-and-honesty`, `l1-mesh-integration-gate`.
+
+## Code standard
+
+- Write **real industrial code** only: complete paths, typed errors, fail-closed.
+- **Forbidden** on critical paths: stubs, placeholders, `TODO`/`FIXME` as behavior, `pass` in `except`, silent fallbacks, “temporary” simplifications that weaken invariants, demo/toy shortcuts.
+- Prefer one correct fix over a clever partial. If unsure — **refuse** and say what is missing.
+
+## Critical-first
+
+Before stacking features:
+
+1. Hunt foundational bugs (wrong invariant, dishonest health, unsafe trust boundary, money float, silent green).
+2. **Stop**, name them, fix or refuse.
+3. Only then continue the ordered plan (`docs/EXECUTION_ORDER.md` / diligence brief).
+
+Do not open parallel fronts (oracles/bridge/sharding/prod Long-Range/Great Merge) unless the operator ordered that step.
+
+## Verification depth
+
+- Unit tests alone are **not** acceptance for core / EVM / P2P / sync / native — run mesh probe / gates per `l1-mesh-integration-gate`.
+- After behavior change: extend tests **and** relevant lab/gate; show real command output.
+- Never claim 48h soak / STRICT / mainnet without on-disk evidence packs.
+- Search for residual holes in the same change (related call sites, honesty labels, config defaults).
+
+## Order (no chaos)
+
+```text
+plan / invariant  →  surgical code  →  tests+gate/probe  →  docs sync  →  commit
+```
+
+- Docs must match disk: `EVIDENCE_MATRIX`, audit/diligence surfaces, `CHANGELOG`, pack README when evidence changes.
+- Do not leave READY/⏳ after a PASS is packaged; do not leave PASS claims without packs.
+- Brand/URLs: only `Gruver87/dup-protocol` and `Gruver87/dup-protocol-experimental` (see `dup-brand-urls`).
+
+## Scope control
+
+- Surgical diffs; no drive-by refactors.
+- No big-bang rewrites or “cleanup” that mixes unrelated layers.
+- Local Desktop folder names may still say `Absolute_*` — GitHub names are DUP; do not confuse paths with repo URLs.
+- This tree is the **industrial pin** — do not port Experimental-only kernels here without an explicit ordered task.
