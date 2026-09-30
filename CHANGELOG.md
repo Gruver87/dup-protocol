@@ -12,7 +12,7 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ### Industrial harden (no new features)
 
-- **Permanent GitHub rename + brand (2026-10-01):** repo `Absolute_Blockchain_Ultimate_Hybrid` → [`dup-protocol`](https://github.com/Gruver87/dup-protocol); sibling R&D → [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental). Display **DUP Labs / DUP Protocol**. Tag `v1.3.1339-tip-v2-industrial` unchanged. **Not** a new soak / **not** mainnet.
+- **Face sync after GitHub rename (2026-10-01):** README clone `cd dup-protocol`; sibling R&D line = Phases 1–5 + STRICT (not stale “next ADR 0021”); full `.cursor/rules` tracked on GitHub.
 - **Freeze hygiene (2026-08-13)** — `feature_libp2p` / `feature_long_range` are **not implemented** in this repo. `Config.validate()` refuses them in **every** mode (no silent coerce). Prod JSON pins them `false`; `prod_gate` / `industrial_gate` / `k8s_prod_gate` refuse `true`. R&D remains [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental). No consensus-hash change. Not public mainnet.
 - **ADR 0015 prod secrets** — `SECRET_BACKEND=file|null` refused by `Config.validate`, `prod_gate`, factory, and FileSecretAdapter (no `allow_prod` break-glass). Prod boot no longer swallows SecretManager init failure. Vault in prod requires `https://` `VAULT_ADDR` + default SSL context. Not public mainnet.
 - **Public surface polish** — tighter README (evidence-first hero), ADR index, architecture ADR table 0008–0016, banner refresh; pin docs to `v1.3.1339-tip-v2-industrial`

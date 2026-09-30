@@ -2,9 +2,9 @@
 
 ![DUP Protocol — industrial pin](docs/assets/repo-banner.svg)
 
-**Brand:** DUP Labs · **DUP Protocol** · author Uladzimir Dabranski (D.U.P.).  
+**Brand:** [DUP Labs](docs/BRAND.md) · **DUP Protocol** · author Uladzimir Dabranski (D.U.P.).  
 **Python orchestrates. Rust owns the hot path.** Local prod-profile L1 mesh with evidence you can re-run — **not** a launched public mainnet.  
-Former name: Absolute Blockchain Ultimate Hybrid (same pin; repo renamed to `dup-protocol`).
+Former name: Absolute Blockchain Ultimate Hybrid (same pin; repo renamed to [`dup-protocol`](https://github.com/Gruver87/dup-protocol)).
 
 Canonical docs language is **English**. If GitHub shows a translation, open **View original**.
 
@@ -18,7 +18,7 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 > **Industrial pin:** [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) · tip-v2 48h soak **PASS** · Phase 3–4 ops/audit binder **READY** · external firm audit **still pending**  
 > **Vision (honest scope):** [VISION](docs/VISION.md) · Auditor one-pager → [AUDIT_ENGAGEMENT_BRIEF](docs/AUDIT_ENGAGEMENT_BRIEF.md) · one-screen card → [AT_A_GLANCE](docs/AT_A_GLANCE.md) · proof ledger → [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md)
 
-**Sibling R&D (not this freeze):** [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — B1/B2/Phase3 **closed** (`3c801b87`, `lr48pass1`, `evm48pass1`); next ADR 0021. Default industrial transport **here** remains **TCP+TLS**. Do not port Experimental kernels onto this pin. Experimental soaks ≠ Hybrid tip-v2 evidence.
+**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs (`lp2pstrict1`, `lrstrict1`, `evmstrict1`, `mempool48pass1`, tip `ind48pass1`). Diligence: [DILIGENCE_BRIEF](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DILIGENCE_BRIEF.md). Default industrial transport **here** remains **TCP+TLS**. Do not port Experimental kernels onto this pin. Experimental soaks ≠ this pin tip-v2 evidence.
 
 ---
 
@@ -37,7 +37,7 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 
 ```bash
 git clone https://github.com/Gruver87/dup-protocol.git
-cd Absolute_Blockchain_Ultimate_Hybrid
+cd dup-protocol
 pip install -r requirements.txt && cp .env.example .env
 ```
 
@@ -77,7 +77,7 @@ Not an investment product. **ABS** = in-repo tokenomics model (221M) — **not**
 | Phase 4 audit binder | **READY** | [phase4-691329c](docs/evidence/runs/phase4-691329c/) |
 | Public mainnet / listed ABS / firm audit PDF | **No** | [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
 | Bridge on live mesh | **OFF** | by design until L1 cutover |
-| rust-libp2p / Long-Range on this pin | **No** | R&D in [experimental](https://github.com/Gruver87/dup-protocol-experimental) |
+| rust-libp2p / Long-Range on this pin | **No** | R&D in [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) |
 
 **Jump:** [Architecture](#architecture) · [Layout](#repo-layout) · [Ops](#operator-cheatsheet) · [Docs](#docs-map) · [Contribute](CONTRIBUTING.md)
 
@@ -193,6 +193,7 @@ Quality gate: CI · `make test-quick` / `check_all.ps1` · **2164+** pytest pass
 | Need | Open |
 |------|------|
 | Vision & honest scope | [VISION](docs/VISION.md) |
+| Brand (DUP Labs / DUP Protocol) | [BRAND](docs/BRAND.md) |
 | Proven vs not | [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md) |
 | One-screen card | [AT_A_GLANCE](docs/AT_A_GLANCE.md) |
 | Path to mainnet-v1 | [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
@@ -247,4 +248,4 @@ MIT — [LICENSE](LICENSE)
 ---
 
 *Author: ULADZIMIR DABRANSKI (D.U.P.) · Owner: [Gruver87](https://github.com/Gruver87) · Default branch: `master`*  
-*Last update: 2026-09-13 — sibling honesty: Experimental B1/B2/Phase3 closed (`3c801b87`, `lr48pass1`, `evm48pass1`); Hybrid pin stays TCP+TLS / `feature_*` off. Audit pin `v1.3.1339-tip-v2-industrial` unchanged. External firm audit still pending. Not a launched public mainnet.*
+*Last update: **2026-10-01** — brand **DUP Labs / DUP Protocol** · repo [`dup-protocol`](https://github.com/Gruver87/dup-protocol) · sibling R&D Phases 1–5 + STRICT closed · pin stays TCP+TLS / `feature_*` off · tag `v1.3.1339-tip-v2-industrial` unchanged. External firm audit still pending. Not a launched public mainnet.*

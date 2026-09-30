@@ -14,7 +14,7 @@ R&D for rust-libp2p / Long-Range / EVM depth lives in [`Gruver87/dup-protocol-ex
 
 ```bash
 git clone https://github.com/Gruver87/dup-protocol.git
-cd Absolute_Blockchain_Ultimate_Hybrid
+cd dup-protocol
 pip install -r requirements.txt && cp .env.example .env
 # Linux/macOS:  make build && make test-quick && python main.py
 # Windows:      .\scripts\build_native.ps1 ; .\scripts\check_all.ps1 ; python main.py

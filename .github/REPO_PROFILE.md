@@ -70,7 +70,7 @@ blockchain-development
 | **ADR stack** | **0001–0016** (0013 unused) · [docs/adr/](../docs/adr/) |
 | **Auditor entry** | [AUDIT_ENGAGEMENT_BRIEF](../docs/AUDIT_ENGAGEMENT_BRIEF.md) |
 | **Notes** | [CHANGELOG](../CHANGELOG.md) · [DISASTER_RECOVERY](../docs/DISASTER_RECOVERY.md) |
-| **R&D sibling** | [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — B1/B2/Phase3 closed (`3c801b87`, `lr48pass1`, `evm48pass1`); next ADR 0021; not the audit pin |
+| **R&D sibling** | [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases 1–5 + STRICT closed; not the audit pin |
 | **Self-check** | `.\scripts\operator_verify.ps1 -SkipNativeBuild` · `.\scripts\check_all.ps1` |
 | **CI** | `test.yml`, `docker-prod-image.yml`, `security-audit.yml` (displayed as **Security checks**) |
 | **Community health** | **100%** (GitHub community profile) |
