@@ -46,7 +46,8 @@ $CoreHonesty = @(
     "tests/unit/test_tx_identity_binding.py",
     "tests/unit/test_http_stake_satoshi.py",
     "tests/unit/test_jwt_secret_manager.py",
-    "tests/unit/test_wallet_keystore.py"
+    "tests/unit/test_wallet_keystore.py",
+    "tests/unit/test_wave_n_rpc_honesty.py"
 )
 
 $UnitFiles = @(
@@ -63,7 +64,9 @@ $UnitFiles = @(
     "tests/unit/test_wave_q_honesty_fixes.py",
     "tests/unit/test_honesty_satoshi_epoch_bridge.py",
     "tests/unit/test_validator_loader.py",
-    "tests/unit/test_ws_events.py"
+    "tests/unit/test_ws_events.py",
+    "tests/unit/test_wave_n_rpc_honesty.py",
+    "tests/unit/test_bridge_inbound_amount_satoshi.py"
 )
 
 $OptionalUnit = @(
