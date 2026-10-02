@@ -111,14 +111,29 @@ def run_gate(
     saved_ceremony_hash = os.environ.get("GENESIS_CEREMONY_HASH")
     deploy_meta_path = ROOT / "data" / "ceremony_deploy.json"
     deploy_meta_loaded = False
-    if not ceremony_dir and deploy_meta_path.is_file():
+    # Prefer on-disk deploy meta over a stale shell GENESIS_CEREMONY_HASH
+    # (dotenv never overrides existing env keys). Apply when there is no
+    # ceremony_dir, or when ceremony_dir was auto-resolved from the same meta.
+    # Explicit --ceremony-dir keeps operator pin / tmp-lab control.
+    apply_deploy_meta = deploy_meta_path.is_file() and (
+        not ceremony_dir or ceremony_dir_source == "ceremony_deploy.json"
+    )
+    if apply_deploy_meta:
         try:
             deploy_meta = json.loads(deploy_meta_path.read_text(encoding="utf-8"))
             if deploy_meta.get("ceremony_hash"):
                 os.environ["GENESIS_CEREMONY_HASH"] = str(deploy_meta["ceremony_hash"])
-            os.environ["VALIDATORS_MANIFEST_PATH"] = "data/validators.manifest.json"
-            manifest_path = str(ROOT / "data" / "validators.manifest.json")
-            deploy_meta_loaded = True
+            data_manifest = ROOT / "data" / "validators.manifest.json"
+            if data_manifest.is_file():
+                os.environ["VALIDATORS_MANIFEST_PATH"] = "data/validators.manifest.json"
+                manifest_path = str(data_manifest)
+                deploy_meta_loaded = True
+            sections["ceremony_deploy_meta"] = {
+                "path": str(deploy_meta_path),
+                "ceremony_hash": str(deploy_meta.get("ceremony_hash") or ""),
+                "applied": True,
+                "ceremony_dir_source": ceremony_dir_source or "none",
+            }
         except (OSError, json.JSONDecodeError, TypeError):
             pass
     if ceremony_dir:
@@ -137,6 +152,8 @@ def run_gate(
             warnings.extend(c_warnings)
         else:
             errors.append(f"ceremony_dir:manifest_missing:{local_manifest}")
+
+
 
     prod = _load_module("verify_prod_stack", "scripts/verify_prod_stack.py")
     prod_errors = []

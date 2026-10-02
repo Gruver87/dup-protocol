@@ -26,6 +26,7 @@ Canonical language for this repository is **English**. Older entries below may s
 - **Docs (2026-10-02):** Belarus TM prep [`docs/TRADEMARK_FILING_PREP_BY.md`](docs/TRADEMARK_FILING_PREP_BY.md) — НЦИС checklist **DUP PROTOCOL** / **DUP LABS** (9+42). Prep only; not filed / not legal advice.
 - **P1 (2026-10-02):** Hybrid/Rocks satoshi refuse float fallback; `/epoch/current` null without manager; bridge prefers `amount_satoshi` + no invented `enabled=True`. **Not** soak.
 - **P1 (2026-10-02):** validator manifest prefers `stake_satoshi`; WS `burned_satoshi`/`value_satoshi` twins. Verify: `.\scripts\verify_audit_remediation_2026_10_02.ps1 -Quick`. **Not** soak.
+- **P1 (2026-10-02):** `mainnet_readiness` prefers `data/ceremony_deploy.json` pin when ceremony_dir auto-detected (stale shell `GENESIS_CEREMONY_HASH` no longer flaps industrial_gate). **Not** soak.
 - **P0 CRITICAL: sender↔pubkey binding (2026-10-02):** `crypto/wallet.py` `_transaction_signature_material` refuses txs where `derive_address(public_key) != from`. Units `tests/unit/test_tx_sender_identity_binding.py`. **Not** firm PASS / not soak.
 
 - **Face sync after GitHub rename (2026-10-01):** README clone `cd dup-protocol`; sibling R&D line = Phases 1–5 + STRICT (not stale “next ADR 0021”); full `.cursor/rules` tracked on GitHub.

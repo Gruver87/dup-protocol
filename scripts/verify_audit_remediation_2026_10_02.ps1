@@ -133,7 +133,14 @@ if ($WithPipAudit) {
 if ($WithGateNeedles) {
     Step "industrial_gate"
     & python scripts/industrial_gate.py
-    if ($LASTEXITCODE -ne 0) { Fail ("industrial_gate exit=" + $LASTEXITCODE) }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ""
+        Write-Host "HINT: genesis_ceremony_hash_mismatch usually means a STALE shell pin." -ForegroundColor Yellow
+        Write-Host "  Remove-Item Env:GENESIS_CEREMONY_HASH -ErrorAction SilentlyContinue" -ForegroundColor Yellow
+        Write-Host "  .\scripts\pin_ceremony_hash.ps1" -ForegroundColor Yellow
+        Write-Host "  # or trust data/ceremony_deploy.json (gate now prefers it when auto-detected)" -ForegroundColor Yellow
+        Fail ("industrial_gate exit=" + $LASTEXITCODE)
+    }
     Write-Host "OK: industrial_gate" -ForegroundColor Green
 }
 

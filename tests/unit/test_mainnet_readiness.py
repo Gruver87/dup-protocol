@@ -65,6 +65,25 @@ def test_mainnet_readiness_ceremony_hash_pin_env(monkeypatch, tmp_path):
     assert meta["sections"]["genesis_ceremony"]["ceremony_hash"] == artifact["ceremony_hash"]
 
 
+def test_mainnet_readiness_deploy_meta_overrides_stale_shell_pin(monkeypatch):
+    """Stale GENESIS_CEREMONY_HASH in the shell must not beat data/ceremony_deploy.json."""
+    gate = _load_mainnet()
+    deploy = os.path.join(ROOT, "data", "ceremony_deploy.json")
+    if not os.path.isfile(deploy):
+        return  # operator machine without local ceremony — skip
+    import json
+
+    meta = json.loads(open(deploy, encoding="utf-8").read())
+    real = str(meta.get("ceremony_hash") or "").strip()
+    if not real:
+        return
+    monkeypatch.setenv("GENESIS_CEREMONY_HASH", "0" * 64)
+    errors, _warnings, report = gate.run_gate(live=False, strict_audit=False)
+    assert not any("genesis_ceremony_hash_mismatch" in e for e in errors), errors
+    assert report["sections"]["genesis_ceremony"]["ceremony_hash"] == real
+    assert report["sections"].get("ceremony_deploy_meta", {}).get("applied") is True
+
+
 def test_mainnet_readiness_relaxed_audit_passes_automation(monkeypatch):
     monkeypatch.delenv("GENESIS_CEREMONY_HASH", raising=False)
     gate = _load_mainnet()
