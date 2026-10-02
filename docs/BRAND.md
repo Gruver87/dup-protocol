@@ -31,3 +31,8 @@ Former GitHub names (redirects may work): `Absolute_Blockchain_Ultimate_Hybrid`,
 **Always link:** `Gruver87/dup-protocol` · `Gruver87/dup-protocol-experimental`  
 **Never reintroduce as current:** `Gruver87/experimental` · `Gruver87/Absolute_Blockchain_Ultimate_Hybrid`  
 Cursor rule: `.cursor/rules/dup-brand-urls.mdc` (both trees).
+
+## IP / attribution
+
+Open (MIT) for view/test/fork — **not** unowned. Copyright + NOTICE + citation:  
+[`IP_AND_ATTRIBUTION.md`](IP_AND_ATTRIBUTION.md) · [`../NOTICE`](../NOTICE) · [`../LICENSE`](../LICENSE) · [`../CITATION.cff`](../CITATION.cff)

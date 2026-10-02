@@ -1,0 +1,40 @@
+DUP Protocol — NOTICE
+=====================
+
+Copyright (c) 2025-2026 Uladzimir Dabranski (D.U.P.) / DUP Labs
+GitHub: https://github.com/Gruver87
+
+This product is open source under the MIT License (see LICENSE).
+Open source does **not** mean the work is unowned or unattributed.
+
+Attribution (required by MIT)
+-----------------------------
+Retain the copyright notice and permission notice from LICENSE in all
+copies or substantial portions of this software.
+
+Preferred citation
+------------------
+See CITATION.cff. Short form:
+
+  Dabranski, U. (2026). DUP Protocol. DUP Labs.
+  https://github.com/Gruver87/dup-protocol               (this industrial pin)
+  https://github.com/Gruver87/dup-protocol-experimental  (R&D sibling)
+
+Canonical repositories (do not rebrand as original)
+---------------------------------------------------
+  Industrial pin:  https://github.com/Gruver87/dup-protocol
+  R&D / experimental: https://github.com/Gruver87/dup-protocol-experimental
+
+Brand / trademarks
+------------------
+"DUP Protocol", "DUP Labs", and "D.U.P." refer to the author's product and
+organization identity. The MIT License grants rights to the *software*;
+it does **not** grant permission to claim authorship of this project, to
+impersonate DUP Labs, or to present a clone as the official DUP Protocol
+without clear attribution to the canonical repositories above.
+
+Honest limit
+------------
+Public source can be cloned. Protection is copyright + license + brand
+attribution and provenance — not technical impossibility of copying.
+Details: docs/IP_AND_ATTRIBUTION.md
