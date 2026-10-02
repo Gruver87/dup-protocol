@@ -47,7 +47,8 @@ $CoreHonesty = @(
     "tests/unit/test_http_stake_satoshi.py",
     "tests/unit/test_jwt_secret_manager.py",
     "tests/unit/test_wallet_keystore.py",
-    "tests/unit/test_wave_n_rpc_honesty.py"
+    "tests/unit/test_wave_n_rpc_honesty.py",
+    "tests/unit/test_wave_fqr_http_honesty.py"
 )
 
 $UnitFiles = @(

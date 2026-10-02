@@ -22,9 +22,17 @@ from typing import Optional, Any, Dict, List
 import threading
 
 from crypto import native
+from runtime.amount import money_abs
 
 
 _DEFAULT_HTTP_MAX_CONCURRENT = 128
+
+
+def _http_abs(raw: Any, default: Any = 0, *, field: str = "amount") -> float:
+    """Satoshi-quantized ABS float for REST bodies."""
+    if raw is None:
+        raw = default
+    return money_abs(raw, field=field)
 
 
 def _http_stake_abs(body: Dict[str, Any], cfg: Any) -> tuple[float, int]:
@@ -264,13 +272,30 @@ def _check_rate_limit(handler, path: Optional[str] = None) -> bool:
     )
     return False
 
-# --- Input validators (middleware/validators.py) ---
+# Fail-closed: never identity-stub sanitize_input (Wave F). Import missing →
+# flag false; mutating JSON paths refuse with 503; prod boot refuses.
 try:
     from middleware.validators import validate_address, validate_amount, sanitize_input
     _INPUT_VALIDATORS_AVAILABLE = True
 except ImportError:
+    validate_address = None  # type: ignore[misc, assignment]
+    validate_amount = None  # type: ignore[misc, assignment]
+    sanitize_input = None  # type: ignore[misc, assignment]
     _INPUT_VALIDATORS_AVAILABLE = False
-    def sanitize_input(x): return x
+
+
+def require_input_validators(config=None) -> None:
+    """Prod (and any boot that calls this) refuses missing input validators."""
+    if _INPUT_VALIDATORS_AVAILABLE and sanitize_input is not None:
+        return
+    if config is not None and not _is_production_cfg(config):
+        logger.warning(
+            "input validators unavailable (dev soft-warn; mutating paths still 503)"
+        )
+        return
+    raise RuntimeError(
+        "input validators required (middleware.validators); identity sanitize forbidden"
+    )
 
 # --- JWT Auth (middleware/jwt_auth.py) ---
 try:
@@ -974,8 +999,19 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
             return
         try:
             req = json.loads(raw_bytes or b"")
-            if _INPUT_VALIDATORS_AVAILABLE:
-                req = sanitize_input(req)
+            if not _INPUT_VALIDATORS_AVAILABLE or sanitize_input is None:
+                self._send_json(
+                    {
+                        "jsonrpc": "2.0",
+                        "error": {
+                            "code": -32000,
+                            "message": "input validators not available",
+                        },
+                        "id": None,
+                    }
+                )
+                return
+            req = sanitize_input(req)
         except json.JSONDecodeError:
             self._send_json({"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None})
             return
@@ -5032,7 +5068,10 @@ class RESTHandler(BaseHTTPRequestHandler):
         if raw_bytes:
             try:
                 raw_body = json.loads(raw_bytes.decode("utf-8"))
-                body = sanitize_input(raw_body) if _INPUT_VALIDATORS_AVAILABLE else raw_body
+                if not _INPUT_VALIDATORS_AVAILABLE or sanitize_input is None:
+                    self._error(503, "input validators not available")
+                    return
+                body = sanitize_input(raw_body)
             except json.JSONDecodeError:
                 self._error(400, "Invalid JSON")
                 return
@@ -5779,17 +5818,34 @@ class RESTHandler(BaseHTTPRequestHandler):
             elif path == "/tx/sign":
                 from_addr = body.get("from", "")
                 to_addr = body.get("to", "")
-                amount = float(body.get("amount", 0))
+                amount = _http_abs(body.get("amount", 0))
                 nonce = int(body.get("nonce", 0))
                 private_key = body.get("private_key", "")
                 if not private_key:
                     self._error(400, "private_key required"); return
+                # Wave Q: do not invent fee=0.001 when omitted.
+                if body.get("fee") is None and body.get("fee_satoshi") is None:
+                    self._error(400, "fee or fee_satoshi required")
+                    return
                 try:
+                    from runtime.amount import from_satoshi_float, to_satoshi
                     from crypto.tx_signer import TransactionSigner
                     from crypto.keys import KeyGenerator
-                    tx_data = {"from": from_addr, "to": to_addr,
-                               "amount": amount, "nonce": nonce,
-                               "fee": float(body.get("fee", 0.001))}
+                    if body.get("fee_satoshi") is not None:
+                        fee_sat = int(body["fee_satoshi"])
+                        fee = from_satoshi_float(fee_sat)
+                    else:
+                        fee = _http_abs(body.get("fee"), field="fee")
+                        fee_sat = int(to_satoshi(fee))
+                    tx_data = {
+                        "from": from_addr,
+                        "to": to_addr,
+                        "amount": amount,
+                        "amount_satoshi": int(to_satoshi(amount)),
+                        "nonce": nonce,
+                        "fee": fee,
+                        "fee_satoshi": fee_sat,
+                    }
                     keypair = KeyGenerator.from_private_key(private_key)
                     tx_data["public_key"] = keypair.public_key.hex()
                     tx_hash = TransactionSigner.hash_transaction(tx_data)
@@ -5809,6 +5865,9 @@ class RESTHandler(BaseHTTPRequestHandler):
                     from crypto.tx_signer import TransactionSigner
                     ok = TransactionSigner.verify_signature(tx_data, signature, address)
                     self._json({"valid": ok})
+                except RuntimeError as e:
+                    # Wave R: unavailable must not paint valid:false.
+                    self._json({"valid": None, "unavailable": True, "error": str(e)})
                 except Exception as e:
                     self._error(500, str(e))
 
@@ -8812,6 +8871,7 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
 
 def create_rpc_server(blockchain, mempool, config, evm=None, p2p=None, wallet=None, sync_engine=None) -> HTTPServer:
     """Создаёт JSON-RPC сервер на config.rpc_port."""
+    require_input_validators(config)
     configure_rate_limiter(config)
     try:
         from middleware.rpc_auth import RPCApiKeyAuth
@@ -8903,6 +8963,7 @@ def create_http_server(blockchain, mempool, db, config,
                        wallet=None,
                        bus=None) -> ThreadedHTTPServer:
     """Создаёт REST API сервер на config.http_port."""
+    require_input_validators(config)
     configure_rate_limiter(config)
     RESTHandler.blockchain = blockchain
     RESTHandler.mempool = mempool

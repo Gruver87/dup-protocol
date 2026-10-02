@@ -31,6 +31,7 @@ Canonical language for this repository is **English**. Older entries below may s
 - **P1 (2026-10-02):** Wave N + RPC honesty — PoS stake integer satoshi; finality empty-set no invented denom; `eth_getBalance` via satoshi×wei; `eth_call`/`estimateGas` fail-closed (no painted `0x`/`21000`); `eth_gasPrice` null unless `advertise_config_gas_price`; feeHistory no stub 0.5 ratios. Units: `tests/unit/test_wave_n_rpc_honesty.py`. **Not** soak.
 - **P1 (2026-10-02):** `format_tx`/`format_receipt` — value via `to_satoshi`×wei; no invented gas/`21000`; burned as satoshi int. **Not** soak.
 - **P1 (2026-10-02):** `format_block` — no invented ZERO roots / ethash nonce / empty bloom / 30M gasLimit; `totalBurned` satoshi. Multisig `amount_satoshi` + `execution_failed` not painted success. **Not** soak.
+- **P1 (2026-10-02):** Wave F/Q/R — no identity `sanitize_input` stub (prod boot refuse); `/tx/sign` requires fee/`fee_satoshi`; `tx_signer` no invented `0.001`; `/tx/verify` → `valid:null` when ECDSA unavailable. Units: `tests/unit/test_wave_fqr_http_honesty.py`. **Not** soak.
 - **P1 (2026-10-02):** `verify_prod_mesh_probe` retries tip alignment (mining-window ±1) before FAIL — same as Experimental; persistent fork still fails. **Not** soak.
 - **P0 CRITICAL: sender↔pubkey binding (2026-10-02):** `crypto/wallet.py` `_transaction_signature_material` refuses txs where `derive_address(public_key) != from`. Units `tests/unit/test_tx_sender_identity_binding.py`. **Not** firm PASS / not soak.
 
