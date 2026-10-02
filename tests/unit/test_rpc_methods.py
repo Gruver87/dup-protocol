@@ -209,15 +209,22 @@ def test_rpc_wallet_compat_methods(rpc_env):
     assert _rpc(url, "eth_hashrate") == "0x0"
     assert _rpc(url, "eth_getUncleCountByBlockNumber", ["latest"]) == "0x0"
     assert _rpc(url, "eth_getLogs", [{}]) == []
-    gas = int(_rpc(url, "eth_estimateGas", [{"to": "0x" + "ab" * 20}]), 16)
-    assert gas >= 21_000
+    # Wave N: no invented 21000 when estimate path unavailable.
+    est = _rpc(url, "eth_estimateGas", [{"to": "0x" + "ab" * 20}])
+    assert est is None
+    # gasPrice null unless advertise_config_gas_price
+    assert _rpc(url, "eth_gasPrice") is None
     fee_hist = _rpc(url, "eth_feeHistory", [hex(2), "latest", []])
     assert "baseFeePerGas" in fee_hist
-    assert len(fee_hist["baseFeePerGas"]) == 2
+    assert "gasUsedRatio" in fee_hist
+    # Observed heights only — may be shorter than requested; never stub-padded 0.5.
+    assert isinstance(fee_hist["gasUsedRatio"], list)
     blk = _rpc(url, "eth_getBlockByNumber", ["latest", False])
     assert blk is not None
     for field in ("stateRoot", "gasLimit", "transactionsRoot", "miner"):
         assert field in blk
+    # Missing roots stay JSON null — not Ethereum zero merkle.
+    assert blk["transactionsRoot"] is None or isinstance(blk["transactionsRoot"], str)
     assert _rpc(url, "eth_getStorageAt", ["0x" + "00" * 20, "0x0"]) == "0x0"
 
 

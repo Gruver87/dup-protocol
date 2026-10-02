@@ -99,3 +99,50 @@ def test_format_tx_value_satoshi_no_invented_gas():
     assert out["gasUsed"] is None
     assert observed_value_hex({"amount": 1}) == hex(int(to_satoshi(1)) * WEI_PER_SATOSHI)
     assert observed_value_hex({}) is None
+
+
+def test_format_block_no_invented_eth_stubs():
+    from api.eth_format import format_block
+
+    blk = {
+        "height": 7,
+        "hash": "0x" + "ab" * 32,
+        "parent_hash": "0x" + "cd" * 32,
+        "transactions": [],
+        "timestamp": 100,
+        "gas_used": 0,
+        "gas_limit": 8_000_000,
+        "total_burned": 0.5,
+    }
+    out = format_block(blk)
+    assert out["stateRoot"] is None
+    assert out["transactionsRoot"] is None
+    assert out["receiptsRoot"] is None
+    assert out["nonce"] is None
+    assert out["sha3Uncles"] is None
+    assert out["logsBloom"] is None
+    assert out["gasLimit"] == hex(8_000_000)
+    assert out["gasUsed"] == hex(0)
+    assert out["totalBurned"] == int(to_satoshi(0.5))
+    # Invented Ethereum 30M / zero roots must not appear
+    assert out["gasLimit"] != hex(30_000_000)
+
+
+def test_multisig_amount_satoshi_and_execution_failed():
+    from features.multisig import MultiSigWallet
+
+    wallet = MultiSigWallet(["0x1", "0x2"], 2)
+    created = wallet.create_transaction("0x3", 10)
+    assert created["success"] is True
+    assert created["amount_satoshi"] == int(to_satoshi(10))
+
+    def boom(_tx):
+        return {"success": False, "error": "debit refused"}
+
+    wallet2 = MultiSigWallet(["0x1", "0x2"], 2, transaction_executor=boom)
+    tx_id = wallet2.create_transaction("0x3", 1)["tx_id"]
+    wallet2.confirm(tx_id, "0x1")
+    second = wallet2.confirm(tx_id, "0x2")
+    assert second["success"] is False
+    assert second["error"] == "execution_failed"
+    assert wallet2.get_transaction(tx_id)["status"] == "execution_failed"

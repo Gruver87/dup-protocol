@@ -8,6 +8,43 @@ from typing import Any, Dict, List, Optional
 from api.ports import BlockQuery, LogsQuery, QueryLimitError, QueryTimeoutError
 from runtime.amount import WEI_PER_SATOSHI, to_satoshi
 
+ZERO_ROOT = "0x" + ("0" * 64)
+EMPTY_LOGS_BLOOM = "0x" + ("0" * 512)
+
+
+def _normalize_eth_root(raw: Any) -> Optional[str]:
+    """Valid 32-byte hex root, or None. Never the zero stub as Absolute empty merkle."""
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    if not s.startswith(("0x", "0X")):
+        s = "0x" + s
+    hexpart = s[2:]
+    if len(hexpart) != 64:
+        return None
+    try:
+        int(hexpart, 16)
+    except ValueError:
+        return None
+    out = "0x" + hexpart.lower()
+    if out == ZERO_ROOT:
+        return None
+    return out
+
+
+def _burned_satoshi(row: Optional[Dict[str, Any]], key: str = "burned") -> int:
+    if not isinstance(row, dict):
+        return 0
+    raw = row.get(key)
+    if raw is None and key == "total_burned":
+        raw = row.get("totalBurned")
+    try:
+        return int(to_satoshi(raw or 0))
+    except (TypeError, ValueError):
+        return 0
+
 
 def _observed_uint_hex(row: Optional[Dict], *keys: str) -> Optional[str]:
     if not isinstance(row, dict):
@@ -46,40 +83,70 @@ def observed_value_hex(row: Optional[Dict[str, Any]]) -> Optional[str]:
     return hex(wei)
 
 
-def format_block(blk: Optional[Dict], full_tx: bool = False) -> Optional[Dict]:
+def format_block(blk: Optional[Dict], full_tx: bool = False, *, query=None, bc=None, gas_limit=None) -> Optional[Dict]:
     if not blk:
         return None
     if blk.get("_full_tx_truncated"):
         full_tx = False
-    state_root = blk.get("state_root", "") or ""
-    if state_root and not str(state_root).startswith("0x"):
-        state_root = "0x" + str(state_root)
     txs = blk.get("transactions", [])
+    tx_list = txs if isinstance(txs, list) else []
     tx_hashes = [
         tx.get("hash", "") if isinstance(tx, dict) else str(tx)
-        for tx in (txs if isinstance(txs, list) else [])
+        for tx in tx_list
     ]
+    height = blk.get("height", blk.get("block_height", blk.get("number")))
+    try:
+        number = int(height) if height is not None and height != "" else None
+    except (TypeError, ValueError):
+        number = None
+    # Stored roots only — never invent Ethereum zero merkle / ethash nonce / 30M gas.
+    state_root = _normalize_eth_root(blk.get("state_root") or blk.get("stateRoot"))
+    tx_root = _normalize_eth_root(
+        blk.get("tx_root") or blk.get("transactionsRoot") or blk.get("transactions_root")
+    )
+    receipts_root = _normalize_eth_root(
+        blk.get("receipts_root") or blk.get("receiptsRoot")
+    )
+    bloom_raw = blk.get("logs_bloom") or blk.get("logsBloom")
+    if bloom_raw is not None and str(bloom_raw).strip():
+        bloom_s = str(bloom_raw).strip()
+        if not bloom_s.startswith("0x"):
+            bloom_s = "0x" + bloom_s
+        logs_bloom = bloom_s if bloom_s != EMPTY_LOGS_BLOOM else None
+    else:
+        logs_bloom = None
+    limit = _observed_uint_hex(blk, "gas_limit", "gasLimit")
+    if limit is None and gas_limit is not None:
+        try:
+            gl = int(gas_limit)
+            limit = hex(gl) if gl > 0 else None
+        except (TypeError, ValueError):
+            limit = None
+    used = _observed_uint_hex(blk, "gas_used", "gasUsed")
+    if used is None and isinstance(txs, list) and not txs:
+        used = hex(0)
+    ts = _observed_uint_hex(blk, "timestamp")
     return {
-        "number": hex(blk.get("height", 0)),
-        "hash": blk.get("hash", blk.get("block_hash", "")),
-        "parentHash": blk.get("parent_hash", ""),
-        "nonce": "0x0000000000000000",
-        "sha3Uncles": "0x" + "0" * 64,
-        "logsBloom": "0x" + "0" * 512,
-        "transactionsRoot": "0x" + "0" * 64,
-        "stateRoot": state_root or ("0x" + "0" * 64),
-        "receiptsRoot": "0x" + "0" * 64,
-        "miner": blk.get("miner", blk.get("proposer", "")),
+        "number": hex(number) if number is not None else None,
+        "hash": blk.get("hash", blk.get("block_hash")) or None,
+        "parentHash": blk.get("parent_hash") or blk.get("parentHash") or None,
+        "nonce": None,  # Absolute is not ethash — never paint 8-byte zero
+        "sha3Uncles": None,  # no uncle trie on pin formatter; null > zero digest
+        "logsBloom": logs_bloom,
+        "transactionsRoot": tx_root,
+        "stateRoot": state_root,
+        "receiptsRoot": receipts_root,
+        "miner": blk.get("miner") or blk.get("proposer") or None,
         "difficulty": "0x0",
         "totalDifficulty": "0x0",
         "extraData": "0x",
-        "size": hex(256 + len(tx_hashes) * 32),
-        "gasLimit": hex(30_000_000),
-        "gasUsed": hex(blk.get("gas_used", 0)),
-        "timestamp": hex(blk.get("timestamp", 0)),
+        "size": _observed_uint_hex(blk, "size"),
+        "gasLimit": limit,
+        "gasUsed": used,
+        "timestamp": ts,
         "uncles": [],
         "transactions": txs if full_tx else tx_hashes,
-        "totalBurned": blk.get("total_burned", 0.0),
+        "totalBurned": _burned_satoshi(blk, "total_burned"),
         "txCount": blk.get("tx_count", len(tx_hashes)),
     }
 
@@ -97,7 +164,7 @@ def format_tx(tx: Optional[Dict]) -> Optional[Dict]:
         "gasUsed": _observed_uint_hex(tx, "gas_used", "gasUsed"),
         "nonce": _observed_uint_hex(tx, "nonce") or hex(0),
         "input": tx.get("data", tx.get("tx_data", "0x")),
-        "burned": int(to_satoshi(tx.get("burned") or 0)) if tx.get("burned") is not None else 0,
+        "burned": _burned_satoshi(tx, "burned"),
     }
 
 
@@ -211,7 +278,7 @@ def format_receipt(tx: Optional[Dict], bc=None, query=None) -> Optional[Dict]:
         "status": hex(status_i),
         "gasUsed": _observed_uint_hex(tx, "gas_used", "gasUsed"),
         "logs": logs,
-        "burned": int(to_satoshi(tx.get("burned") or 0)) if tx.get("burned") is not None else 0,
+        "burned": _burned_satoshi(tx, "burned"),
     }
 
 
