@@ -303,7 +303,13 @@ fn canonicalize_value(value: &Value) -> Value {
         Value::Number(number) => {
             if number.is_f64() {
                 let float_value = number.as_f64().unwrap_or(0.0);
-                Value::Number(Number::from((float_value * 1_000_000.0) as i64))
+                if !float_value.is_finite() {
+                    return Value::Number(Number::from(0_i64));
+                }
+                match crate::amount::to_satoshi_inner(&format!("{float_value}")) {
+                    Ok(sat) => Value::Number(Number::from(sat)),
+                    Err(_) => Value::Number(Number::from(0_i64)),
+                }
             } else {
                 value.clone()
             }

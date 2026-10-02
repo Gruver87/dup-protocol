@@ -39,6 +39,7 @@ Write-Host "NOTE: unit/lab only - soak untouched unless -WithMeshProbe" -Foregro
 
 $CoreHonesty = @(
     "tests/unit/test_honesty_satoshi_epoch_bridge.py",
+    "tests/unit/test_bridge_inbound_amount_satoshi.py",
     "tests/unit/test_validator_loader.py",
     "tests/unit/test_ws_events.py",
     "tests/unit/test_tx_sender_identity_binding.py",

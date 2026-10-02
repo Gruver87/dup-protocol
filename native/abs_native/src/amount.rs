@@ -36,7 +36,7 @@ pub(crate) fn apply_delta_satoshi_inner(current_sat: i64, delta_abs: &str) -> Py
     Ok((current_sat.saturating_add(delta)).max(0))
 }
 
-fn from_satoshi_float_inner(satoshi: i64) -> f64 {
+pub(crate) fn from_satoshi_float_inner(satoshi: i64) -> f64 {
     let d = Decimal::from(satoshi) / Decimal::from(SATOSHI_MULTIPLIER);
     d.to_f64().unwrap_or(0.0)
 }

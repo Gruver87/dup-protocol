@@ -452,7 +452,9 @@ def _python_canonicalize(obj: Any) -> Any:
     if isinstance(obj, list):
         return [_python_canonicalize(item) for item in obj]
     if isinstance(obj, float):
-        return int(obj * 1_000_000)
+        from runtime.amount import to_satoshi
+
+        return int(to_satoshi(obj))
     return obj
 
 
@@ -1655,12 +1657,16 @@ def _evm_apply_writeback_ops_py(accounts: dict, ops: list) -> dict:
     def _sat(row: dict) -> int:
         if row.get("balance_satoshi") is not None:
             return max(0, int(row["balance_satoshi"]))
-        return max(0, int(float(row.get("balance") or 0) * 1_000_000))
+        from runtime.amount import to_satoshi
+
+        return max(0, int(to_satoshi(row.get("balance") or 0)))
 
     def _set_sat(row: dict, sat: int) -> None:
+        from runtime.amount import from_satoshi_float
+
         sat = max(0, int(sat))
         row["balance_satoshi"] = sat
-        row["balance"] = sat / 1_000_000.0
+        row["balance"] = float(from_satoshi_float(sat))
 
     for op in list(ops or []):
         kind = str(op.get("op") or "")
@@ -1692,7 +1698,9 @@ def _evm_apply_writeback_ops_py(accounts: dict, ops: list) -> dict:
             if op.get("balance_satoshi") is not None:
                 _set_sat(row, int(op["balance_satoshi"]))
             else:
-                _set_sat(row, int(float(op.get("balance") or 0) * 1_000_000))
+                from runtime.amount import to_satoshi
+
+                _set_sat(row, int(to_satoshi(op.get("balance") or 0)))
             if addr not in touched:
                 touched.append(addr)
             applied += 1

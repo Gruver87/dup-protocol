@@ -402,12 +402,12 @@ def _bridge_http_result(result):
         return {"success": bool(result)}
 
 
-def _inbound_envelope_from_body(body: dict):
+def _inbound_envelope_from_body(body: dict, cfg: Any = None):
     from bridge.ports import InboundEnvelope
+    from runtime.amount import from_satoshi_float, to_satoshi
 
     tx_id = body.get("tx_id", body.get("tx_hash", ""))
     recipient = body.get("recipient", body.get("to_address", ""))
-    amount = float(body.get("amount", 0) or 0)
     from_chain = body.get("from_chain", body.get("source_chain", "ethereum"))
     l1_tx = (body.get("l1_tx_hash") or "").strip()
     log_index = int(body.get("log_index", 0) or 0)
@@ -415,6 +415,24 @@ def _inbound_envelope_from_body(body: dict):
     meta = {}
     if l1_tx:
         meta["l1_tx_hash"] = l1_tx
+
+    mode = str(
+        getattr(cfg, "deployment_mode", None)
+        or os.environ.get("DEPLOYMENT_MODE", "dev")
+        or "dev"
+    ).strip().lower()
+    raw_sat = body.get("amount_satoshi", None)
+    if raw_sat is not None and str(raw_sat).strip() != "":
+        amount_sat = int(raw_sat)
+        if amount_sat <= 0:
+            raise ValueError("amount_satoshi must be positive")
+        amount = float(from_satoshi_float(amount_sat))
+    else:
+        if mode == "prod":
+            raise ValueError("amount_satoshi required (prod refuse float-only amount)")
+        amount = float(body.get("amount", 0) or 0)
+        amount_sat = int(to_satoshi(amount)) if amount else 0
+
     return InboundEnvelope(
         from_chain=from_chain,
         to_addr=recipient,
@@ -425,17 +443,20 @@ def _inbound_envelope_from_body(body: dict):
         zk_proof=body.get("zk_proof"),
         oracle_meta=meta,
         abs_tx_hash=tx_id if l1_tx and l1_tx != tx_id else "",
+        amount_satoshi=amount_sat if amount_sat else None,
     )
 
 
-def _call_confirm_incoming(br, body: dict):
+def _call_confirm_incoming(br, body: dict, cfg: Any = None):
     """Call BridgePort envelope API or legacy RustBridge positional signature."""
     from bridge.ports import InboundEnvelope
 
     envelope = (
         body
         if isinstance(body, InboundEnvelope)
-        else _inbound_envelope_from_body(body if isinstance(body, dict) else {})
+        else _inbound_envelope_from_body(
+            body if isinstance(body, dict) else {}, cfg=cfg
+        )
     )
     try:
         return br.confirm_incoming(envelope)
@@ -446,7 +467,12 @@ def _call_confirm_incoming(br, body: dict):
             envelope.abs_tx_hash or envelope.event_tx_hash
         )
         recipient = payload.get("recipient", payload.get("to_address", "")) or envelope.to_addr
-        amount = float(payload.get("amount", envelope.amount) or 0)
+        if getattr(envelope, "amount_satoshi", None) is not None:
+            from runtime.amount import from_satoshi_float
+
+            amount = float(from_satoshi_float(int(envelope.amount_satoshi)))
+        else:
+            amount = float(payload.get("amount", envelope.amount) or 0)
         from_chain = (
             payload.get("from_chain", payload.get("source_chain", "")) or envelope.from_chain
         )

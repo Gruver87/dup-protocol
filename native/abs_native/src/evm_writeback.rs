@@ -282,7 +282,21 @@ fn account_satoshi(row: &Map<String, Value>) -> i64 {
         .and_then(|v| v.as_i64())
         .or_else(|| {
             row.get("balance").and_then(|v| match v {
-                Value::Number(n) => n.as_f64().map(|f| (f * 1_000_000.0) as i64),
+                Value::Number(n) => {
+                    if let Some(i) = n.as_i64() {
+                        crate::amount::to_satoshi_inner(&i.to_string()).ok()
+                    } else if let Some(u) = n.as_u64() {
+                        crate::amount::to_satoshi_inner(&u.to_string()).ok()
+                    } else if let Some(f) = n.as_f64() {
+                        if f.is_finite() {
+                            crate::amount::to_satoshi_inner(&format!("{f}")).ok()
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
                 Value::String(s) => crate::amount::to_satoshi_inner(s).ok(),
                 _ => None,
             })
@@ -299,7 +313,7 @@ fn wei_to_satoshi(value_wei: i64) -> i64 {
 fn set_balance_sat(row: &mut Map<String, Value>, sat: i64) {
     let sat = sat.max(0);
     row.insert("balance_satoshi".into(), Value::Number(Number::from(sat)));
-    let bal = (sat as f64) / 1_000_000.0;
+    let bal = crate::amount::from_satoshi_float_inner(sat);
     row.insert("balance".into(), serde_json::json!(bal));
 }
 
@@ -405,7 +419,22 @@ pub fn evm_apply_writeback_ops_py(accounts_json: String, ops_json: String) -> Py
                     .and_then(|v| v.as_i64())
                     .or_else(|| {
                         op.get("balance").and_then(|v| match v {
-                            Value::Number(n) => n.as_f64().map(|f| (f * 1_000_000.0) as i64),
+                            Value::Number(n) => {
+                                if let Some(i) = n.as_i64() {
+                                    crate::amount::to_satoshi_inner(&i.to_string()).ok()
+                                } else if let Some(u) = n.as_u64() {
+                                    crate::amount::to_satoshi_inner(&u.to_string()).ok()
+                                } else if let Some(f) = n.as_f64() {
+                                    if f.is_finite() {
+                                        crate::amount::to_satoshi_inner(&format!("{f}")).ok()
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            }
+                            Value::String(s) => crate::amount::to_satoshi_inner(s).ok(),
                             _ => None,
                         })
                     })
