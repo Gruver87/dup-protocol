@@ -5306,9 +5306,8 @@ class RESTHandler(BaseHTTPRequestHandler):
                         "public_key": getattr(w, "public_key_hex", ""),
                     })
                 except Exception as e:
-                    import time as _t
-                    addr = "0x" + native.sha256_hex(str(_t.time()).encode())[:40]
-                    self._json({"address": addr, "note": "ecdsa not available"})
+                    # Never invent a hash-demo address when ECDSA is unavailable.
+                    self._error(503, f"wallet create unavailable: {e}")
 
             # ── Multisig create ───────────────────────────────────────────────
             elif path == "/multisig/create":

@@ -34,6 +34,7 @@ Canonical language for this repository is **English**. Older entries below may s
 - **P1 (2026-10-02):** Wave F/Q/R — no identity `sanitize_input` stub (prod boot refuse); `/tx/sign` requires fee/`fee_satoshi`; `tx_signer` no invented `0.001`; `/tx/verify` → `valid:null` when ECDSA unavailable. Units: `tests/unit/test_wave_fqr_http_honesty.py`. **Not** soak.
 - **P1 (2026-10-02):** Wave Q/I — `/sharding/balance` satoshi; MEV no `fee*1e9`/float value; `/pq/status` exception → 503; attestation derive unavailable. Units: `tests/unit/test_wave_qi_http_money.py`. **Not** soak.
 - **P1 (2026-10-02):** Finish pin honesty batch — Absolute merkle `transactionsRoot`/`receiptsRoot` + receipt `logsBloom`; REST `_http_abs` for body amount/value (no `float(body.get)`); consensus/smart-account/multisig list exceptions → 503. Units: `tests/unit/test_pin_rest_money_and_roots.py`. **Not** soak.
+- **P1 (2026-10-02):** `/wallet/create` refuses hash-demo address when ECDSA unavailable (503). **Not** soak.
 - **P1 (2026-10-02):** `verify_prod_mesh_probe` retries tip alignment (mining-window ±1) before FAIL — same as Experimental; persistent fork still fails. **Not** soak.
 - **P0 CRITICAL: sender↔pubkey binding (2026-10-02):** `crypto/wallet.py` `_transaction_signature_material` refuses txs where `derive_address(public_key) != from`. Units `tests/unit/test_tx_sender_identity_binding.py`. **Not** firm PASS / not soak.
 
