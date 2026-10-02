@@ -24,10 +24,45 @@ import threading
 from crypto import native
 
 
+_DEFAULT_HTTP_MAX_CONCURRENT = 128
+
+
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
-    """Handles each request in a separate thread — required for Windows stability."""
+    """Thread-per-request server with a hard concurrent-request cap (audit section 14)."""
+
     daemon_threads = True
     allow_reuse_address = True
+
+    def __init__(
+        self,
+        server_address,
+        RequestHandlerClass,
+        bind_and_activate: bool = True,
+        *,
+        max_concurrent_requests: int = _DEFAULT_HTTP_MAX_CONCURRENT,
+    ):
+        limit = int(max_concurrent_requests or _DEFAULT_HTTP_MAX_CONCURRENT)
+        if limit < 1:
+            limit = 1
+        self.max_concurrent_requests = limit
+        self._request_sema = threading.BoundedSemaphore(limit)
+        super().__init__(server_address, RequestHandlerClass, bind_and_activate)
+
+    def process_request(self, request, client_address):
+        """Acquire a slot before spawning the worker thread."""
+        self._request_sema.acquire()
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self._request_sema.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._request_sema.release()
+
 
 logger = logging.getLogger("API")
 
@@ -38,6 +73,13 @@ _DEFAULT_JSONRPC_MAX_BATCH = 32
 
 def _http_max_body_bytes(cfg) -> int:
     return int(getattr(cfg, "http_max_body_bytes", _DEFAULT_HTTP_MAX_BODY) or _DEFAULT_HTTP_MAX_BODY)
+
+
+def _http_max_concurrent_requests(cfg) -> int:
+    return int(
+        getattr(cfg, "http_max_concurrent_requests", _DEFAULT_HTTP_MAX_CONCURRENT)
+        or _DEFAULT_HTTP_MAX_CONCURRENT
+    )
 
 
 def _jsonrpc_max_batch(cfg) -> int:
@@ -8697,7 +8739,11 @@ def create_rpc_server(blockchain, mempool, config, evm=None, p2p=None, wallet=No
         eth_filters=JSONRPCHandler.eth_filters,
     )
 
-    server = ThreadedHTTPServer((config.rpc_host, config.rpc_port), JSONRPCHandler)
+    server = ThreadedHTTPServer(
+        (config.rpc_host, config.rpc_port),
+        JSONRPCHandler,
+        max_concurrent_requests=_http_max_concurrent_requests(config),
+    )
     return server
 
 
@@ -8787,7 +8833,11 @@ def create_http_server(blockchain, mempool, db, config,
         RESTHandler.metrics_exporter = PrometheusMetricsExporter(
             RESTHandler.metrics_collector
         )
-    server = ThreadedHTTPServer((config.http_host, config.http_port), RESTHandler)
+    server = ThreadedHTTPServer(
+        (config.http_host, config.http_port),
+        RESTHandler,
+        max_concurrent_requests=_http_max_concurrent_requests(config),
+    )
     return server
 
 

@@ -258,6 +258,7 @@ class Config:
     require_native_crypto: bool = False     # prod: require abs_native PyO3 kernels
     http_max_body_bytes: int = 1_048_576    # v1.3.65: REST/RPC body cap (1 MiB)
     jsonrpc_max_batch: int = 32             # v1.3.65: max JSON-RPC batch elements
+    http_max_concurrent_requests: int = 128  # audit: bound ThreadingMixIn workers
     rpc_get_logs_max_range: int = 2000      # ADR 0011 amplification cap
     rpc_get_logs_max_results: int = 1000
     rpc_heavy_query_timeout_ms: int = 5000
