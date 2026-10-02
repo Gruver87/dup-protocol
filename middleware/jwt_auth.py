@@ -11,7 +11,25 @@ MIN_HS256_SECRET_BYTES = 32
 
 
 def _resolve_jwt_secret() -> str:
-    """Resolve JWT secret from live env (after dotenv), not frozen at import."""
+    """Resolve JWT secret via ADR 0015 SecretManagerPort, then env.
+
+    Logical id ``api.jwt_secret`` maps to ``JWT_SECRET`` (env/K8s) or Vault KV.
+    Direct ``JWT_SECRET`` remains a compatibility fallback.
+    """
+    try:
+        from secret_mgmt import build_secret_manager
+        from secret_mgmt.ports import SECRET_API_JWT, SecretNotFoundError
+
+        sm = build_secret_manager()
+        try:
+            via_port = str(sm.get_secret(SECRET_API_JWT) or "").strip()
+            if via_port:
+                return via_port
+        except SecretNotFoundError:
+            pass
+    except Exception:
+        # Fail open to env fallback only for resolve; prod still refuses empty.
+        pass
     secret = os.getenv("JWT_SECRET", "").strip()
     if secret:
         return secret

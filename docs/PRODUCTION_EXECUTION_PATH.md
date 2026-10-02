@@ -1,7 +1,9 @@
 # Production execution path (honest map)
 
-**Scope:** industrial pin ([`dup-protocol`](https://github.com/Gruver87/dup-protocol)) TCP+TLS mesh  
-and Experimental ([`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)) when run under **prod JSON** (`feature_libp2p=false`, `feature_long_range=false`, bridge OFF).
+**Scope:** industrial pin ([`dup-protocol`](https://github.com/Gruver87/dup-protocol)) **TCP+TLS** mesh  
+and Experimental ([`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)) when run under **prod JSON** with **`feature_libp2p=false`** (same TCP+TLS path), `feature_long_range=false`, bridge OFF.
+
+**Honesty:** Experimental STRICT soaks that enable ADR 0020 libp2p Noise are a **different transport** — do not cite this map as evidence for that mesh. Pin never enables libp2p.
 
 This is **not** a mainnet readiness claim. Parallel R&D paths (libp2p, Long-Range, Beacon/Casper demos) exist in-tree but are **off** / lab-only unless an ADR flips them.
 

@@ -1158,7 +1158,20 @@ class Config:
                     "prod mode forbids allow_state_root_rewrite "
                     "(set ALLOW_STATE_ROOT_REWRITE=false; genesis h=0 align still allowed)"
                 )
-            jwt_secret = os.environ.get("JWT_SECRET") or getattr(self, "jwt_secret", "")
+            jwt_secret = ""
+            try:
+                from secret_mgmt import build_secret_manager
+                from secret_mgmt.ports import SECRET_API_JWT, SecretNotFoundError
+
+                sm = build_secret_manager(self)
+                try:
+                    jwt_secret = str(sm.get_secret(SECRET_API_JWT) or "").strip()
+                except SecretNotFoundError:
+                    jwt_secret = ""
+            except Exception:
+                jwt_secret = ""
+            if not jwt_secret:
+                jwt_secret = os.environ.get("JWT_SECRET") or getattr(self, "jwt_secret", "")
             if not jwt_secret:
                 errors.append("prod mode requires JWT_SECRET")
             elif weak_secret(jwt_secret, min_len=32):

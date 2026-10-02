@@ -20,6 +20,7 @@ Canonical language for this repository is **English**. Older entries below may s
 - **P1 (2026-10-02):** Mempool identity bind int-when-whole + non-digest harness rebound; ECDSA unavailable before sender-bind; consensus port stake test satoshi. **Not** soak.
 - **P1 (2026-10-02):** pip-audit clean — `cryptography==50.0.2`, `PyJWT==2.15.1`, `wasmtime==49.0.0` + hashed lock regen. **Not** soak.
 - **P2 (2026-10-02):** `/validators/register` prefers `stake_satoshi` (prod refuse float-only); `DOCKER_IMAGES.md` non-root honesty. **Not** soak.
+- **P1 (2026-10-02):** JWT via SecretManagerPort `api.jwt_secret`; PRODUCTION_EXECUTION_PATH + DEPENDABOT triage honesty. **Not** soak.
 - **P0 CRITICAL: sender↔pubkey binding (2026-10-02):** `crypto/wallet.py` `_transaction_signature_material` refuses txs where `derive_address(public_key) != from`. Units `tests/unit/test_tx_sender_identity_binding.py`. **Not** firm PASS / not soak.
 
 - **Face sync after GitHub rename (2026-10-01):** README clone `cd dup-protocol`; sibling R&D line = Phases 1–5 + STRICT (not stale “next ADR 0021”); full `.cursor/rules` tracked on GitHub.

@@ -2853,6 +2853,15 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append(
                 "jwt_auth must expose _assert_hs256_secret (v1.3.158)"
             )
+        if "SECRET_API_JWT" not in jwt_py or "build_secret_manager" not in jwt_py:
+            errors.append(
+                "jwt_auth must resolve secret via SecretManagerPort SECRET_API_JWT"
+            )
+        http_py_stake = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+        if "_http_stake_abs" not in http_py_stake:
+            errors.append("api/http.py must expose _http_stake_abs (stake_satoshi)")
+        if "stake_satoshi required" not in http_py_stake:
+            errors.append("HTTP validators/register must refuse float-only stake in prod")
         if "HS256 requires >= 32 bytes" not in (
             ROOT / "runtime" / "config.py"
         ).read_text(encoding="utf-8"):
