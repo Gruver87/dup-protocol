@@ -87,3 +87,15 @@ def test_fee_history_no_stub_ratio():
     assert out["gasUsedRatio"] == [0.125, 0.5]
     assert out["baseFeePerGas"] == [None, None]
     assert out["reward"] == [None, None]
+
+
+def test_format_tx_value_satoshi_no_invented_gas():
+    from api.eth_format import format_tx, observed_value_hex
+
+    tx = {"hash": "0xab", "value": 2.5, "from_addr": "0x1", "to_addr": "0x2", "nonce": 1}
+    out = format_tx(tx)
+    assert out["value"] == hex(int(to_satoshi(2.5)) * WEI_PER_SATOSHI)
+    assert out["gas"] is None
+    assert out["gasUsed"] is None
+    assert observed_value_hex({"amount": 1}) == hex(int(to_satoshi(1)) * WEI_PER_SATOSHI)
+    assert observed_value_hex({}) is None

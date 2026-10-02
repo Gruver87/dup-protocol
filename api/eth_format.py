@@ -3,9 +3,47 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from api.ports import BlockQuery, LogsQuery, QueryLimitError, QueryTimeoutError
+from runtime.amount import WEI_PER_SATOSHI, to_satoshi
+
+
+def _observed_uint_hex(row: Optional[Dict], *keys: str) -> Optional[str]:
+    if not isinstance(row, dict):
+        return None
+    for key in keys:
+        if key not in row:
+            continue
+        raw = row.get(key)
+        if raw is None or raw == "":
+            continue
+        try:
+            n = int(raw, 16) if isinstance(raw, str) and raw.startswith(("0x", "0X")) else int(raw)
+        except (TypeError, ValueError):
+            return None
+        if n < 0:
+            return None
+        return hex(n)
+    return None
+
+
+def observed_value_hex(row: Optional[Dict[str, Any]]) -> Optional[str]:
+    """ABS value as wei hex. Missing is null; stored 0 is 0x0."""
+    if not isinstance(row, dict):
+        return None
+    if "value" not in row and "amount" not in row:
+        return None
+    raw = row.get("value")
+    if raw is None or raw == "":
+        raw = row.get("amount")
+    if raw is None or raw == "":
+        return None
+    try:
+        wei = int(to_satoshi(raw or 0)) * WEI_PER_SATOSHI
+    except (TypeError, ValueError):
+        return None
+    return hex(wei)
 
 
 def format_block(blk: Optional[Dict], full_tx: bool = False) -> Optional[Dict]:
@@ -51,15 +89,15 @@ def format_tx(tx: Optional[Dict]) -> Optional[Dict]:
         return None
     return {
         "hash": tx.get("hash", tx.get("tx_hash", "")),
-        "blockNumber": hex(tx.get("block_height", 0)),
+        "blockNumber": hex(tx.get("block_height", 0)) if tx.get("block_height") is not None else None,
         "from": tx.get("from_addr", tx.get("from", "")),
         "to": tx.get("to_addr", tx.get("to", "")),
-        "value": hex(int(float(tx.get("value", tx.get("amount", 0))) * 10**18)),
-        "gas": hex(tx.get("gas", 21000)),
-        "gasUsed": hex(tx.get("gas_used", tx.get("gas", 21000))),
-        "nonce": hex(tx.get("nonce", 0)),
+        "value": observed_value_hex(tx),
+        "gas": _observed_uint_hex(tx, "gas", "gas_limit"),
+        "gasUsed": _observed_uint_hex(tx, "gas_used", "gasUsed"),
+        "nonce": _observed_uint_hex(tx, "nonce") or hex(0),
         "input": tx.get("data", tx.get("tx_data", "0x")),
-        "burned": tx.get("burned", 0.0),
+        "burned": int(to_satoshi(tx.get("burned") or 0)) if tx.get("burned") is not None else 0,
     }
 
 
@@ -167,13 +205,13 @@ def format_receipt(tx: Optional[Dict], bc=None, query=None) -> Optional[Dict]:
     status_i = Database._normalize_tx_status(tx.get("status"))
     return {
         "transactionHash": tx_hash,
-        "blockNumber": hex(tx.get("block_height", 0)),
+        "blockNumber": hex(tx.get("block_height", 0)) if tx.get("block_height") is not None else None,
         "from": tx.get("from_addr", tx.get("from", "")),
         "to": tx.get("to_addr", tx.get("to", "")),
         "status": hex(status_i),
-        "gasUsed": hex(tx.get("gas_used", tx.get("gas", 21000))),
+        "gasUsed": _observed_uint_hex(tx, "gas_used", "gasUsed"),
         "logs": logs,
-        "burned": tx.get("burned", 0.0),
+        "burned": int(to_satoshi(tx.get("burned") or 0)) if tx.get("burned") is not None else 0,
     }
 
 
