@@ -1,14 +1,18 @@
 #Requires -Version 5.1
-# Regression suite for 2026-10-02 Telegram/audit remediation waves.
-# Unit + local labs only. Does NOT restart Docker mesh / soak.
+# Operator verify for 2026-10-02 audit/honesty remediation.
+# Unit + optional labs/probe. Does NOT restart Docker mesh / soak.
 #
-# Usage:
+# Usage (Experimental or pin — run from that repo root):
 #   .\scripts\verify_audit_remediation_2026_10_02.ps1
 #   .\scripts\verify_audit_remediation_2026_10_02.ps1 -WithMeshProbe
 #   .\scripts\verify_audit_remediation_2026_10_02.ps1 -WithPipAudit -WithNftLab -WithGateNeedles
+#   .\scripts\verify_audit_remediation_2026_10_02.ps1 -Quick
+#
+# -Quick = core honesty units only (fast local check)
 
 [CmdletBinding()]
 param(
+    [switch]$Quick,
     [switch]$WithMeshProbe,
     [switch]$WithPipAudit,
     [switch]$WithGateNeedles,
@@ -33,6 +37,17 @@ Write-Host "dup-protocol audit remediation verify 2026-10-02" -ForegroundColor G
 Write-Host ("Root: " + $Root)
 Write-Host "NOTE: unit/lab only - soak untouched unless -WithMeshProbe" -ForegroundColor Yellow
 
+$CoreHonesty = @(
+    "tests/unit/test_honesty_satoshi_epoch_bridge.py",
+    "tests/unit/test_validator_loader.py",
+    "tests/unit/test_ws_events.py",
+    "tests/unit/test_tx_sender_identity_binding.py",
+    "tests/unit/test_tx_identity_binding.py",
+    "tests/unit/test_http_stake_satoshi.py",
+    "tests/unit/test_jwt_secret_manager.py",
+    "tests/unit/test_wallet_keystore.py"
+)
+
 $UnitFiles = @(
     "tests/unit/test_tx_sender_identity_binding.py",
     "tests/unit/test_wallet_keystore.py",
@@ -44,7 +59,10 @@ $UnitFiles = @(
     "tests/unit/test_mempool_batch_signatures.py",
     "tests/unit/test_eth_filters.py",
     "tests/unit/test_api_prod_auth.py",
-    "tests/unit/test_wave_q_honesty_fixes.py"
+    "tests/unit/test_wave_q_honesty_fixes.py",
+    "tests/unit/test_honesty_satoshi_epoch_bridge.py",
+    "tests/unit/test_validator_loader.py",
+    "tests/unit/test_ws_events.py"
 )
 
 $OptionalUnit = @(
@@ -55,11 +73,18 @@ $OptionalUnit = @(
     "tests/unit/test_v1354_evm_mempool_load.py",
     "tests/unit/test_evm_on_chain.py",
     "tests/unit/test_consensus_ports.py",
-    "tests/unit/test_validator_stake_satoshi.py"
+    "tests/unit/test_validator_stake_satoshi.py",
+    "tests/unit/test_bridge_adr0010.py"
 )
 
+if ($Quick) {
+    $Wanted = $CoreHonesty
+} else {
+    $Wanted = $UnitFiles + $OptionalUnit
+}
+
 $Present = @()
-foreach ($f in ($UnitFiles + $OptionalUnit)) {
+foreach ($f in $Wanted) {
     $full = Join-Path $Root $f
     if (Test-Path $full) {
         $Present += $f

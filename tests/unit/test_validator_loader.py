@@ -114,6 +114,32 @@ def test_apply_public_manifest_upgrades_existing_validator_stake():
         assert node.db.saved[-1] == (addr, 5000)
 
 
+def test_apply_public_manifest_prefers_stake_satoshi():
+    from runtime.validator_loader import apply_public_manifest
+    from runtime.amount import from_satoshi_float
+
+    addr = "0x" + "a" * 40
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_manifest(
+            tmp,
+            [
+                {
+                    "index": 1,
+                    "address": addr,
+                    "stake": 99.0,
+                    "stake_satoshi": 5_000_000_000,
+                }
+            ],
+        )
+        node = _FakeNode()
+        added = apply_public_manifest(node, path)
+        assert added == 1
+        expected = float(from_satoshi_float(5_000_000_000))
+        assert node.consensus.validators[addr] == expected
+        assert node.db.saved[-1] == (addr, expected)
+        assert node._public_validator_set[0]["stake_satoshi"] == 5_000_000_000
+
+
 def test_apply_public_manifest_blocks_dev_derivation_in_prod():
     from runtime.validator_loader import apply_public_manifest
 
@@ -125,6 +151,7 @@ def test_apply_public_manifest_blocks_dev_derivation_in_prod():
             assert False, "expected RuntimeError"
         except RuntimeError as exc:
             assert "explicit 0x addresses" in str(exc)
+
 
 
 def test_merged_registry_view_from_parts():

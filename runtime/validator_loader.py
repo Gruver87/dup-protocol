@@ -54,6 +54,20 @@ def manifest_requires_runtime_key_derivation(manifest: Dict[str, Any]) -> bool:
     return False
 
 
+def _manifest_stake_abs(row: Dict[str, Any], *, default_stake: float) -> tuple[float, int]:
+    """Prefer ``stake_satoshi``; float ``stake`` remains for legacy manifests."""
+    from runtime.amount import from_satoshi_float, to_satoshi
+
+    raw_sat = row.get("stake_satoshi", None)
+    if raw_sat is not None and str(raw_sat).strip() != "":
+        stake_sat = int(raw_sat)
+        if stake_sat < 0:
+            raise ValueError("stake_satoshi_negative")
+        return float(from_satoshi_float(stake_sat)), stake_sat
+    stake_abs = float(row.get("stake", default_stake) or 0)
+    return stake_abs, int(to_satoshi(stake_abs))
+
+
 def snapshot_public_set(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Public validator set for APIs (no secrets)."""
     out = []
@@ -61,11 +75,13 @@ def snapshot_public_set(manifest: Dict[str, Any]) -> List[Dict[str, Any]]:
         addr = str(row.get("address", "") or "").strip()
         if not addr:
             continue
+        stake_abs, stake_sat = _manifest_stake_abs(row, default_stake=0.0)
         out.append({
             "index": int(row.get("index", 0) or 0),
             "node_id": row.get("node_id", ""),
             "address": addr,
-            "stake": float(row.get("stake", 0) or 0),
+            "stake": stake_abs,
+            "stake_satoshi": stake_sat,
             "mines": bool(row.get("mines", True)),
             "public_key": str(row.get("public_key", "") or ""),
             "shard_id": row.get("shard_id"),
@@ -91,7 +107,8 @@ def apply_public_manifest(node, path: str) -> int:
         addr = str(row.get("address", "") or "").strip()
         if not addr:
             continue
-        stake = float(row.get("stake", getattr(node.config, "min_stake", 1000)))
+        min_stake = float(getattr(node.config, "min_stake", 1000) or 1000)
+        stake, _stake_sat = _manifest_stake_abs(row, default_stake=min_stake)
         key = addr.lower()
         if key in existing:
             current = next(
@@ -112,6 +129,7 @@ def apply_public_manifest(node, path: str) -> int:
         if getattr(node, "validator_registry", None) and hasattr(
             node.validator_registry, "register_validator"
         ):
+            # Registry stake remains ABS whole-units (historical contract).
             node.validator_registry.register_validator(addr, int(stake))
     node._public_validator_manifest = path  # noqa: SLF001
     node._public_validator_set = snapshot_public_set(manifest)  # noqa: SLF001
