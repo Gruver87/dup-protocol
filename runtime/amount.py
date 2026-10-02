@@ -232,3 +232,30 @@ def can_afford_transfer(sender_sat: int, total_cost_abs: NumberLike) -> bool:
 def apply_satoshi_delta(current_sat: int, delta_sat: int) -> int:
     """Apply integer satoshi delta; never negative."""
     return max(0, int(current_sat) + int(delta_sat))
+
+
+# ETH-style RPC: 1 ABS = 10**18 wei = 10**6 satoshi → 10**12 wei per satoshi.
+WEI_PER_ABS = 10**18
+WEI_PER_SATOSHI = WEI_PER_ABS // SATOSHI_MULTIPLIER
+
+
+def abs_to_wei(amount_abs: NumberLike) -> int:
+    """ABS → ETH-style wei via Decimal (1 ABS = 10**18 wei)."""
+    if isinstance(amount_abs, bool):
+        raise TypeError("bool is not an amount")
+    try:
+        d = Decimal(str(amount_abs))
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        raise ValueError(f"invalid amount: {amount_abs!r}") from exc
+    if not d.is_finite():
+        raise ValueError("amount must be finite")
+    if d < 0:
+        raise ValueError("amount must be >= 0")
+    return int((d * Decimal(WEI_PER_ABS)).to_integral_value(rounding=ROUND_DOWN))
+
+
+def money_abs(raw: Any, *, field: str = "amount") -> float:
+    """Storage / stake amount: satoshi-quantized ABS float."""
+    if isinstance(raw, bool):
+        raise TypeError("bool is not an amount")
+    return from_satoshi_float(to_satoshi(raw))

@@ -19,6 +19,7 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
+from runtime.amount import money_abs, to_satoshi
 from consensus_engine import ConsensusEngine
 from finality_engine import FinalityEngine
 from kernel.event_bus import EventBus
@@ -202,6 +203,12 @@ class ConsensusAdapter:
         self, address: str, reason: str, slot: int, penalty: int
     ) -> None:
         persist_err: Optional[BaseException] = None
+        # Fail-closed: eject from live proposer/attest set before persist.
+        try:
+            self.engine.slash_validator(address)
+        except Exception as e:
+            persist_err = e
+            print(f"[Consensus] FAIL: engine slash for {address[:16]}...: {e}")
         try:
             self.db.slash_validator(address)
         except Exception as e:
@@ -220,11 +227,14 @@ class ConsensusAdapter:
             ) from persist_err
 
     def _register_validator_all(self, address: str, stake: float) -> None:
-        self.engine.add_validator(address, stake)
+        # DB keeps quantized ABS float; live engines use integer satoshi.
+        stake_abs = money_abs(stake, field="stake")
+        stake_sat = int(to_satoshi(stake_abs))
+        self.engine.add_validator(address, stake_abs)
         if self.slashing_engine:
-            self.slashing_engine.add_validator(address, int(stake))
+            self.slashing_engine.add_validator(address, stake_sat)
         if self.validator_registry:
-            self.validator_registry.register_validator(address, int(stake))
+            self.validator_registry.register_validator(address, stake_sat)
 
     def _sync_finality_validator_count(self) -> None:
         count = 0
@@ -236,7 +246,8 @@ class ConsensusAdapter:
             count = len(self.db.get_validators(active_only=True) or [])
         if count <= 0:
             count = len(self.engine.validators)
-        self.finality.set_active_validator_count(max(1, count))
+        # Wave N: do not invent denom=1 when the active set is empty.
+        self.finality.set_active_validator_count(count)
 
     def get_finalized_floor_height(self) -> int:
         floor = int(self._round_state.finality_status().finalized_height or 0)
@@ -249,15 +260,17 @@ class ConsensusAdapter:
     # ── ValidatorRegistryPort-backed management ────────────────────────────
 
     def add_validator(self, address: str, stake: float) -> bool:
-        ok = self.engine.add_validator(address, stake)
+        stake_abs = money_abs(stake, field="stake")
+        stake_sat = int(to_satoshi(stake_abs))
+        ok = self.engine.add_validator(address, stake_abs)
         if ok:
-            self.db.save_validator(address, stake)
+            self.db.save_validator(address, stake_abs)
             if self.slashing_engine:
-                self.slashing_engine.add_validator(address, int(stake))
+                self.slashing_engine.add_validator(address, stake_sat)
             if self.validator_registry:
-                self.validator_registry.register_validator(address, int(stake))
+                self.validator_registry.register_validator(address, stake_sat)
             self._sync_finality_validator_count()
-            print(f"[Consensus] New validator: {address[:12]}... stake={stake}")
+            print(f"[Consensus] New validator: {address[:12]}... stake_sat={stake_sat}")
         return ok
 
     def slash_validator(self, address: str) -> None:

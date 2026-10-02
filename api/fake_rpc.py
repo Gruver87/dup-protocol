@@ -64,6 +64,11 @@ class FakeQueryFacade:
     def get_balance(self, address: str, block_tag: str = "latest") -> float:
         return float(self.balances.get(address, 0.0))
 
+    def get_balance_satoshi(self, address: str) -> int:
+        from runtime.amount import money_abs, to_satoshi
+
+        return int(to_satoshi(money_abs(self.get_balance(address), field="balance")))
+
     def get_nonce(self, address: str) -> int:
         return int(self.nonces.get(address, 0))
 

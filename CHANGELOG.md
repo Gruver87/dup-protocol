@@ -28,6 +28,7 @@ Canonical language for this repository is **English**. Older entries below may s
 - **P1 (2026-10-02):** validator manifest prefers `stake_satoshi`; WS `burned_satoshi`/`value_satoshi` twins. Verify: `.\scripts\verify_audit_remediation_2026_10_02.ps1 -Quick`. **Not** soak.
 - **P1 (2026-10-02):** `mainnet_readiness` prefers `data/ceremony_deploy.json` pin when ceremony_dir auto-detected (stale shell `GENESIS_CEREMONY_HASH` no longer flaps industrial_gate). **Not** soak.
 - **P1 (2026-10-02):** Decimal `to_satoshi` for canonical serializer / native Python canonicalize / EVM writeback floats; Rust `canonicalize_value` uses `to_satoshi_inner`; bridge inbound prefers `amount_satoshi` (prod refuses float-only). **Not** soak / native rebuild not applied to running mesh.
+- **P1 (2026-10-02):** Wave N + RPC honesty — PoS stake integer satoshi; finality empty-set no invented denom; `eth_getBalance` via satoshi×wei; `eth_call`/`estimateGas` fail-closed (no painted `0x`/`21000`); `eth_gasPrice` null unless `advertise_config_gas_price`; feeHistory no stub 0.5 ratios. Units: `tests/unit/test_wave_n_rpc_honesty.py`. **Not** soak.
 - **P1 (2026-10-02):** `verify_prod_mesh_probe` retries tip alignment (mining-window ±1) before FAIL — same as Experimental; persistent fork still fails. **Not** soak.
 - **P0 CRITICAL: sender↔pubkey binding (2026-10-02):** `crypto/wallet.py` `_transaction_signature_material` refuses txs where `derive_address(public_key) != from`. Units `tests/unit/test_tx_sender_identity_binding.py`. **Not** firm PASS / not soak.
 

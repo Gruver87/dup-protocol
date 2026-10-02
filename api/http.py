@@ -1121,9 +1121,19 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
         # ── Аккаунты ──────────────────────────────────────────────────────
         if method == "eth_getBalance":
             address = params[0] if params else ""
-            balance = bc.get_balance(address)
-            # Возвращаем в wei (1 ABS = 1e18 wei для совместимости)
-            return hex(int(balance * 10**18))
+            q = self.__class__.query_facade or getattr(bc, "query_facade", None)
+            from runtime.amount import WEI_PER_SATOSHI, to_satoshi
+
+            try:
+                if q is not None and hasattr(q, "get_balance_satoshi"):
+                    balance_sat = int(q.get_balance_satoshi(address) or 0)
+                elif hasattr(bc, "get_balance_satoshi"):
+                    balance_sat = int(bc.get_balance_satoshi(address) or 0)
+                else:
+                    balance_sat = int(to_satoshi(bc.get_balance(address) or 0))
+                return hex(balance_sat * WEI_PER_SATOSHI)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("unparseable balance") from exc
 
         if method == "eth_getTransactionCount":
             address = params[0] if params else ""
@@ -1165,43 +1175,66 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
 
         # ── EVM ────────────────────────────────────────────────────────────
         if method == "eth_call":
-            tx_obj = params[0] if params else {}
-            to_addr = tx_obj.get("to", "")
-            data = tx_obj.get("data", "")
-            if evm_adapter and to_addr:
-                result = evm_adapter.static_call(to_addr, data)
-                if result.success and result.return_value is not None:
-                    return hex(result.return_value)
-            return "0x"
+            from api.eth_format import encode_eth_call_return
 
-        if method == "eth_estimateGas":
             tx_obj = params[0] if params else {}
             to_addr = tx_obj.get("to", "")
             data = tx_obj.get("data", tx_obj.get("input", ""))
-            if evm_adapter and to_addr:
+            if not evm_adapter:
+                raise ValueError("evm adapter unavailable for eth_call")
+            if not to_addr:
+                raise ValueError("eth_call requires to")
+            result = evm_adapter.static_call(to_addr, data)
+            if not getattr(result, "success", False):
+                raise ValueError(
+                    getattr(result, "error", None) or "eth_call execution failed"
+                )
+            return encode_eth_call_return(result.return_value)
+
+        if method == "eth_estimateGas":
+            tx_obj = params[0] if params else {}
+            to_addr = tx_obj.get("to", "") or ""
+            data = tx_obj.get("data", tx_obj.get("input", ""))
+            if evm_adapter and (to_addr or data):
                 gas = evm_adapter.estimate_gas(to_addr, data)
-                return hex(max(21_000, int(gas or 0)))
-            return hex(21_000)
+                if gas is None:
+                    return None
+                return hex(int(gas))
+            return None
 
         if method == "eth_gasPrice":
-            return hex(int(cfg.gas_price_wei * 10**18))
+            from runtime.amount import abs_to_wei
+
+            if not bool(getattr(cfg, "advertise_config_gas_price", False)):
+                return None
+            try:
+                wei = abs_to_wei(getattr(cfg, "gas_price_wei", 0) or 0)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("unparseable gas_price_wei") from exc
+            return hex(wei) if wei > 0 else None
 
         if method == "eth_maxPriorityFeePerGas":
-            return hex(int(getattr(cfg, "priority_fee_wei", 0) or 0))
+            raw = getattr(cfg, "priority_fee_wei", None)
+            if raw is None:
+                return None
+            try:
+                tip = int(raw)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("unparseable priority_fee_wei") from exc
+            return hex(tip) if tip > 0 else None
 
         if method == "eth_feeHistory":
-            block_count = int(params[0], 16) if params else 1
-            block_count = max(1, min(block_count, 1024))
-            tip = _resolve_block_by_tag(bc, params[1] if len(params) > 1 else "latest")
-            tip_h = int(tip.get("height", bc.get_height())) if tip else bc.get_height()
-            oldest = max(0, tip_h - block_count + 1)
-            base = hex(int(cfg.gas_price_wei * 10**18))
-            return {
-                "oldestBlock": hex(oldest),
-                "baseFeePerGas": [base] * block_count,
-                "gasUsedRatio": [0.5] * block_count,
-                "reward": [["0x0"]] * block_count,
-            }
+            from api.eth_format import format_fee_history
+
+            q = self.__class__.query_facade or getattr(bc, "query_facade", None)
+            if q is None:
+                raise ValueError("query_facade required for eth_feeHistory")
+            return format_fee_history(
+                query=q,
+                cfg=cfg,
+                block_count=params[0] if params else 1,
+                newest_tag=params[1] if len(params) > 1 else "latest",
+            )
 
         if method == "eth_accounts":
             if wallet and getattr(wallet, "address", ""):
@@ -1210,7 +1243,8 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
             return [miner] if miner else []
 
         if method == "eth_coinbase":
-            return getattr(cfg, "miner_address", "") or "0x0"
+            miner = getattr(cfg, "miner_address", "") or ""
+            return miner or None
 
         if method == "eth_hashrate":
             return "0x0"

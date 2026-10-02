@@ -81,6 +81,9 @@ class QueryFacadePort(Protocol):
     def get_balance(self, address: str, block_tag: str = "latest") -> float:
         ...
 
+    def get_balance_satoshi(self, address: str) -> int:
+        ...
+
     def get_nonce(self, address: str) -> int:
         ...
 
@@ -123,6 +126,9 @@ class NullQueryFacade:
 
     def get_balance(self, address: str, block_tag: str = "latest") -> float:
         return 0.0
+
+    def get_balance_satoshi(self, address: str) -> int:
+        return 0
 
     def get_nonce(self, address: str) -> int:
         return 0

@@ -104,10 +104,25 @@ class QueryFacade:
 
     def get_balance(self, address: str, block_tag: str = "latest") -> float:
         _ = block_tag
+        from runtime.amount import from_satoshi_float
+
+        return float(from_satoshi_float(self.get_balance_satoshi(address)))
+
+    def get_balance_satoshi(self, address: str) -> int:
+        """Canonical wire/RPC money unit — prefer blockchain satoshi path."""
         bc = self.blockchain
         if bc is None:
-            return 0.0
-        return float(bc.get_balance(address))
+            return 0
+        if hasattr(bc, "get_balance_satoshi"):
+            return int(bc.get_balance_satoshi(address) or 0)
+        store = self._store()
+        if store is not None and hasattr(store, "get_balance_satoshi"):
+            return int(store.get_balance_satoshi(address) or 0)
+        if hasattr(bc, "get_balance"):
+            from runtime.amount import money_abs, to_satoshi
+
+            return int(to_satoshi(money_abs(bc.get_balance(address), field="balance")))
+        return 0
 
     def get_nonce(self, address: str) -> int:
         store = self._store()

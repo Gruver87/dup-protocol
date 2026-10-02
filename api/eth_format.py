@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from api.ports import BlockQuery, LogsQuery, QueryLimitError, QueryTimeoutError
 
@@ -257,6 +257,112 @@ def tx_at_block_index(bc, blk: Optional[Dict], index: int, query=None) -> Option
     if bc is not None and hasattr(bc, "get_transaction"):
         return bc.get_transaction(tx_hash)
     return None
+
+
+def encode_eth_call_return(value: Any) -> str:
+    """Encode eth_call return as 0x-hex (ABI word for ints; raw hex for bytes)."""
+    if value is None:
+        return "0x"
+    if isinstance(value, (bytes, bytearray)):
+        return "0x" + bytes(value).hex()
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return "0x"
+        if s.startswith("0x") or s.startswith("0X"):
+            return "0x" + s[2:]
+        return "0x" + s
+    if isinstance(value, bool):
+        return "0x" + ("1" if value else "0").zfill(64)
+    if isinstance(value, int):
+        if value < 0:
+            raise ValueError("eth_call negative int unsupported")
+        return "0x" + format(value, "x").zfill(64)
+    return "0x"
+
+
+DEFAULT_EVM_GAS_LIMIT = 8_000_000
+
+
+def format_fee_history(
+    *,
+    query,
+    cfg,
+    block_count: Any = 1,
+    newest_tag: Any = "latest",
+) -> Dict[str, Any]:
+    """Fee history from observed heights. No stubbed 0.5 ratios, no EIP-1559 market."""
+    from api.ports import BlockQuery
+
+    if isinstance(block_count, bool):
+        n_req = 1
+    elif isinstance(block_count, int):
+        n_req = block_count
+    else:
+        raw = str(block_count or "1").strip() or "1"
+        try:
+            n_req = int(raw, 16) if raw.startswith(("0x", "0X")) else int(raw)
+        except (TypeError, ValueError):
+            n_req = 1
+    n_req = max(1, min(int(n_req), 1024))
+    get_block = getattr(query, "get_block", None)
+    tip = None
+    if callable(get_block):
+        try:
+            tip = get_block(BlockQuery(tag=str(newest_tag or "latest")))
+        except Exception:
+            tip = None
+    tip_fn = getattr(query, "tip_height", None)
+    if isinstance(tip, dict):
+        try:
+            tip_h = int(tip.get("height", tip_fn() if callable(tip_fn) else 0) or 0)
+        except (TypeError, ValueError):
+            tip_h = int(tip_fn()) if callable(tip_fn) else 0
+    else:
+        tip_h = int(tip_fn()) if callable(tip_fn) else 0
+    oldest = max(0, tip_h - n_req + 1)
+    protocol = getattr(cfg, "evm_gas_limit", None) if cfg is not None else None
+    if protocol is None:
+        protocol = DEFAULT_EVM_GAS_LIMIT
+    try:
+        protocol_i = int(protocol)
+    except (TypeError, ValueError):
+        protocol_i = DEFAULT_EVM_GAS_LIMIT
+    ratios: List[float] = []
+    bases: List[Optional[str]] = []
+    rewards: List[Optional[List[str]]] = []
+    for height in range(oldest, tip_h + 1):
+        blk = None
+        if callable(get_block):
+            try:
+                blk = get_block(BlockQuery(height=int(height)))
+            except Exception:
+                blk = None
+        if not isinstance(blk, dict):
+            continue
+        used_raw = blk.get("gas_used", blk.get("gasUsed"))
+        limit_raw = blk.get("gas_limit", blk.get("gasLimit"))
+        try:
+            used = int(used_raw) if used_raw is not None and used_raw != "" else None
+        except (TypeError, ValueError):
+            used = None
+        try:
+            limit = int(limit_raw) if limit_raw is not None and limit_raw != "" else None
+        except (TypeError, ValueError):
+            limit = None
+        if limit is None or limit <= 0:
+            limit = protocol_i if protocol_i > 0 else None
+        if used is None or limit is None or limit <= 0:
+            continue
+        ratios.append(min(1.0, max(0.0, used / float(limit))))
+        bases.append(None)
+        rewards.append(None)
+    return {
+        "oldestBlock": hex(oldest),
+        "baseFeePerGas": bases,
+        "gasUsedRatio": ratios,
+        "reward": rewards,
+    }
 
 
 # Compat aliases
