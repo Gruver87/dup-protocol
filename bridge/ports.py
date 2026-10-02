@@ -37,6 +37,8 @@ class InboundEnvelope:
     zk_proof: Optional[Dict[str, Any]] = None
     oracle_meta: Dict[str, Any] = field(default_factory=dict)
     abs_tx_hash: str = ""
+    # Canonical integer when known; float ``amount`` remains for legacy callers.
+    amount_satoshi: Optional[int] = None
 
 
 @dataclass(frozen=True)

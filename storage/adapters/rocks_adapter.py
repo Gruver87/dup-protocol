@@ -616,11 +616,11 @@ class RocksDBStorageAdapter:
 
     def get_balance_satoshi(self, address: str) -> int:
         try:
-            if hasattr(self._store, "get_balance_satoshi"):
-                return int(self._store.get_balance_satoshi(str(address or "")) or 0)
-            from runtime.amount import to_satoshi
-
-            return int(to_satoshi(self.get_balance(address)))
+            if not hasattr(self._store, "get_balance_satoshi"):
+                raise RuntimeError(
+                    "satoshi_store_required: store lacks get_balance_satoshi"
+                )
+            return int(self._store.get_balance_satoshi(str(address or "")) or 0)
         except Exception as exc:
             raise map_engine_error(exc) from exc
 

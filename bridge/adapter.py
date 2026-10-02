@@ -134,10 +134,17 @@ class RustBridgeAdapter:
             )
             or ""
         ).strip()
+        # Prefer integer satoshi twin; derive ABS float only for legacy inner API.
+        if envelope.amount_satoshi is not None:
+            from runtime.amount import from_satoshi_float
+
+            amount_abs = float(from_satoshi_float(int(envelope.amount_satoshi)))
+        else:
+            amount_abs = float(envelope.amount)
         raw = self._inner.confirm_incoming(
             abs_tx,
             envelope.to_addr,
-            float(envelope.amount),
+            amount_abs,
             envelope.from_chain,
             l1_tx_hash=l1_tx,
             log_index=int(envelope.log_index or 0),
@@ -165,8 +172,10 @@ class RustBridgeAdapter:
 
     def get_stats(self) -> Dict[str, Any]:
         stats = dict(self._inner.get_stats() or {})
-        stats.setdefault("enabled", True)
-        stats.setdefault("backend", "rust_adapter")
+        # Never invent enabled=True — missing inner truth stays fail-closed False.
+        if "enabled" not in stats:
+            stats["enabled"] = False
+        stats.setdefault("backend", "bridge_adapter")
         stats["port"] = "BridgePort"
         return stats
 
@@ -187,6 +196,19 @@ class RustBridgeAdapter:
         meta = dict(kwargs.get("oracle_meta") or {})
         if l1_tx:
             meta.setdefault("l1_tx_hash", l1_tx)
+        amount_satoshi = kwargs.get("amount_satoshi")
+        if amount_satoshi is None and amount:
+            try:
+                from runtime.amount import to_satoshi
+
+                amount_satoshi = int(to_satoshi(amount))
+            except (TypeError, ValueError):
+                amount_satoshi = None
+        else:
+            try:
+                amount_satoshi = int(amount_satoshi) if amount_satoshi is not None else None
+            except (TypeError, ValueError):
+                amount_satoshi = None
         return InboundEnvelope(
             from_chain=from_chain,
             to_addr=recipient,
@@ -197,6 +219,7 @@ class RustBridgeAdapter:
             zk_proof=kwargs.get("zk_proof"),
             oracle_meta=meta,
             abs_tx_hash=tx_hash if l1_tx and l1_tx != tx_hash else "",
+            amount_satoshi=amount_satoshi,
         )
 
     @staticmethod

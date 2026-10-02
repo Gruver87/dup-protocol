@@ -4577,7 +4577,15 @@ class RESTHandler(BaseHTTPRequestHandler):
                                 "epoch_start": em.get_epoch_start(ep) if hasattr(em,"get_epoch_start") else None,
                                 "epoch_end":   em.get_epoch_end(ep)   if hasattr(em,"get_epoch_end")   else None})
                 else:
-                    self._json({"epoch": height // 32 if height else 0, "enabled": bool(em)})
+                    # Fail-closed: never invent epoch = height//32 without epoch_manager.
+                    self._json(
+                        {
+                            "enabled": False,
+                            "epoch": None,
+                            "block_height": height,
+                            "error": "epoch_manager_unavailable",
+                        }
+                    )
 
             # ── Beacon Finality ───────────────────────────────────────────────
             elif path == "/beacon/finality":

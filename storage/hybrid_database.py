@@ -362,11 +362,9 @@ class HybridDatabase:
         return self._core.get_balance(address)
 
     def get_balance_satoshi(self, address: str) -> int:
-        if hasattr(self._core, "get_balance_satoshi"):
-            return int(self._core.get_balance_satoshi(address))
-        from runtime.amount import to_satoshi
-
-        return to_satoshi(self._core.get_balance(address))
+        if not hasattr(self._core, "get_balance_satoshi"):
+            raise RuntimeError("satoshi_store_required: core lacks get_balance_satoshi")
+        return int(self._core.get_balance_satoshi(address))
 
     def get_nonce(self, address: str) -> int:
         return self._core.get_nonce(address)
@@ -384,12 +382,11 @@ class HybridDatabase:
         self._core.balance_delta(address, delta)
 
     def balance_delta_satoshi(self, address: str, delta_sat: int) -> None:
-        if hasattr(self._core, "balance_delta_satoshi"):
-            self._core.balance_delta_satoshi(address, int(delta_sat))
-            return
-        from runtime.amount import from_satoshi_float
-
-        self._core.balance_delta(address, float(from_satoshi_float(int(delta_sat))))
+        if not hasattr(self._core, "balance_delta_satoshi"):
+            raise RuntimeError(
+                "satoshi_store_required: core lacks balance_delta_satoshi"
+            )
+        self._core.balance_delta_satoshi(address, int(delta_sat))
 
     def increment_nonce(self, address: str) -> int:
         return self._core.increment_nonce(address)
