@@ -3,32 +3,145 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from api.ports import BlockQuery, LogsQuery, QueryLimitError, QueryTimeoutError
 from runtime.amount import WEI_PER_SATOSHI, to_satoshi
 
 ZERO_ROOT = "0x" + ("0" * 64)
 EMPTY_LOGS_BLOOM = "0x" + ("0" * 512)
+DEFAULT_EVM_GAS_LIMIT = 8_000_000
+
+
+def _keccak(data: bytes) -> bytes:
+    try:
+        from crypto import native
+
+        return native.keccak256_digest(data)
+    except Exception:
+        import hashlib
+
+        return hashlib.sha3_256(data).digest()
+
+
+def _addr_bytes(addr: str) -> bytes:
+    a = str(addr or "").strip().lower().replace("0x", "")
+    if len(a) != 40:
+        a = a.zfill(40)[-40:]
+    return bytes.fromhex(a)
+
+
+def _topic_bytes(topic: str) -> bytes:
+    t = str(topic or "").strip().lower().replace("0x", "")
+    if len(t) > 64:
+        t = t[-64:]
+    return bytes.fromhex(t.zfill(64))
+
+
+def _as_eth_root(value: str) -> str:
+    s = str(value or "").strip().lower()
+    if s.startswith("0x"):
+        s = s[2:]
+    if len(s) != 64 or any(c not in "0123456789abcdef" for c in s):
+        raise ValueError(f"invalid merkle root encoding: {value!r}")
+    return "0x" + s
+
+
+def _abs_tx_merkle_root(items: List[str]) -> str:
+    """Absolute SHA256 merkle (same as Block.tx_root). Not Ethereum Hexary MPT."""
+    from crypto.merkle import merkle_root
+
+    cleaned = [str(x) for x in items if str(x)]
+    raw = merkle_root(cleaned) if cleaned else merkle_root(["empty"])
+    return _as_eth_root(raw)
+
+
+def _tx_hash_from_block_item(tx: Any) -> str:
+    if isinstance(tx, dict):
+        return str(tx.get("hash") or tx.get("tx_hash") or "")
+    return str(tx or "")
+
+
+def block_transactions_root(blk: Dict[str, Any]) -> Optional[str]:
+    """Stored tx_root, else Absolute merkle of tx hashes. Corrupt stored → None."""
+    stored = blk.get("tx_root") or blk.get("transactions_root") or blk.get("transactionsRoot")
+    if stored:
+        try:
+            return _as_eth_root(str(stored))
+        except ValueError:
+            return None
+    txs = blk.get("transactions") or []
+    hashes = []
+    if isinstance(txs, list):
+        for tx in txs:
+            h = _tx_hash_from_block_item(tx)
+            if h:
+                hashes.append(h)
+    return _abs_tx_merkle_root(hashes)
+
+
+def block_receipts_root(blk: Dict[str, Any]) -> Optional[str]:
+    """Stored receipts_root, else merkle of hash:status. Corrupt stored → None."""
+    stored = blk.get("receipts_root") or blk.get("receiptsRoot")
+    if stored:
+        try:
+            return _as_eth_root(str(stored))
+        except ValueError:
+            return None
+    txs = blk.get("transactions") or []
+    leaves: List[str] = []
+    if isinstance(txs, list):
+        for tx in txs:
+            if isinstance(tx, dict):
+                h = str(tx.get("hash") or tx.get("tx_hash") or "")
+                if not h:
+                    continue
+                try:
+                    status = int(tx.get("status") or 0)
+                except (TypeError, ValueError):
+                    status = 0
+                leaves.append(f"{h}:{status}")
+            else:
+                s = str(tx or "")
+                if s:
+                    leaves.append(s)
+    return _abs_tx_merkle_root(leaves)
+
+
+def _bloom_add(bloom: bytearray, data: bytes) -> None:
+    h = _keccak(data)
+    for i in (0, 2, 4):
+        bit_index = ((h[i] << 8) | h[i + 1]) & 2047
+        byte_index = 255 - (bit_index // 8)
+        bloom[byte_index] |= 1 << (bit_index % 8)
+
+
+def logs_bloom(logs: Sequence[Dict[str, Any]]) -> str:
+    """Ethereum logsBloom from address + topics (Yellow Paper)."""
+    bloom = bytearray(256)
+    for log in logs or ():
+        if not isinstance(log, dict):
+            continue
+        addr = log.get("address") or log.get("contract_address") or ""
+        if addr:
+            _bloom_add(bloom, _addr_bytes(str(addr)))
+        topics = log.get("topics") or []
+        if isinstance(topics, (list, tuple)):
+            for topic in topics:
+                if topic is None or topic == "":
+                    continue
+                _bloom_add(bloom, _topic_bytes(str(topic)))
+    return "0x" + bloom.hex()
 
 
 def _normalize_eth_root(raw: Any) -> Optional[str]:
     """Valid 32-byte hex root, or None. Never the zero stub as Absolute empty merkle."""
     if raw is None:
         return None
-    s = str(raw).strip()
-    if not s:
-        return None
-    if not s.startswith(("0x", "0X")):
-        s = "0x" + s
-    hexpart = s[2:]
-    if len(hexpart) != 64:
-        return None
     try:
-        int(hexpart, 16)
+        out = _as_eth_root(str(raw))
     except ValueError:
         return None
-    out = "0x" + hexpart.lower()
     if out == ZERO_ROOT:
         return None
     return out
@@ -99,22 +212,23 @@ def format_block(blk: Optional[Dict], full_tx: bool = False, *, query=None, bc=N
         number = int(height) if height is not None and height != "" else None
     except (TypeError, ValueError):
         number = None
-    # Stored roots only — never invent Ethereum zero merkle / ethash nonce / 30M gas.
+    # Roots: stored Absolute merkle, else compute from txs. Corrupt stored → None.
+    # Never invent Ethereum zero merkle / ethash nonce / 30M gas.
     state_root = _normalize_eth_root(blk.get("state_root") or blk.get("stateRoot"))
-    tx_root = _normalize_eth_root(
-        blk.get("tx_root") or blk.get("transactionsRoot") or blk.get("transactions_root")
-    )
-    receipts_root = _normalize_eth_root(
-        blk.get("receipts_root") or blk.get("receiptsRoot")
-    )
+    tx_root = block_transactions_root(blk)
+    receipts_root = block_receipts_root(blk)
     bloom_raw = blk.get("logs_bloom") or blk.get("logsBloom")
     if bloom_raw is not None and str(bloom_raw).strip():
-        bloom_s = str(bloom_raw).strip()
+        bloom_s = str(bloom_raw).strip().lower()
         if not bloom_s.startswith("0x"):
             bloom_s = "0x" + bloom_s
-        logs_bloom = bloom_s if bloom_s != EMPTY_LOGS_BLOOM else None
+        hexpart = bloom_s[2:]
+        if len(hexpart) == 512 and any(c != "0" for c in hexpart):
+            bloom_out = "0x" + hexpart
+        else:
+            bloom_out = logs_bloom([])  # empty observed bloom
     else:
-        logs_bloom = None
+        bloom_out = logs_bloom([])
     limit = _observed_uint_hex(blk, "gas_limit", "gasLimit")
     if limit is None and gas_limit is not None:
         try:
@@ -132,7 +246,7 @@ def format_block(blk: Optional[Dict], full_tx: bool = False, *, query=None, bc=N
         "parentHash": blk.get("parent_hash") or blk.get("parentHash") or None,
         "nonce": None,  # Absolute is not ethash — never paint 8-byte zero
         "sha3Uncles": None,  # no uncle trie on pin formatter; null > zero digest
-        "logsBloom": logs_bloom,
+        "logsBloom": bloom_out,
         "transactionsRoot": tx_root,
         "stateRoot": state_root,
         "receiptsRoot": receipts_root,
@@ -278,6 +392,7 @@ def format_receipt(tx: Optional[Dict], bc=None, query=None) -> Optional[Dict]:
         "status": hex(status_i),
         "gasUsed": _observed_uint_hex(tx, "gas_used", "gasUsed"),
         "logs": logs,
+        "logsBloom": logs_bloom(logs),
         "burned": _burned_satoshi(tx, "burned"),
     }
 

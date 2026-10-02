@@ -116,15 +116,17 @@ def test_format_block_no_invented_eth_stubs():
     }
     out = format_block(blk)
     assert out["stateRoot"] is None
-    assert out["transactionsRoot"] is None
-    assert out["receiptsRoot"] is None
+    # Absolute merkle over empty tx list (merkle_root(['empty'])) — not Ethereum zero.
+    assert out["transactionsRoot"] is not None
+    assert out["transactionsRoot"] != ("0x" + "0" * 64)
+    assert out["receiptsRoot"] is not None
     assert out["nonce"] is None
     assert out["sha3Uncles"] is None
-    assert out["logsBloom"] is None
+    assert out["logsBloom"] == ("0x" + "0" * 512)  # empty observed bloom
     assert out["gasLimit"] == hex(8_000_000)
     assert out["gasUsed"] == hex(0)
     assert out["totalBurned"] == int(to_satoshi(0.5))
-    # Invented Ethereum 30M / zero roots must not appear
+    # Invented Ethereum 30M must not appear
     assert out["gasLimit"] != hex(30_000_000)
 
 

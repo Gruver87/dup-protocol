@@ -455,7 +455,7 @@ def _inbound_envelope_from_body(body: dict, cfg: Any = None):
     else:
         if mode == "prod":
             raise ValueError("amount_satoshi required (prod refuse float-only amount)")
-        amount = float(body.get("amount", 0) or 0)
+        amount = _http_abs(body.get("amount", 0) or 0)
         amount_sat = int(to_satoshi(amount)) if amount else 0
 
     return InboundEnvelope(
@@ -2679,19 +2679,8 @@ class RESTHandler(BaseHTTPRequestHandler):
                     try:
                         stats = dict(ca.get_stats())
                     except Exception as e:
-                        stats = {
-                            "enabled": True,
-                            "healthy": False,
-                            "error": str(e),
-                            "lmd_ghost_enabled": getattr(ca, "slashing_engine", None) is not None,
-                            "casper_ffg": (
-                                getattr(ca, "casper_engine", None) is not None
-                                or getattr(ca, "finality", None) is not None
-                            ),
-                            "slashing_enabled": getattr(ca, "slashing_engine", None) is not None,
-                            "pbs_enabled": getattr(ca, "pbs_market", None) is not None,
-                            "validator_registry": getattr(ca, "validator_registry", None) is not None,
-                        }
+                        self._error(503, f"consensus stats failed: {e}")
+                        return
                     validators = db.get_validators()
                     stats["validators"] = len(validators)
                     checkpoints = db.get_checkpoints() if hasattr(db, "get_checkpoints") else []
@@ -3327,13 +3316,8 @@ class RESTHandler(BaseHTTPRequestHandler):
                             "in_memory_registry": True,
                         })
                     except Exception as e:
-                        self._json({
-                            "smart_accounts": [],
-                            "error": str(e),
-                            "enabled": True,
-                            "persistent": False,
-                            "execution_bound": False,
-                        })
+                        self._error(503, f"smart_accounts list failed: {e}")
+                        return
                 else:
                     self._json({
                         "smart_accounts": [],
@@ -3356,13 +3340,8 @@ class RESTHandler(BaseHTTPRequestHandler):
                             "in_memory_registry": True,
                         })
                     except Exception as e:
-                        self._json({
-                            "multisig_wallets": [],
-                            "enabled": True,
-                            "persistent": False,
-                            "execution_bound": False,
-                            "error": str(e),
-                        })
+                        self._error(503, f"multisig list failed: {e}")
+                        return
                 else:
                     self._json({
                         "multisig_wallets": [],
@@ -5146,7 +5125,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 result = evm_adapter.deploy_contract(
                     deployer=body.get("from", body.get("from_address", "")),
                     bytecode_hex=body.get("bytecode", body.get("data", "")),
-                    value=float(body.get("value", 0)),
+                    value=_http_abs(body.get("value", 0), field="value"),
                     salt=body.get("salt"),
                 )
                 self._json(result.to_dict())
@@ -5174,7 +5153,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     caller=body.get("from", ""),
                     contract_addr=body.get("to", ""),
                     calldata_hex=body.get("data", ""),
-                    value=float(body.get("value", 0)),
+                    value=_http_abs(body.get("value", 0), field="value"),
                 )
                 self._json(result.to_dict())
 
@@ -5336,7 +5315,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 owners = body.get("owners", [])
                 required = int(body.get("required", 2))
                 to = body.get("to", "")
-                value = float(body.get("value", 0))
+                value=_http_abs(body.get("value", 0), field="value")
                 try:
                     from features.multisig import MultiSigWallet
                     ms = MultiSigWallet(owners, required)
@@ -5648,7 +5627,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(503, "NFT not enabled"); return
                 auction_id = body.get("auction_id", "")
                 bidder     = body.get("bidder", "")
-                amount     = float(body.get("amount", 0))
+                amount = _http_abs(body.get("amount", 0))
                 if not auction_id or not bidder:
                     self._error(400, "auction_id and bidder required"); return
                 try:
@@ -5954,7 +5933,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(503, "Lightning not enabled"); return
                 cid = body.get("channel_id", "")
                 to_node = body.get("to", "")
-                amount = float(body.get("amount", 0))
+                amount = _http_abs(body.get("amount", 0))
                 if not cid or not to_node or amount <= 0:
                     self._error(400, "channel_id, to, amount required"); return
                 pid = ln.send_payment(cid, to_node, amount)
@@ -5969,7 +5948,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(503, "Lightning not enabled"); return
                 cid = body.get("channel_id", "")
                 receiver = body.get("receiver", body.get("to", ""))
-                amount = float(body.get("amount", 0))
+                amount = _http_abs(body.get("amount", 0))
                 preimage_hash = body.get("payment_hash", body.get("preimage_hash", ""))
                 expiry = body.get("expiry")
                 if not cid or not receiver or amount <= 0 or not preimage_hash:
@@ -6006,7 +5985,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if not ln:
                     self._error(503, "Lightning not enabled"); return
                 destination = body.get("destination", body.get("to", ""))
-                amount = float(body.get("amount", 0))
+                amount = _http_abs(body.get("amount", 0))
                 preimage = body.get("preimage", "")
                 if not destination or amount <= 0 or not preimage:
                     self._error(400, "destination, amount, preimage required"); return
@@ -6037,7 +6016,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(503, "CryptoWill not enabled"); return
                 owner = body.get("owner", "")
                 heir = body.get("heir", "")
-                amount = float(body.get("amount", 0))
+                amount = _http_abs(body.get("amount", 0))
                 assets = body.get("assets", {})
                 delay = int(body.get("execution_delay", 86400))
                 witnesses = body.get("witnesses", [])
@@ -6083,7 +6062,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if not pl:
                     self._error(503, "Plasma not enabled"); return
                 from_addr = body.get("from", "")
-                amount = float(body.get("amount", 0))
+                amount = _http_abs(body.get("amount", 0))
                 if not from_addr or amount <= 0:
                     self._error(400, "from and amount required"); return
                 did = pl.deposit(from_addr, amount)
@@ -6098,7 +6077,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(503, "Plasma not enabled"); return
                 from_addr = body.get("from", "")
                 to_addr = body.get("to", "")
-                amount = float(body.get("amount", 0))
+                amount = _http_abs(body.get("amount", 0))
                 if not from_addr or not to_addr or amount <= 0:
                     self._error(400, "from, to, amount required"); return
                 txh = pl.submit_transaction(from_addr, to_addr, amount)
@@ -6174,7 +6153,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 fn = body.get("function", "")
                 params = body.get("params", {})
                 caller = body.get("caller", "")
-                value = float(body.get("value", 0))
+                value=_http_abs(body.get("value", 0), field="value")
                 if not contract_addr or not fn:
                     self._error(400, "contract and function required"); return
                 result = vm.call(contract_addr, fn, params, caller, value)
@@ -6227,7 +6206,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(503, "AI Manager not enabled"); return
                 agent_id = body.get("agent_id", "")
                 trade_type = body.get("type", "buy")
-                amount = float(body.get("amount", 0))
+                amount = _http_abs(body.get("amount", 0))
                 price = float(body.get("price", 0))
                 if not agent_id or amount <= 0:
                     self._error(400, "agent_id, amount, price required"); return
@@ -6249,7 +6228,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 to_chain = body.get("to_chain", "absolute")
                 from_addr = body.get("from_address", "")
                 to_addr = body.get("to_address", "")
-                amount = float(body.get("amount", 0))
+                amount = _http_abs(body.get("amount", 0))
                 l1_tx = (body.get("l1_tx_hash") or "").strip()
                 if not from_addr or not to_addr or amount <= 0:
                     self._error(400, "from_address, to_address, amount required"); return
@@ -6377,7 +6356,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if not db:
                     self._error(503, "database unavailable"); return
                 address = (body.get("address", "") or "").strip()
-                amount = float(body.get("amount", 100))
+                amount = _http_abs(body.get("amount", 100))
                 if not address:
                     self._error(400, "address required"); return
                 if amount <= 0 or amount > 1000:
@@ -6422,7 +6401,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if not registry:
                     self._error(503, "Oracle registry not enabled"); return
                 symbol = body.get("symbol", "")
-                value = float(body.get("value", 0))
+                value=_http_abs(body.get("value", 0), field="value")
                 source = body.get("source", "reporter")
                 reporter = body.get("reporter", body.get("from", ""))
                 sig = self.headers.get("X-Bridge-Oracle-Signature", body.get("signature", ""))
@@ -6444,7 +6423,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if not registry:
                     self._error(503, "Oracle registry not enabled"); return
                 symbol = body.get("symbol", "")
-                value = float(body.get("value", 0))
+                value=_http_abs(body.get("value", 0), field="value")
                 reporter = body.get("reporter", body.get("from", ""))
                 sig = self.headers.get("X-Bridge-Oracle-Signature", body.get("signature", ""))
                 result = registry.submit_report(
@@ -6518,7 +6497,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 db.set_meta("bridge_l1_proofs", proofs[-500:])
                 br = getattr(self.__class__, "bridge", None)
                 recipient = (body.get("recipient") or body.get("to_address") or "").strip()
-                amount = float(body.get("amount", 0) or 0)
+                amount = _http_abs(body.get("amount", 0) or 0)
                 if br and hasattr(br, "enqueue_l1_incoming") and recipient and amount > 0:
                     br.enqueue_l1_incoming(
                         l1_tx,
@@ -6562,7 +6541,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 br = _bridge_for_request(self.__class__, cfg)
                 if not br:
                     self._error(503, "Bridge not enabled"); return
-                amount = float(body.get("amount", 0))
+                amount = _http_abs(body.get("amount", 0))
                 from_addr = body.get("from_address", body.get("from", ""))
                 to_addr = body.get("to_address", body.get("to", ""))
                 target_chain = body.get("target_chain", body.get("to_chain", "ethereum"))
@@ -8646,7 +8625,7 @@ def _handle_devnet_pool_spend(body: Dict, bc, db, cfg, pool_locks) -> Dict:
 
     pool_id = (body.get("pool_id", body.get("pool", "ecosystem")) or "").strip().lower()
     to_addr = (body.get("to", body.get("recipient", "")) or "").strip()
-    amount = float(body.get("amount", 0))
+    amount = _http_abs(body.get("amount", 0))
     if pool_id not in ("ecosystem", "treasury", "staking"):
         raise ValueError("pool_id must be ecosystem, treasury, or staking")
     if not to_addr:

@@ -49,7 +49,8 @@ $CoreHonesty = @(
     "tests/unit/test_wallet_keystore.py",
     "tests/unit/test_wave_n_rpc_honesty.py",
     "tests/unit/test_wave_fqr_http_honesty.py",
-    "tests/unit/test_wave_qi_http_money.py"
+    "tests/unit/test_wave_qi_http_money.py",
+    "tests/unit/test_pin_rest_money_and_roots.py"
 )
 
 $UnitFiles = @(
