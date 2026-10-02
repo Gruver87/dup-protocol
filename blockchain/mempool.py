@@ -160,14 +160,19 @@ class Mempool:
         """
         with self.lock:
             # Bind mempool identity to canonical payload hash (audit §7).
+            # Value must match wallet signing encoding (int when whole ABS).
             try:
                 from core.tx_identity import bind_identity_from_fields
 
+                amt = tx.amount
+                bind_value = (
+                    int(amt) if isinstance(amt, (int, float)) and amt == int(amt) else amt
+                )
                 bound, ts = bind_identity_from_fields(
                     tx.tx_hash,
                     from_addr=tx.from_addr,
                     to_addr=tx.to_addr,
-                    value=tx.amount,
+                    value=bind_value,
                     nonce=int(tx.nonce or 0),
                     gas=int(getattr(tx, "gas", 0) or 0) or 21_000,
                     data=getattr(tx, "data", "") or "",
@@ -175,7 +180,9 @@ class Mempool:
                     chain_id=int(getattr(self, "chain_id", 1) or 1),
                 )
                 tx.tx_hash = bound
-                tx.timestamp = float(ts)
+                # Do not rewrite timestamp — signature / identity already bound to it.
+                if int(tx.timestamp or 0) <= 0:
+                    tx.timestamp = float(ts)
             except ValueError:
                 self._rejected_count += 1
                 return False

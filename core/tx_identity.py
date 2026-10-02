@@ -70,22 +70,39 @@ def wallet_signing_digest(
     return str(native.hash_sorted_json(encoded))
 
 
+def _looks_like_digest(claim: str) -> bool:
+    """True when claim is a 64-hex digest (real client hash), not a harness label."""
+    c = str(claim or "").strip().lower()
+    if c.startswith("0x"):
+        c = c[2:]
+    return len(c) == 64 and all(ch in "0123456789abcdef" for ch in c)
+
+
 def bind_tx_hash_claim(
     claimed: Optional[str],
     canonical: str,
     *,
     signing_digest: Optional[str] = None,
 ) -> str:
-    """Refuse forged alternate identities; return canonical hash always."""
+    """Refuse forged alternate identities; return canonical hash always.
+
+    Non-digest labels (unit harness ``tx_hash='low'``) are treated as absent
+    claims — identity is still rebound to canonical. Only a wrong 64-hex
+    digest is ``tx_hash_mismatch``.
+    """
     claim = str(claimed or "").strip()
     canon = str(canonical or "").strip()
     if not canon:
         raise ValueError("tx_hash_mismatch: empty canonical hash")
-    if not claim:
+    if not claim or not _looks_like_digest(claim):
         return canon
-    if claim.lower() == canon.lower():
+    if claim.lower() == canon.lower() or (
+        claim.startswith("0x") and claim[2:].lower() == canon.lower()
+    ):
         return canon
-    if signing_digest and claim.lower() == str(signing_digest).lower():
+    if signing_digest and claim.lower().removeprefix("0x") == str(
+        signing_digest
+    ).lower().removeprefix("0x"):
         # Legacy wallet put signing digest in ``hash`` — not identity.
         return canon
     raise ValueError("tx_hash_mismatch: client hash does not match payload")

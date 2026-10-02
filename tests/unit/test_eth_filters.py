@@ -95,7 +95,7 @@ def test_eth_block_and_pending_filters(filter_rpc_env):
     assert hashes[0].startswith("0x")
 
     tx = MempoolTransaction(
-        "0x" + "aa" * 32,
+        "pending_label",
         "0x" + "aa" * 20,
         "0x" + "bb" * 20,
         1.0,

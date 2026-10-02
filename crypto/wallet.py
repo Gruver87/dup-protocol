@@ -370,12 +370,14 @@ def verify_transaction_signature(tx: dict) -> bool:
     """Verify transaction signature.
 
     Wave Q: missing ECDSA backend is unavailable (RuntimeError), not invalid False.
+    Check availability before material so sender-bind failures do not mask
+    ``unavailable``.
     """
+    if not ECDSA_AVAILABLE:
+        raise RuntimeError("signature verify unavailable: ECDSA backend missing")
     material = _transaction_signature_material(tx)
     if material is None:
         return False
-    if not ECDSA_AVAILABLE:
-        raise RuntimeError("signature verify unavailable: ECDSA backend missing")
     message, signature, public_key = material
     return verify(message, signature, public_key, hashfunc=hashlib.sha256)
 
