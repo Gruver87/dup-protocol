@@ -5,7 +5,9 @@ Full crypto wallet with ECDSA signing for transactions
 
 import json
 import hashlib
+import os
 import time
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
@@ -18,6 +20,13 @@ from crypto.secp256k1_backend import (
 )
 from crypto.keys import KeyGenerator
 from crypto import native
+
+# Wallet file format: encrypted keystore v1 (scrypt + AES-256-GCM) or explicit plaintext.
+_WALLET_KEYSTORE_VERSION = 1
+_SCRYPT_N = 2**14
+_SCRYPT_R = 8
+_SCRYPT_P = 1
+_SCRYPT_DKLEN = 32
 
 
 @dataclass
@@ -161,30 +170,178 @@ class Wallet:
         encoded = json.dumps(att_for_hash, sort_keys=True, separators=(',', ':'))
         return native.hash_sorted_json(encoded)
     
-    def export(self, filepath: str, password: str = None):
-        """Export wallet to file"""
-        data = {
+    @staticmethod
+    def _scrypt_derive(password: str, salt: bytes) -> bytes:
+        from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+
+        return Scrypt(
+            salt=salt,
+            length=_SCRYPT_DKLEN,
+            n=_SCRYPT_N,
+            r=_SCRYPT_R,
+            p=_SCRYPT_P,
+        ).derive(password.encode("utf-8"))
+
+    def _encrypted_keystore_blob(self, password: str) -> dict:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+        if not password or not str(password).strip():
+            raise ValueError("password required for encrypted wallet export")
+        salt = os.urandom(16)
+        nonce = os.urandom(12)
+        key = self._scrypt_derive(str(password), salt)
+        ciphertext = AESGCM(key).encrypt(nonce, self.keypair.private_key, None)
+        return {
+            "version": _WALLET_KEYSTORE_VERSION,
             "address": self.address,
             "public_key": self.public_key,
-            "private_key": self.private_key
+            "crypto": {
+                "cipher": "aes-256-gcm",
+                "ciphertext": ciphertext.hex(),
+                "nonce": nonce.hex(),
+                "kdf": "scrypt",
+                "kdfparams": {
+                    "n": _SCRYPT_N,
+                    "r": _SCRYPT_R,
+                    "p": _SCRYPT_P,
+                    "dklen": _SCRYPT_DKLEN,
+                    "salt": salt.hex(),
+                },
+            },
         }
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=2)
-    
-    @classmethod
-    def import_wallet(cls, filepath: str, password: str = None) -> "Wallet":
-        """Import wallet from file"""
-        with open(filepath, "r") as f:
-            data = json.load(f)
-        
-        private_key = bytes.fromhex(data["private_key"])
-        public_key = bytes.fromhex(data["public_key"])
-        keypair = KeyPair(
-            private_key=private_key,
-            public_key=public_key,
-            address=data["address"]
+
+    @staticmethod
+    def _atomic_write_json(filepath: str, data: dict) -> None:
+        path = Path(filepath)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        os.replace(tmp, path)
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+
+    def export(
+        self,
+        filepath: str,
+        password: str = None,
+        *,
+        allow_plaintext: bool = False,
+    ):
+        """Export wallet to file.
+
+        - ``password`` set → scrypt + AES-256-GCM keystore (never plaintext).
+        - ``password`` omitted → plaintext JSON (legacy/dev). Prefer password.
+          ``allow_plaintext=True`` is accepted for explicit callers; omitted
+          password alone still writes plaintext for backward compatibility.
+        """
+        if password is not None:
+            self._atomic_write_json(filepath, self._encrypted_keystore_blob(password))
+            return
+        # Legacy plaintext path (ops smoke / older labs). Password is never ignored:
+        # a non-None password always takes the encrypted branch above.
+        _ = allow_plaintext  # explicit opt-in documented for new callers
+        self._atomic_write_json(
+            filepath,
+            {
+                "version": 0,
+                "plaintext": True,
+                "address": self.address,
+                "public_key": self.public_key,
+                "private_key": self.private_key,
+            },
         )
-        return cls(keypair)
+
+    @classmethod
+    def _wallet_from_private(cls, private_key: bytes, *, address: str = "", public_key_hex: str = "") -> "Wallet":
+        public_key = KeyGenerator.private_to_public(private_key)
+        derived = KeyGenerator.derive_address(public_key)
+        if address and str(address).strip().lower() != derived.lower():
+            raise ValueError("wallet import refused: address does not match private key")
+        if public_key_hex:
+            try:
+                stated = bytes.fromhex(str(public_key_hex).replace("0x", ""))
+            except (TypeError, ValueError) as exc:
+                raise ValueError("wallet import refused: malformed public_key") from exc
+            if stated != public_key:
+                raise ValueError("wallet import refused: public_key does not match private key")
+        return cls(
+            KeyPair(
+                private_key=private_key,
+                public_key=public_key,
+                address=derived,
+            )
+        )
+
+    @classmethod
+    def import_wallet(
+        cls,
+        filepath: str,
+        password: str = None,
+        *,
+        allow_plaintext: bool = False,
+    ) -> "Wallet":
+        """Import wallet from encrypted keystore or legacy plaintext file.
+
+        Password is never ignored: encrypted files require it; plaintext files
+        refuse a non-None password (call without password for legacy JSON).
+        """
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        crypto = data.get("crypto")
+        if isinstance(crypto, dict):
+            if password is None or not str(password).strip():
+                raise ValueError("password required to import encrypted wallet")
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+            from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+
+            params = crypto.get("kdfparams") or {}
+            try:
+                salt = bytes.fromhex(str(params["salt"]))
+                nonce = bytes.fromhex(str(crypto["nonce"]))
+                ciphertext = bytes.fromhex(str(crypto["ciphertext"]))
+                n = int(params.get("n", _SCRYPT_N))
+                r = int(params.get("r", _SCRYPT_R))
+                p = int(params.get("p", _SCRYPT_P))
+                dklen = int(params.get("dklen", _SCRYPT_DKLEN))
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError("wallet import refused: malformed keystore") from exc
+            if str(crypto.get("cipher") or "").lower() != "aes-256-gcm":
+                raise ValueError("wallet import refused: unsupported cipher")
+            if str(crypto.get("kdf") or "").lower() != "scrypt":
+                raise ValueError("wallet import refused: unsupported kdf")
+            key = Scrypt(salt=salt, length=dklen, n=n, r=r, p=p).derive(
+                str(password).encode("utf-8")
+            )
+            try:
+                private_key = AESGCM(key).decrypt(nonce, ciphertext, None)
+            except Exception as exc:
+                raise ValueError("wallet import refused: bad password or corrupt keystore") from exc
+            return cls._wallet_from_private(
+                private_key,
+                address=str(data.get("address") or ""),
+                public_key_hex=str(data.get("public_key") or ""),
+            )
+
+        if "private_key" not in data:
+            raise ValueError("wallet import refused: no private_key or crypto blob")
+        if password is not None:
+            raise ValueError(
+                "password provided but file is plaintext JSON; "
+                "refuse to ignore password — use encrypted export or omit password"
+            )
+        _ = allow_plaintext
+        try:
+            private_key = bytes.fromhex(str(data["private_key"]).replace("0x", ""))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("wallet import refused: malformed private_key") from exc
+        return cls._wallet_from_private(
+            private_key,
+            address=str(data.get("address") or ""),
+            public_key_hex=str(data.get("public_key") or ""),
+        )
     
     @classmethod
     def create_new(cls) -> "Wallet":
@@ -210,12 +367,15 @@ class Wallet:
 # ========== SIGNATURE VERIFICATION ==========
 
 def verify_transaction_signature(tx: dict) -> bool:
-    """Verify transaction signature"""
+    """Verify transaction signature.
+
+    Wave Q: missing ECDSA backend is unavailable (RuntimeError), not invalid False.
+    """
     material = _transaction_signature_material(tx)
     if material is None:
         return False
     if not ECDSA_AVAILABLE:
-        return False
+        raise RuntimeError("signature verify unavailable: ECDSA backend missing")
     message, signature, public_key = material
     return verify(message, signature, public_key, hashfunc=hashlib.sha256)
 
@@ -223,7 +383,7 @@ def verify_transaction_signature(tx: dict) -> bool:
 def verify_transaction_signatures_batch(txs: List[dict]) -> List[bool]:
     """Batch verify canonical transaction signatures."""
     if not ECDSA_AVAILABLE:
-        return [False for _ in txs]
+        raise RuntimeError("signature verify unavailable: ECDSA backend missing")
 
     batch: List[Tuple[bytes, bytes, bytes]] = []
     positions: List[int] = []
