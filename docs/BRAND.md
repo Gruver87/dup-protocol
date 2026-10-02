@@ -36,3 +36,6 @@ Cursor rule: `.cursor/rules/dup-brand-urls.mdc` (both trees).
 
 Open (MIT) for view/test/fork — **not** unowned. Copyright + NOTICE + citation:  
 [`IP_AND_ATTRIBUTION.md`](IP_AND_ATTRIBUTION.md) · [`../NOTICE`](../NOTICE) · [`../LICENSE`](../LICENSE) · [`../CITATION.cff`](../CITATION.cff)
+
+Belarus trademark **prep** (НЦИС filing checklist — not a registration):  
+[`TRADEMARK_FILING_PREP_BY.md`](TRADEMARK_FILING_PREP_BY.md)

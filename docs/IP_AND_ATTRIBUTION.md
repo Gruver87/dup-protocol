@@ -64,4 +64,6 @@ This tree stays **MIT** unless LICENSE is deliberately changed in a dedicated PR
 - [x] LICENSE copyright names D.U.P. / DUP Labs  
 - [x] NOTICE + this doc  
 - [x] CITATION.cff  
-- [ ] Optional: register trademarks for “DUP Protocol” / “DUP Labs” in relevant jurisdictions (human / legal, not a code change)  
+- [x] Belarus TM prep pack: [`TRADEMARK_FILING_PREP_BY.md`](TRADEMARK_FILING_PREP_BY.md) (НЦИС — you/attorney must file)  
+- [ ] Optional: file TM applications at NCIP for **DUP PROTOCOL** / **DUP LABS** (classes 9+42 recommended)  
+- [ ] Optional: register trademarks in other jurisdictions / Madrid (after BY strategy)  
