@@ -12,6 +12,8 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ### Industrial harden (no new features)
 
+- **P0 CRITICAL: sender↔pubkey binding (2026-10-02):** `crypto/wallet.py` `_transaction_signature_material` refuses txs where `derive_address(public_key) != from`. Units `tests/unit/test_tx_sender_identity_binding.py`. **Not** firm PASS / not soak.
+
 - **Face sync after GitHub rename (2026-10-01):** README clone `cd dup-protocol`; sibling R&D line = Phases 1–5 + STRICT (not stale “next ADR 0021”); full `.cursor/rules` tracked on GitHub.
 - **Freeze hygiene (2026-08-13)** — `feature_libp2p` / `feature_long_range` are **not implemented** in this repo. `Config.validate()` refuses them in **every** mode (no silent coerce). Prod JSON pins them `false`; `prod_gate` / `industrial_gate` / `k8s_prod_gate` refuse `true`. R&D remains [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental). No consensus-hash change. Not public mainnet.
 - **ADR 0015 prod secrets** — `SECRET_BACKEND=file|null` refused by `Config.validate`, `prod_gate`, factory, and FileSecretAdapter (no `allow_prod` break-glass). Prod boot no longer swallows SecretManager init failure. Vault in prod requires `https://` `VAULT_ADDR` + default SSL context. Not public mainnet.

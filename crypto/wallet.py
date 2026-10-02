@@ -247,11 +247,33 @@ def verify_transaction_signatures_batch(txs: List[dict]) -> List[bool]:
 
 
 def _transaction_signature_material(tx: dict) -> Optional[Tuple[bytes, bytes, bytes]]:
+    """Build ECDSA verify material with mandatory sender↔pubkey binding.
+
+    Signature must verify under ``public_key``, and ``derive_address(public_key)``
+    must equal ``tx["from"]``. Without that binding, an attacker could set
+    ``from`` to a victim address while signing with their own key.
+    """
     if "signature" not in tx or "public_key" not in tx:
+        return None
+    sender = str(tx.get("from") or "").strip()
+    if not sender:
+        return None
+
+    try:
+        signature = bytes.fromhex(str(tx["signature"]))
+        public_key = bytes.fromhex(str(tx["public_key"]))
+    except (TypeError, ValueError):
+        return None
+
+    try:
+        derived = KeyGenerator.derive_address(public_key)
+    except (TypeError, ValueError, AttributeError):
+        return None
+    if str(derived).strip().lower() != sender.lower():
         return None
 
     tx_to_verify = Wallet._canonical_tx_for_hash({
-        "from": tx["from"],
+        "from": sender,
         "to": tx["to"],
         "value": tx["value"],
         "nonce": tx["nonce"],
@@ -263,12 +285,6 @@ def _transaction_signature_material(tx: dict) -> Optional[Tuple[bytes, bytes, by
     tx_hash_hashed = native.hash_sorted_json(
         json.dumps(tx_to_verify, sort_keys=True, separators=(",", ":"))
     )
-
-    try:
-        signature = bytes.fromhex(tx["signature"])
-        public_key = bytes.fromhex(tx["public_key"])
-    except (TypeError, ValueError):
-        return None
 
     return tx_hash_hashed.encode(), signature, public_key
 
