@@ -15,9 +15,20 @@ spec:
       labels:
         app: abs-node
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-redis
           image: redis:7-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           command:
             - /bin/sh
             - -c
@@ -30,6 +41,11 @@ spec:
         - name: node
           image: absolute-blockchain-prod:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
           command: ["/bin/sh", "/app/deploy/k8s/entrypoint.sh"]
           ports:
             - name: http

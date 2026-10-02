@@ -59,6 +59,13 @@ RUN pip install --no-cache-dir /wheels/*.whl \
   && python -c "import abs_native; assert hasattr(abs_native, 'RocksEngine'); from crypto import native; s=native.native_crypto_status(required=True); assert s['available'] and s['self_test'], s; print('abs_native OK (rocksdb)')"
 RUN chmod +x /app/bridge/abs_bridge_bin
 
+# Non-root runtime (audit 2026-10-02 section 12). UID 10001; writable chain data/logs only.
+RUN groupadd --gid 10001 absnode \
+  && useradd --uid 10001 --gid absnode --home-dir /app --shell /usr/sbin/nologin absnode \
+  && mkdir -p /app/data /app/logs /app/p2p_tls \
+  && chown -R absnode:absnode /app/data /app/logs /app/p2p_tls
+USER absnode
+
 EXPOSE 8545 8080 5000 8766
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \

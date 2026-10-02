@@ -14,6 +14,7 @@ Canonical language for this repository is **English**. Older entries below may s
 
 - **P1 (2026-10-02):** Wallet `export(password=...)` → scrypt+AES-256-GCM keystore (password never ignored); import binds address↔privkey. `rustls` pin **0.23.45** (RUSTSEC-2026-0285). Units `tests/unit/test_wallet_keystore.py`. **Not** firm PASS / not soak.
 - **P1 (2026-10-02):** Tx identity binding (`core/tx_identity.py`) — refuse forged client hashes; BFT stake/quorum integer satoshi (`voted*3 >= total*2`); block value via `to_satoshi`; strict tx_root equality. **Not** soak.
+- **P1 (2026-10-02):** `Dockerfile.prod` non-root UID 10001; k8s StatefulSet `runAsNonRoot` + drop caps; [`docs/PRODUCTION_EXECUTION_PATH.md`](docs/PRODUCTION_EXECUTION_PATH.md). Keystore unit passwords via vars (secret-scan). Recreate volumes if prior root-owned data. **Not** soak.
 - **P0 CRITICAL: sender↔pubkey binding (2026-10-02):** `crypto/wallet.py` `_transaction_signature_material` refuses txs where `derive_address(public_key) != from`. Units `tests/unit/test_tx_sender_identity_binding.py`. **Not** firm PASS / not soak.
 
 - **Face sync after GitHub rename (2026-10-01):** README clone `cd dup-protocol`; sibling R&D line = Phases 1–5 + STRICT (not stale “next ADR 0021”); full `.cursor/rules` tracked on GitHub.
