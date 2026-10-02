@@ -57,8 +57,10 @@ class BlockValidator:
 
         if b.get("tx_root") and b.get("transactions"):
             computed = self._compute_tx_root(b["transactions"])
-            expected = b["tx_root"]
-            if computed != expected and computed[: len(expected)] != expected:
+            expected = str(b["tx_root"] or "").strip().lower()
+            got = str(computed or "").strip().lower()
+            # Strict full equality — prefix match rejected (audit 2026-10-02 §10).
+            if not expected or got != expected:
                 return False, f"Tx root mismatch: expected {computed}"
 
         return True, ""
@@ -90,8 +92,14 @@ class BlockValidator:
                 alt = {"from": "from_addr", "to": "to_addr", "hash": "tx_hash"}.get(field)
                 if not alt or alt not in tx:
                     return False, f"Missing field: {field}"
-        value = float(tx.get("value", tx.get("amount", -1)))
-        if value < 0:
+        # Wave L / audit §9: satoshi gate — refuse unparseable / negative (no float).
+        from runtime.amount import to_satoshi
+
+        try:
+            value_sat = int(to_satoshi(tx.get("value", tx.get("amount", 0))))
+        except (TypeError, ValueError):
+            return False, "Unparseable value"
+        if value_sat < 0:
             return False, "Negative value"
         return True, ""
 

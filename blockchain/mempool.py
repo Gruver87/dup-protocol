@@ -159,6 +159,27 @@ class Mempool:
         when the P2P path already validated (sig-before-DB). Soft DoS honesty only.
         """
         with self.lock:
+            # Bind mempool identity to canonical payload hash (audit §7).
+            try:
+                from core.tx_identity import bind_identity_from_fields
+
+                bound, ts = bind_identity_from_fields(
+                    tx.tx_hash,
+                    from_addr=tx.from_addr,
+                    to_addr=tx.to_addr,
+                    value=tx.amount,
+                    nonce=int(tx.nonce or 0),
+                    gas=int(getattr(tx, "gas", 0) or 0) or 21_000,
+                    data=getattr(tx, "data", "") or "",
+                    timestamp=int(tx.timestamp or 0),
+                    chain_id=int(getattr(self, "chain_id", 1) or 1),
+                )
+                tx.tx_hash = bound
+                tx.timestamp = float(ts)
+            except ValueError:
+                self._rejected_count += 1
+                return False
+
             if tx.tx_hash in self.transactions:
                 return False
 
@@ -188,6 +209,7 @@ class Mempool:
                     tx_hash=tx.tx_hash,
                     signature=tx.signature,
                     public_key=tx.public_key,
+                    timestamp=int(tx.timestamp or 0),
                 )
                 tx._chain_id = self.chain_id
                 check = self.blockchain.validate_transaction(chain_tx)

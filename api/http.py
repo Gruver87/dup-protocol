@@ -8519,6 +8519,7 @@ def _handle_send_tx(raw_hex: str, bc, mp, cfg) -> str:
 def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
     """Принимает объект транзакции, валидирует, добавляет в мемпул."""
     from core.blockchain import Transaction
+    from core.tx_identity import bind_identity_from_fields
     from blockchain.mempool import MempoolTransaction
 
     from_addr = tx_obj.get("from", tx_obj.get("from_addr", ""))
@@ -8530,6 +8531,19 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
         tx_obj.get("gas"), str) else int(tx_obj.get("gas", cfg.base_gas_price))
     nonce = int(tx_obj.get("nonce", 0), 16) if isinstance(
         tx_obj.get("nonce"), str) else int(tx_obj.get("nonce", 0))
+    data = tx_obj.get("data", tx_obj.get("input", ""))
+    claimed = str(tx_obj.get("hash") or tx_obj.get("tx_hash") or "").strip()
+    identity, ts = bind_identity_from_fields(
+        claimed,
+        from_addr=from_addr,
+        to_addr=to_addr,
+        value=value,
+        nonce=nonce,
+        gas=gas,
+        data=data or "",
+        timestamp=int(tx_obj.get("timestamp") or 0),
+        chain_id=int(getattr(cfg, "chain_id", 1) or 1),
+    )
 
     tx = Transaction(
         from_addr=from_addr,
@@ -8537,10 +8551,11 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
         value=value,
         nonce=nonce,
         gas=gas,
-        data=tx_obj.get("data", tx_obj.get("input", "")),
+        data=data,
         signature=tx_obj.get("signature", ""),
         public_key=tx_obj.get("public_key", ""),
-        tx_hash=tx_obj.get("hash", ""),
+        tx_hash=identity,
+        timestamp=ts,
     )
     if tx_obj.get("blob_hashes"):
         tx.blob_hashes = list(tx_obj.get("blob_hashes") or [])
@@ -8597,6 +8612,7 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
         public_key=tx_obj.get("public_key", ""),
         data=tx_obj.get("data", tx_obj.get("input", "")),
         gas=gas,
+        timestamp=float(tx.timestamp),
     )
     if not mp.add(mp_tx):
         raise ValueError("mempool_rejected")
