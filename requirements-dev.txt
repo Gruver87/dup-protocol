@@ -1,0 +1,7 @@
+# DUP Protocol — test / lab / CI dependencies (not baked into Dockerfile.prod).
+# Install: pip install -r requirements-runtime.txt -r requirements-dev.txt
+
+-r requirements-runtime.txt
+
+pytest>=8.0.0,<10
+pytest-asyncio>=0.23.0,<2

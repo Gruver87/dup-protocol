@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Prod image with Rust bridge binary (staging/prod profile).
 # Enable BuildKit for cache mounts: DOCKER_BUILDKIT=1
-FROM rust:1-bookworm AS rust-build
+FROM rust:1-bookworm@sha256:59037199c44290f2befcdd58dcc540164763fc296950255aaefeef096a1866b0 AS rust-build
 WORKDIR /build
 
 # Bridge: prefetch deps (cached layer when lockfile unchanged)
@@ -40,7 +40,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/build/native/abs_native/target \
     python3 -m maturin build --release --out /wheels
 
-FROM python:3.13-slim
+FROM python:3.13-slim@sha256:bb2988715db2cf7ace7b53f38f3cffbef7c7046a656bee66245eb0ed386e2e81
 
 WORKDIR /app
 
@@ -49,8 +49,8 @@ ENV PYTHONIOENCODING=utf-8
 ENV PYTHONUNBUFFERED=1
 ENV ABS_REQUIRE_NATIVE_CRYPTO=true
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements-runtime.lock .
+RUN pip install --no-cache-dir --require-hashes -r requirements-runtime.lock
 
 COPY . .
 COPY --from=rust-build /abs_bridge_bin /app/bridge/abs_bridge_bin

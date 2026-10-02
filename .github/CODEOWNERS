@@ -1,9 +1,19 @@
-# CODEOWNERS — Absolute Blockchain Ultimate Hybrid
+# CODEOWNERS — dup-protocol industrial pin (DUP Labs)
 # https://docs.github.com/en/repositories/managing-your-repository-settings-and-features/customizing-your-repository/about-code-owners
 
-*       @Gruver87
-/.github/ @Gruver87
-/docs/    @Gruver87
-/scripts/ @Gruver87
-/native/  @Gruver87
-/bridge/  @Gruver87
+*                 @Gruver87
+/.github/         @Gruver87
+/docs/            @Gruver87
+/scripts/         @Gruver87
+
+# Critical-path L1 surfaces (audit 2026-10-02 §15)
+/crypto/          @Gruver87
+/consensus/       @Gruver87
+/storage/         @Gruver87
+/network/         @Gruver87
+/sync/            @Gruver87
+/bridge/          @Gruver87
+/execution/       @Gruver87
+/native/          @Gruver87
+/runtime/config.py @Gruver87
+/Dockerfile.prod  @Gruver87
