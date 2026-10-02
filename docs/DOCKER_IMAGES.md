@@ -63,6 +63,6 @@ Public repo → public package → **no login required** for pull.
 
 - No official mainnet deployment image with real validator keys baked in
 - No GHCR devnet image yet (devnet still builds `Dockerfile.devnet-rust` via compose)
-- No non-root container user (RocksDB volume permissions on Windows need separate testing)
+- Prod `Dockerfile.prod` runs as non-root **UID 10001** (`absnode`); k8s StatefulSet `runAsNonRoot` + drop ALL caps (see `docs/PRODUCTION_EXECUTION_PATH.md`). Recreate volumes if upgrading from root-owned data dirs.
 
 See also: [README.md](../README.md) · [docs/K8S_DEPLOY.md](K8S_DEPLOY.md)

@@ -27,6 +27,38 @@ from crypto import native
 _DEFAULT_HTTP_MAX_CONCURRENT = 128
 
 
+def _http_stake_abs(body: Dict[str, Any], cfg: Any) -> tuple[float, int]:
+    """Resolve validator stake: prefer ``stake_satoshi`` (P2P parity).
+
+    Prod refuses float-only ``stake`` (fail-closed). Dev/lab may still pass
+    ABS ``stake`` for harness compatibility.
+    """
+    from runtime.amount import from_satoshi_float, to_satoshi
+
+    raw_sat = body.get("stake_satoshi", None)
+    if raw_sat is not None and str(raw_sat).strip() != "":
+        try:
+            stake_sat = int(raw_sat)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("stake_satoshi must be an integer") from exc
+        if stake_sat <= 0:
+            raise ValueError("stake_satoshi must be positive")
+        return float(from_satoshi_float(stake_sat)), stake_sat
+
+    mode = str(getattr(cfg, "deployment_mode", "dev") or "dev").strip().lower()
+    if mode == "prod":
+        raise ValueError("stake_satoshi required (prod refuse float-only stake)")
+    if "stake" not in body or body.get("stake") is None:
+        raise ValueError("stake_satoshi or stake required")
+    try:
+        stake_abs = float(body.get("stake"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("stake must be a number") from exc
+    if stake_abs <= 0:
+        raise ValueError("stake must be positive")
+    return stake_abs, int(to_satoshi(stake_abs))
+
+
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Thread-per-request server with a hard concurrent-request cap (audit section 14)."""
 
@@ -5032,17 +5064,31 @@ class RESTHandler(BaseHTTPRequestHandler):
 
             elif path == "/validators/register":
                 address = body.get("address", "")
-                stake = float(body.get("stake", 0))
+                try:
+                    stake, stake_sat = _http_stake_abs(body, cfg)
+                except ValueError as exc:
+                    self._error(400, str(exc))
+                    return
                 if stake < cfg.min_stake:
                     self._error(400, f"Stake must be >= {cfg.min_stake}")
                     return
                 ca = self.__class__.consensus_adapter
                 if ca and hasattr(ca, "add_validator"):
                     ok = ca.add_validator(address, stake)
-                    self._json({"registered": bool(ok), "address": address, "stake": stake})
+                    self._json({
+                        "registered": bool(ok),
+                        "address": address,
+                        "stake": stake,
+                        "stake_satoshi": stake_sat,
+                    })
                 else:
                     bc.db.save_validator(address, stake)
-                    self._json({"registered": True, "address": address, "stake": stake})
+                    self._json({
+                        "registered": True,
+                        "address": address,
+                        "stake": stake,
+                        "stake_satoshi": stake_sat,
+                    })
 
             # ── NFT POST ─────────────────────────────────────────────────────
             elif path == "/nft/mint":
@@ -6535,15 +6581,28 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if not vr:
                     self._error(503, "ValidatorRegistry not enabled"); return
                 address = body.get("address", body.get("validator_address", ""))
-                stake = float(body.get("stake", 32.0))
                 if not address:
                     self._error(400, "address required"); return
+                try:
+                    stake, stake_sat = _http_stake_abs(body, cfg)
+                except ValueError as exc:
+                    self._error(400, str(exc))
+                    return
                 if hasattr(vr, "register"):
                     vr.register(address, stake)
-                    self._json({"success": True, "address": address, "stake": stake})
+                    self._json({
+                        "success": True,
+                        "address": address,
+                        "stake": stake,
+                        "stake_satoshi": stake_sat,
+                    })
                 elif hasattr(vr, "add"):
                     vr.add(address, stake)
-                    self._json({"success": True, "address": address})
+                    self._json({
+                        "success": True,
+                        "address": address,
+                        "stake_satoshi": stake_sat,
+                    })
                 else:
                     self._json({"success": False, "error": "register not available"})
 
