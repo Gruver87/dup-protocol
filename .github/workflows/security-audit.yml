@@ -25,8 +25,8 @@ jobs:
       - name: Install pip-audit
         run: python -m pip install --upgrade pip pip-audit
 
-      - name: Audit requirements.txt
-        run: pip-audit -r requirements.txt --desc on
+      - name: Audit requirements-runtime.txt
+        run: pip-audit -r requirements-runtime.txt --desc on
 
   cargo-audit:
     name: Dependency audit (cargo-audit)

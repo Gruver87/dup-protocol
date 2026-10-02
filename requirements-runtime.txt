@@ -2,9 +2,9 @@
 # Hashed lock: requirements-runtime.lock (python scripts/lock_runtime_deps.py)
 # Dev/CI: requirements-dev.txt
 
-cryptography==46.0.5
+cryptography==50.0.2
 websockets==15.0.1
 requests==2.33.1
-PyJWT==2.11.0
+PyJWT==2.15.1
 redis==6.4.0
-wasmtime==36.0.0; platform_system != "Windows" or platform_machine == "AMD64"
+wasmtime==49.0.0; platform_system != "Windows" or platform_machine == "AMD64"
