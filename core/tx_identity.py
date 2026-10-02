@@ -108,6 +108,19 @@ def bind_tx_hash_claim(
     raise ValueError("tx_hash_mismatch: client hash does not match payload")
 
 
+def _normalize_identity_value(value: Any) -> Any:
+    """Match Wallet.sign_transaction: whole ABS amounts are JSON ints, not 1.0.
+
+    HTTP ``_parse_tx_value`` returns float; without this, signing-digest claims
+    refuse as ``tx_hash_mismatch`` and prod signed-tx smoke fails.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, float) and value == int(value):
+        return int(value)
+    return value
+
+
 def bind_identity_from_fields(
     claimed: Optional[str],
     *,
@@ -121,6 +134,7 @@ def bind_identity_from_fields(
     chain_id: int = 1,
 ) -> tuple[str, int]:
     """Compute canonical identity and validate optional client claim."""
+    value = _normalize_identity_value(value)
     canonical, ts = compute_tx_identity_hash(
         from_addr=from_addr,
         to_addr=to_addr,

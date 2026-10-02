@@ -55,6 +55,39 @@ def test_harness_label_claim_rebounds_to_canonical():
     assert bound == canon
 
 
+def test_float_whole_value_matches_wallet_int_signing_digest():
+    """HTTP parses value as float; wallet signs int — must still bind."""
+    from crypto.wallet import Wallet
+
+    w = Wallet()
+    to_addr = "0x" + "b" * 40
+    signed = w.sign_transaction(to_addr, 1, nonce=0, chain_id=77777, gas_limit=21000)
+    bound, _ = bind_identity_from_fields(
+        signed["hash"],
+        from_addr=signed["from"],
+        to_addr=signed["to"],
+        value=1.0,  # as _parse_tx_value
+        nonce=0,
+        gas=21000,
+        data="",
+        timestamp=0,
+        chain_id=77777,
+    )
+    assert bound
+    bound_int, _ = bind_identity_from_fields(
+        signed["hash"],
+        from_addr=signed["from"],
+        to_addr=signed["to"],
+        value=1,
+        nonce=0,
+        gas=21000,
+        data="",
+        timestamp=0,
+        chain_id=77777,
+    )
+    assert bound == bound_int
+
+
 def test_legacy_wallet_signing_digest_accepted_but_identity_is_canonical():
     from_addr = "0x" + "a" * 40
     to_addr = "0x" + "b" * 40
