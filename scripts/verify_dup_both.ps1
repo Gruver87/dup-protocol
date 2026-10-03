@@ -1,4 +1,4 @@
-# DUP Protocol pin — call Experimental dual-repo suite from the pin tree
+# DUP Protocol pin - call Experimental dual-repo suite from the pin tree
 #
 # Requires sibling Experimental checkout (default Desktop path).
 #
@@ -38,11 +38,11 @@ if (-not $ExpRoot) {
 
 $suite = Join-Path $ExpRoot "scripts\verify_dup_suite.ps1"
 if (-not (Test-Path $suite)) {
-    Write-Host "FAIL: missing $suite" -ForegroundColor Red
+    Write-Host ("FAIL: missing " + $suite) -ForegroundColor Red
     exit 1
 }
 
-Write-Host "Pin:  $PinRoot" -ForegroundColor Cyan
-Write-Host "Exp:  $ExpRoot" -ForegroundColor Cyan
+Write-Host ("Pin:  " + $PinRoot) -ForegroundColor Cyan
+Write-Host ("Exp:  " + $ExpRoot) -ForegroundColor Cyan
 & $suite -Mode $Mode -PinRoot $PinRoot -MinSoakHours $MinSoakHours -KeepGoing:$KeepGoing
 exit $LASTEXITCODE
