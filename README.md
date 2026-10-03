@@ -31,7 +31,7 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 | **External auditors / firms** | [AUDIT_ENGAGEMENT_BRIEF](docs/AUDIT_ENGAGEMENT_BRIEF.md) → [AUDIT_SCOPE](docs/AUDIT_SCOPE.md) → [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md) → `.\scripts\export_audit_pack.ps1` |
 | **Grant officers / diligence / ПВТ** | Pin [SHOWCASE](docs/SHOWCASE.md) → Exp [SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md) · [VISION](docs/VISION.md) · tip-v2 [375d14f](docs/evidence/runs/375d14f/) · [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
 | **Architects / principals** | [VISION](docs/VISION.md) → [AT_A_GLANCE](docs/AT_A_GLANCE.md) → mermaid below → [docs/adr/](docs/adr/) (0001–0016) |
-| **Operators** | [Start in 60 seconds](#start-in-60-seconds) · `.\scripts\verify_project.ps1` · prod mesh `.\scripts\docker_prod_3node.ps1` |
+| **Operators** | [Start in 60 seconds](#start-in-60-seconds) · `.\scripts\verify_project.ps1` · dual pin+Exp `.\scripts\verify_dup_both.ps1 -Mode Standard` · prod mesh `.\scripts\docker_prod_3node.ps1` |
 
 ---
 
