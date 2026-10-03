@@ -1,10 +1,10 @@
-# At a glance
+# At a glance — DUP Protocol industrial pin (DUP Labs)
 
-One-screen card for people who do not read long READMEs. Scope narrative: [VISION](VISION.md) · full detail: [README](../README.md) · proof ledger: [EVIDENCE_MATRIX](EVIDENCE_MATRIX.md).
+One-screen card for people who do not read long READMEs. **Showcase stub:** [SHOWCASE](SHOWCASE.md) · Scope: [VISION](VISION.md) · full detail: [README](../README.md) · proof ledger: [EVIDENCE_MATRIX](EVIDENCE_MATRIX.md).
 
 ## What this is
 
-Hybrid **Python + Rust** L1 node with prod-profile Docker mesh, RocksDB, REST/JSON-RPC, `abs_native`, EVM path, port-isolated bridge/RPC/secrets/metrics.
+**DUP Protocol** industrial pin — hybrid **Python + Rust** L1 with prod-profile Docker mesh (TCP+TLS), RocksDB, REST/JSON-RPC, `abs_native`, EVM path, port-isolated bridge/RPC/secrets/metrics. Formerly Absolute Blockchain Ultimate Hybrid.
 
 ## What it is not
 

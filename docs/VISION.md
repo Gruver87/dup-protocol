@@ -1,16 +1,19 @@
-# Absolute Blockchain — Vision & honest scope
+# DUP Protocol — Vision & honest scope (industrial pin)
 
 **Audience:** grant officers, architects, external auditors, diligent contributors.  
-**Not** a retail pitch. **Not** an investment memo.
+**Brand:** DUP Labs · DUP Protocol · Uladzimir Dabranski (D.U.P.)  
+**Formerly:** Absolute Blockchain Ultimate Hybrid (same pin).  
+**Not** a retail pitch. **Not** an investment memo.  
+**Showcase stub:** [SHOWCASE.md](SHOWCASE.md) · full funds/ПВТ pack on Experimental.
 
 Canonical pin: [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial)  
 R&D sibling: [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)
 
 ---
 
-## Why Absolute exists
+## Why DUP Protocol exists
 
-Most public chain READMEs sell a roadmap. Absolute sells **reproducible evidence** for a hybrid L1:
+Most public chain READMEs sell a roadmap. DUP Protocol sells **reproducible evidence** for a hybrid L1:
 
 1. **Python orchestrates** (API, P2P policy, node lifecycle).
 2. **Rust owns the hot path** (`abs_native`: crypto, satoshi state roots, RocksDB, EVM kernels).
@@ -74,6 +77,6 @@ Lab/Experimental PASS ≠ Hybrid cutover ≠ public mainnet. This pin stays **TC
 - Do not open Hybrid PRs that port Experimental libp2p / Long-Range onto the freeze.
 - Stars and forks are welcome; they are **not** acceptance criteria. Correctness and honesty are.
 
-Author: **Uladzimir Dabranski (D.U.P.)** · GitHub: [Gruver87](https://github.com/Gruver87)
+Author: **Uladzimir Dabranski (D.U.P.)** · GitHub: [Gruver87](https://github.com/Gruver87) · Org: **DUP Labs**
 
-*Last updated: 2026-09-04*
+*Last updated: 2026-10-03*

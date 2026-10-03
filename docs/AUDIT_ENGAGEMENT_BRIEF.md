@@ -1,12 +1,14 @@
-# Audit engagement brief — Absolute Blockchain Ultimate Hybrid
+# Audit engagement brief — DUP Protocol (industrial pin)
 
 **One-pager for external security firms.**  
-**Product:** Absolute Blockchain Ultimate Hybrid (Python + Rust L1)  
+**Product:** DUP Protocol (DUP Labs) — hybrid Python + Rust L1  
+**Formerly:** Absolute Blockchain Ultimate Hybrid (same pin)  
 **Repo:** https://github.com/Gruver87/dup-protocol  
 **Pin tag:** `v1.3.1339-tip-v2-industrial`  
 **Pin commit:** `git rev-list -n 1 v1.3.1339-tip-v2-industrial`  
-**Date:** 2026-08-07  
-**Owner:** Gruver87 (Uladzimir Dabranski)
+**Date:** 2026-10-03 (brand sync; scope unchanged from 2026-08-07)  
+**Owner:** Gruver87 (Uladzimir Dabranski / D.U.P.)  
+**Funds / ПВТ front door (Experimental):** [SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md)
 
 ---
 
