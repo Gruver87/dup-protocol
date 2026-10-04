@@ -563,6 +563,30 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("rocks_store must not invent tx value=0.0 on insert")
         if '"receipts_enabled": True' in rocks_py_sat:
             errors.append("rocks metrics receipts_enabled must reflect observed backend")
+        db_py_sat = (ROOT / "storage" / "database.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "def _backfill_tx_money_satoshi" not in db_py_sat:
+            errors.append("SQLite must backfill transactions/tx_receipts satoshi twins")
+        if "def _backfill_burn_satoshi" not in db_py_sat:
+            errors.append("SQLite must backfill burn_stats/blocks satoshi twins")
+        if 'tx.get("value", tx.get("amount", 0.0))' in db_py_sat:
+            errors.append("SQLite must not invent tx value=0.0 on insert")
+        if '("transactions", "value_satoshi", "INTEGER")' not in db_py_sat:
+            errors.append("SQLite migration must add transactions.value_satoshi")
+        if "burned_amount_satoshi" not in db_py_sat:
+            errors.append("SQLite burn_stats must dual-write burned_amount_satoshi")
+        mempool_py = (ROOT / "blockchain" / "mempool.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "def _tx_to_store_dict" not in mempool_py:
+            errors.append("mempool must expose _tx_to_store_dict (satoshi store roundtrip)")
+        if "def _tx_from_store_dict" not in mempool_py:
+            errors.append("mempool must expose _tx_from_store_dict (satoshi store roundtrip)")
+        if 'gas or 21000' in mempool_py or 'gas, 21000)' in mempool_py:
+            errors.append("mempool must not invent gas=21000 on store reload")
+        if 'raw_gas is not None and str(raw_gas).strip() != "" else 0' not in mempool_py:
+            errors.append("mempool _tx_from_store_dict must default missing gas to 0")
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"

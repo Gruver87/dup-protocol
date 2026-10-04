@@ -141,6 +141,70 @@ def _mempool_tx_verify_dict(tx: MempoolTransaction, chain_id: int) -> Dict:
     }
 
 
+def _tx_to_store_dict(tx: MempoolTransaction) -> Dict:
+    """Serialize mempool tx for store/native roundtrip (ADR 0021 satoshi twins)."""
+    from runtime.amount import from_satoshi_float, to_satoshi
+
+    fee_sat = int(getattr(tx, "fee_satoshi", -1))
+    if fee_sat < 0:
+        fee_sat = int(to_satoshi(tx.fee))
+        tx.fee_satoshi = fee_sat
+    amount_sat = int(getattr(tx, "amount_satoshi", -1))
+    if amount_sat < 0:
+        amount_sat = int(to_satoshi(tx.amount))
+        tx.amount_satoshi = amount_sat
+    # Wave R / ADR 0021: ABS floats derived from satoshi (no raw float invent).
+    return {
+        "tx_hash": str(tx.tx_hash),
+        "from_addr": str(tx.from_addr),
+        "to_addr": str(tx.to_addr),
+        "amount": from_satoshi_float(amount_sat),
+        "amount_satoshi": int(amount_sat),
+        "fee": from_satoshi_float(fee_sat),
+        "fee_satoshi": int(fee_sat),
+        "nonce": int(tx.nonce or 0),
+        "signature": str(tx.signature or ""),
+        "public_key": str(tx.public_key or ""),
+        "data": str(tx.data or ""),
+        "gas": int(tx.gas),
+        "timestamp": float(tx.timestamp or 0.0),
+    }
+
+
+def _tx_from_store_dict(raw: Dict) -> MempoolTransaction:
+    """Reload mempool tx from store dict; prefer satoshi twins over ABS floats."""
+    from runtime.amount import from_satoshi_float, money_abs, to_satoshi
+
+    raw_fee_sat = raw.get("fee_satoshi")
+    if raw_fee_sat is None:
+        fee_sat = int(to_satoshi(money_abs(raw.get("fee") or 0, field="fee")))
+    else:
+        fee_sat = int(raw_fee_sat)
+    raw_amt_sat = raw.get("amount_satoshi")
+    if raw_amt_sat is None:
+        amount_sat = int(to_satoshi(money_abs(raw.get("amount") or 0, field="amount")))
+    else:
+        amount_sat = int(raw_amt_sat)
+    # Do not invent gas=21000 when store row lacks/zeros gas.
+    raw_gas = raw.get("gas")
+    gas = int(raw_gas) if raw_gas is not None and str(raw_gas).strip() != "" else 0
+    return MempoolTransaction(
+        tx_hash=str(raw.get("tx_hash") or ""),
+        from_addr=str(raw.get("from_addr") or ""),
+        to_addr=str(raw.get("to_addr") or ""),
+        amount=from_satoshi_float(amount_sat),
+        fee=from_satoshi_float(fee_sat),
+        nonce=int(raw.get("nonce") or 0),
+        signature=str(raw.get("signature") or ""),
+        public_key=str(raw.get("public_key") or ""),
+        data=str(raw.get("data") or ""),
+        gas=gas,
+        timestamp=float(raw.get("timestamp") or 0.0),
+        fee_satoshi=fee_sat,
+        amount_satoshi=amount_sat,
+    )
+
+
 class Mempool:
     """Пул транзакций с сортировкой по комиссии и полной валидацией."""
 
