@@ -377,6 +377,20 @@ def _status_rate_limit_snapshot(cfg) -> Dict[str, Any]:
     }
 
 
+def _status_cached_metric(db, method_name: str):
+    """O(1) meta/prefix_last only. Never call get_total_supply / get_all_accounts."""
+    if db is None:
+        return None
+    fn = getattr(db, method_name, None)
+    if not callable(fn):
+        return None
+    try:
+        return fn()
+    except (TypeError, ValueError, OSError, AttributeError) as exc:
+        logger.warning("/status %s failed: %s", method_name, exc)
+        return None
+
+
 def _status_p2p_hardening_snapshot(cfg, p2p) -> Dict[str, Any]:
     """P2P wire hardening truth for GET /status (not heuristic)."""
     sec: Dict[str, Any] = {}
@@ -2224,8 +2238,8 @@ class RESTHandler(BaseHTTPRequestHandler):
 
             if path == "/status":
                 validators = db.get_validators() if db else []
-                total_burned = db.get_total_burned() if db else 0
-                total_supply = db.get_total_supply() if db and hasattr(db, "get_total_supply") else 0
+                total_burned = _status_cached_metric(db, "get_cached_total_burned")
+                total_supply = _status_cached_metric(db, "get_cached_total_supply")
                 bridge_locks = (
                     db.get_bridge_locks(limit=1000)
                     if db and hasattr(db, "get_bridge_locks")

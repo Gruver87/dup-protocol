@@ -656,6 +656,21 @@ class RocksChainStore:
             return None if raw is None else row
         return row
 
+    def _adjust_total_supply_abs(self, delta_abs: float) -> None:
+        """Maintain O(1) supply meta when present; no invent on missing meta."""
+        raw = self._raw_get(kc.key_meta("total_supply_abs"))
+        if raw is None:
+            return
+        try:
+            cur = float(raw.decode("utf-8"))
+        except (TypeError, ValueError, UnicodeDecodeError):
+            self._raw_delete(kc.key_meta("total_supply_abs"))
+            return
+        self._raw_put(
+            kc.key_meta("total_supply_abs"),
+            format(float(cur) + float(delta_abs), ".12g").encode("utf-8"),
+        )
+
     def _apply_balance_delta(self, address: str, delta: float) -> None:
         from runtime.amount import apply_delta_satoshi, dual_write_balance, from_satoshi_float
 
@@ -666,6 +681,7 @@ class RocksChainStore:
         # dual_write from float of new_sat is exact for representable amounts
         row["balance_satoshi"] = new_sat
         row["balance"] = from_satoshi_float(new_sat)
+        self._adjust_total_supply_abs(from_satoshi_float(new_sat) - from_satoshi_float(cur_sat))
         self._save_account_row(row)
 
     def balance_delta(self, address: str, delta: float) -> None:
@@ -680,6 +696,7 @@ class RocksChainStore:
         new_sat = apply_satoshi_delta(cur_sat, int(delta_sat))
         row["balance_satoshi"] = new_sat
         row["balance"] = from_satoshi_float(new_sat)
+        self._adjust_total_supply_abs(from_satoshi_float(new_sat) - from_satoshi_float(cur_sat))
         self._save_account_row(row)
 
     def update_balance(self, address: str, delta: float) -> float:
@@ -688,11 +705,18 @@ class RocksChainStore:
             return self.get_balance(address)
 
     def set_balance(self, address: str, balance: float) -> None:
-        from runtime.amount import dual_write_balance
+        from runtime.amount import dual_write_balance, from_satoshi_float, to_satoshi
 
+        if isinstance(balance, bool):
+            raise TypeError("bool is not an amount")
+        new_sat = to_satoshi(balance)
         with self._write_lock:
             row = self._load_account(address)
+            old_sat = int(row.get("balance_satoshi", 0) or 0)
             dual_write_balance(row, balance)
+            self._adjust_total_supply_abs(
+                from_satoshi_float(new_sat) - from_satoshi_float(old_sat)
+            )
             self._save_account_row(row)
 
     def increment_nonce(self, address: str) -> int:
@@ -716,14 +740,16 @@ class RocksChainStore:
         code: str | None = None,
         storage: str | None = None,
     ) -> None:
-        from runtime.amount import dual_write_balance
+        from runtime.amount import account_balance_abs, dual_write_balance
 
         with self._write_lock:
             row = self._load_account(address)
+            old_abs = account_balance_abs(row)
             dual_write_balance(row, balance)
             row["nonce"] = int(nonce)
             row["code"] = code
             row["storage"] = storage
+            self._adjust_total_supply_abs(float(balance) - float(old_abs))
             self._save_account_row(row)
 
     def update_account_storage(self, address: str, storage: Dict) -> None:
@@ -954,22 +980,70 @@ class RocksChainStore:
 
     def _reset_accounts_locked(self, alloc: Dict[str, float]) -> None:
         self._drop_root_acc()
+        self._raw_delete(kc.key_meta("total_supply_abs"))
         for key, _value in self._scan_prefix(kc.prefix_accounts()):
             self._raw_delete(key)
+        from runtime.amount import dual_write_balance
+
         for addr, amount in alloc.items():
+            if isinstance(amount, bool):
+                raise TypeError("bool is not an amount")
             row = {
                 "address": SqliteDatabase._normalize_address(addr),
-                "balance": float(amount),
                 "nonce": 0,
                 "code": None,
                 "storage": None,
             }
+            dual_write_balance(row, amount)
             self._save_account_row(row)
+
+    def get_cached_total_supply(self) -> float | None:
+        """O(1) meta only. None if missing — callers must not get_all_accounts()."""
+        raw = self._raw_get(kc.key_meta("total_supply_abs"))
+        if raw is None:
+            return None
+        try:
+            return float(raw.decode("utf-8"))
+        except (TypeError, ValueError, UnicodeDecodeError):
+            return None
+
+    def get_cached_total_burned(self) -> float | None:
+        """O(1) prefix_last only. None if unavailable — never full-scan on poll path."""
+        from runtime.amount import from_satoshi_float, money_abs
+
+        engine = self._engine
+        if engine is None or not hasattr(engine, "prefix_last"):
+            return None
+        try:
+            last_kv = engine.prefix_last(kc.P_BURN)
+        except Exception as exc:
+            logger.warning("[RocksStore] prefix_last cached burn failed: %s", exc)
+            return None
+        if not last_kv:
+            return None
+        _key, value = last_kv
+        row = self._loads_json_or_none(bytes(value), context="burn_total_cached")
+        if row is None:
+            return None
+        if row.get("total_burned_satoshi") is not None:
+            return from_satoshi_float(int(row["total_burned_satoshi"]))
+        return money_abs(row.get("total_burned", 0.0), field="total_burned")
 
     def get_total_supply(self) -> float:
         from runtime.amount import account_balance_abs
 
-        return sum(account_balance_abs(a) for a in self.get_all_accounts())
+        raw = self._raw_get(kc.key_meta("total_supply_abs"))
+        if raw is not None:
+            try:
+                return float(raw.decode("utf-8"))
+            except (TypeError, ValueError, UnicodeDecodeError):
+                pass
+        total = sum(account_balance_abs(a) for a in self.get_all_accounts())
+        self._raw_put(
+            kc.key_meta("total_supply_abs"),
+            format(float(total), ".12g").encode("utf-8"),
+        )
+        return float(total)
 
     # ── validators ────────────────────────────────────────────────────────
 

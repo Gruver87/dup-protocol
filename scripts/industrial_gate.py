@@ -588,6 +588,16 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("RocksChainStore must implement get_proposer_stats")
         if "def get_proposer_detail" not in rocks_py_sat:
             errors.append("RocksChainStore must implement get_proposer_detail")
+        if "def _adjust_total_supply_abs" not in rocks_py_sat:
+            errors.append("rocks_store must maintain total_supply_abs on balance deltas")
+        if "def get_cached_total_supply" not in rocks_py_sat:
+            errors.append("rocks_store must expose get_cached_total_supply (O(1) poll)")
+        if "def get_cached_total_burned" not in rocks_py_sat:
+            errors.append("rocks_store must expose get_cached_total_burned (O(1) poll)")
+        if "get_cached_total_supply" not in http_py:
+            errors.append("/status must use get_cached_total_supply (not full supply scan)")
+        if "def _status_cached_metric" not in http_py:
+            errors.append("api/http.py must define _status_cached_metric for poll honesty")
         mempool_py = (ROOT / "blockchain" / "mempool.py").read_text(
             encoding="utf-8", errors="replace"
         )

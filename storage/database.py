@@ -3527,6 +3527,25 @@ class Database:
                     return default
                 return text if text else default
 
+    def get_cached_total_supply(self) -> Optional[float]:
+        """Poll path must not SUM accounts. SQLite has no O(1) supply meta."""
+        return None
+
+    def get_cached_total_burned(self) -> Optional[float]:
+        """Poll path: last burn_stats row only. None if the table is empty."""
+        from runtime.amount import from_satoshi_float, money_abs
+
+        with self.lock:
+            row = self.conn.execute(
+                """SELECT total_burned, total_burned_satoshi FROM burn_stats
+                   ORDER BY block_height DESC LIMIT 1"""
+            ).fetchone()
+            if row is None:
+                return None
+            if row["total_burned_satoshi"] is not None:
+                return from_satoshi_float(int(row["total_burned_satoshi"]))
+            return money_abs(row["total_burned"] if row else 0, field="total_burned")
+
     def get_total_supply(self) -> float:
         """Sum of account balances (prefer satoshi column when present)."""
         from runtime.amount import from_satoshi_float
