@@ -2080,7 +2080,7 @@ class NodeOrchestrator:
             try:
                 pending_dicts = [{"hash": t.tx_hash, "from": t.from_addr, "to": t.to_addr,
                                   "value": t.amount, "gasPrice": int(t.fee * 1e9),
-                                  "gas": int(getattr(t, "gas", 0) or 21000),
+                                  "gas": int(getattr(t, "gas", 0) or 0),
                                   "nonce": t.nonce,
                                   "data": getattr(t, "data", "") or "",
                                   "timestamp": t.timestamp,

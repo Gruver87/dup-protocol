@@ -13,19 +13,33 @@ import time
 from typing import Any, Mapping, Optional
 
 
+def _require_positive_gas(gas: Any) -> int:
+    """Refuse invent gas=21000 when omitted/non-positive."""
+    if gas is None or gas == "":
+        raise ValueError("gas_required")
+    try:
+        gas_i = int(gas)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"gas_required: {exc}") from exc
+    if gas_i <= 0:
+        raise ValueError("gas_required")
+    return gas_i
+
+
 def compute_tx_identity_hash(
     *,
     from_addr: str,
     to_addr: str,
     value: Any,
     nonce: int,
-    gas: int = 21_000,
+    gas: int | None = None,
     data: str = "",
     timestamp: int = 0,
 ) -> tuple[str, int]:
     """Return ``(canonical_hash, timestamp_used)``."""
     from crypto import native
 
+    gas_i = _require_positive_gas(gas)
     ts = int(timestamp or 0)
     if ts <= 0:
         ts = int(time.time())
@@ -34,7 +48,7 @@ def compute_tx_identity_hash(
         str(to_addr or ""),
         value,
         int(nonce or 0),
-        int(gas or 21_000),
+        gas_i,
         str(data or ""),
         int(ts),
     )
@@ -48,13 +62,14 @@ def wallet_signing_digest(
     value: Any,
     nonce: int,
     chain_id: int = 1,
-    gas: int = 21_000,
+    gas: int | None = None,
     data: str = "",
 ) -> str:
     """Legacy Wallet.sign_transaction digest (not chain identity)."""
     from crypto import native
     from crypto.wallet import Wallet
 
+    gas_i = _require_positive_gas(gas)
     payload = Wallet._canonical_tx_for_hash(
         {
             "from": from_addr,
@@ -63,7 +78,7 @@ def wallet_signing_digest(
             "nonce": int(nonce or 0),
             "chain_id": int(chain_id or 1),
             "data": data or "",
-            "gas_limit": int(gas or 21_000),
+            "gas_limit": gas_i,
         }
     )
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
@@ -128,7 +143,7 @@ def bind_identity_from_fields(
     to_addr: str,
     value: Any,
     nonce: int,
-    gas: int = 21_000,
+    gas: int | None = None,
     data: str = "",
     timestamp: int = 0,
     chain_id: int = 1,

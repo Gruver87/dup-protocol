@@ -18,7 +18,7 @@ from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
 from storage import keycodec as kc
-from storage.database import Database as SqliteDatabase
+from storage.database import Database as SqliteDatabase, observed_optional_int
 
 logger = logging.getLogger(__name__)
 
@@ -1037,8 +1037,6 @@ class RocksChainStore:
             "from_addr": SqliteDatabase._normalize_address(tx.get("from_addr", tx.get("from", ""))),
             "to_addr": SqliteDatabase._normalize_address(tx.get("to_addr", tx.get("to", ""))),
             "value": tx.get("value", tx.get("amount", 0.0)),
-            "gas": tx.get("gas", 21000),
-            "gas_used": tx.get("gas_used", tx.get("gas", 21000)),
             "fee": tx.get("fee", 0.0),
             "burned": tx.get("burned", 0.0),
             "nonce": tx.get("nonce", 0),
@@ -1047,6 +1045,12 @@ class RocksChainStore:
             "status": SqliteDatabase._normalize_tx_status(tx.get("status")),
             "timestamp": int(tx.get("timestamp", time.time()) or 0),
         }
+        gas = observed_optional_int(tx, "gas", "gas_limit")
+        gas_used = observed_optional_int(tx, "gas_used")
+        if gas is not None:
+            row["gas"] = gas
+        if gas_used is not None:
+            row["gas_used"] = gas_used
         # v1.3.148: typed ATXV value when native pack_tx_row is available.
         payload = self._pack_tx_blob(row)
         self._raw_put(kc.key_tx(tx_hash), payload)
@@ -1143,11 +1147,12 @@ class RocksChainStore:
             "value": tx.get("value", tx.get("amount", 0.0)),
             "fee": tx.get("fee", 0.0),
             "burned": tx.get("burned", 0.0),
-            "gas_used": tx.get("gas_used", tx.get("gas", 21000)),
-            # Omit / None / unknown → fail-closed 0 (never invent success).
             "status": SqliteDatabase._normalize_tx_status(tx.get("status")),
             "created_at": int(time.time()),
         }
+        gas_used = observed_optional_int(tx, "gas_used")
+        if gas_used is not None:
+            receipt["gas_used"] = gas_used
         # v1.3.151: typed ATXR value when native pack_receipt_row is available.
         self._raw_put(
             kc.P_TX_RECEIPT + kc.key_tx(tx_hash)[1:],
@@ -1272,7 +1277,7 @@ class RocksChainStore:
             "value": float(row.get("value", 0.0)),
             "fee": float(row.get("fee", 0.0)),
             "burned": float(row.get("burned", 0.0)),
-            "gas_used": int(row.get("gas_used", row.get("gas", 21000))),
+            "gas_used": observed_optional_int(row, "gas_used"),
             "status": SqliteDatabase._normalize_tx_status(row.get("status")),
             "timestamp": int(row.get("timestamp", 0)),
             "direction": direction,

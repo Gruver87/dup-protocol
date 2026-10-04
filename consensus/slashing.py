@@ -38,9 +38,12 @@ class SlashingEngine:
 
     # --- Methods required by engine_slashing.py ---
 
-    def register_validator(self, validator_id: str, stake: int = 100):
-        """Register a validator with stake."""
-        self._stakes[validator_id] = stake
+    def register_validator(self, validator_id: str, stake: int = 0):
+        """Register a validator with stake. Do not invent stake=100 when omitted."""
+        stake_i = int(stake)
+        if stake_i <= 0:
+            raise ValueError("stake_required")
+        self._stakes[validator_id] = stake_i
 
     def add_vote(self, validator_id: str, slot: int, block_hash: str) -> bool:
         """

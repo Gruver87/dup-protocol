@@ -113,13 +113,16 @@ def _enqueue_batch(
 def _to_chain_txs(pending) -> list:
     out = []
     for mp_tx in pending:
+        tx_gas = int(getattr(mp_tx, "gas", 0) or 0)
+        if tx_gas <= 0:
+            continue
         out.append(
             Transaction(
                 from_addr=mp_tx.from_addr,
                 to_addr=mp_tx.to_addr,
                 value=mp_tx.amount,
                 nonce=mp_tx.nonce,
-                gas=int(getattr(mp_tx, "gas", 0) or 21_000),
+                gas=tx_gas,
                 data=getattr(mp_tx, "data", "") or "",
                 timestamp=int(mp_tx.timestamp),
                 tx_hash=mp_tx.tx_hash,

@@ -97,6 +97,7 @@ def test_format_tx_value_satoshi_no_invented_gas():
     assert out["value"] == hex(int(to_satoshi(2.5)) * WEI_PER_SATOSHI)
     assert out["gas"] is None
     assert out["gasUsed"] is None
+    assert out["input"] is None
     assert observed_value_hex({"amount": 1}) == hex(int(to_satoshi(1)) * WEI_PER_SATOSHI)
     assert observed_value_hex({}) is None
 
@@ -128,6 +129,10 @@ def test_format_block_no_invented_eth_stubs():
     assert out["totalBurned"] == int(to_satoshi(0.5))
     # Invented Ethereum 30M must not appear
     assert out["gasLimit"] != hex(30_000_000)
+    assert out["extraData"] is None
+    stored = dict(blk)
+    stored["extra_data"] = "0xabcd"
+    assert format_block(stored)["extraData"] == "0xabcd"
 
 
 def test_multisig_amount_satoshi_and_execution_failed():

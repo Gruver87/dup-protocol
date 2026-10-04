@@ -17,6 +17,23 @@ from typing import Optional, List, Dict, Any
 logger = logging.getLogger("Database")
 
 
+def observed_optional_int(row: Optional[Dict[str, Any]], *keys: str) -> Optional[int]:
+    """First present integer field. Missing is None — never default 21000."""
+    if not isinstance(row, dict):
+        return None
+    for key in keys:
+        if key not in row:
+            continue
+        raw = row.get(key)
+        if raw is None or raw == "":
+            continue
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
 class Database:
     """
     Центральная база данных узла.
@@ -136,7 +153,7 @@ class Database:
             ("blocks", "extra_data",   "TEXT DEFAULT ''"),
             ("transactions", "burned",   "REAL NOT NULL DEFAULT 0.0"),
             ("transactions", "fee",      "REAL NOT NULL DEFAULT 0.0"),
-            ("transactions", "gas_used", "INTEGER NOT NULL DEFAULT 21000"),
+            ("transactions", "gas_used", "INTEGER NOT NULL DEFAULT 0"),
             ("accounts", "code",    "TEXT DEFAULT ''"),
             ("accounts", "storage", "TEXT DEFAULT ''"),
             ("accounts", "balance_satoshi", "INTEGER"),
@@ -386,8 +403,8 @@ class Database:
                 from_addr    TEXT    NOT NULL,
                 to_addr      TEXT    NOT NULL,
                 value        REAL    NOT NULL DEFAULT 0.0,
-                gas          INTEGER NOT NULL DEFAULT 21000,
-                gas_used     INTEGER NOT NULL DEFAULT 21000,
+                gas          INTEGER NOT NULL,
+                gas_used     INTEGER NOT NULL DEFAULT 0,
                 fee          REAL    NOT NULL DEFAULT 0.0,
                 burned       REAL    NOT NULL DEFAULT 0.0,
                 nonce        INTEGER NOT NULL DEFAULT 0,
@@ -1074,7 +1091,33 @@ class Database:
         except ValueError:
             return 0
 
+    @staticmethod
+    def _tx_gas_fields(tx: Dict) -> tuple:
+        """Require explicit gas; never invent gas/gas_used=21000.
+
+        Accept ``gas`` / ``gas_limit`` / observed ``gas_used``. Missing
+        ``gas_used`` stores 0 (unobserved) — not a silent 21000 fill.
+        """
+        raw_gas = tx.get("gas", tx.get("gas_limit"))
+        raw_used = tx.get("gas_used")
+        if raw_gas is None or str(raw_gas).strip() == "":
+            if raw_used is None or str(raw_used).strip() == "":
+                raise ValueError("gas_required")
+            gas = int(raw_used)
+        else:
+            gas = int(raw_gas)
+        if gas <= 0:
+            raise ValueError("gas_required")
+        if raw_used is None or str(raw_used).strip() == "":
+            gas_used = 0
+        else:
+            gas_used = int(raw_used)
+            if gas_used < 0:
+                raise ValueError("gas_used_invalid")
+        return gas, gas_used
+
     def _insert_transaction(self, tx: Dict) -> None:
+        gas, gas_used = self._tx_gas_fields(tx)
         self.conn.execute(
             """INSERT OR REPLACE INTO transactions
                (hash, block_height, from_addr, to_addr, value,
@@ -1086,8 +1129,8 @@ class Database:
                 self._normalize_address(tx.get("from_addr", tx.get("from", ""))),
                 self._normalize_address(tx.get("to_addr", tx.get("to", ""))),
                 tx.get("value", tx.get("amount", 0.0)),
-                tx.get("gas", 21000),
-                tx.get("gas_used", tx.get("gas", 21000)),
+                gas,
+                gas_used,
                 tx.get("fee", 0.0),
                 tx.get("burned", 0.0),
                 tx.get("nonce", 0),
@@ -1116,7 +1159,7 @@ class Database:
                 float(tx.get("value", tx.get("amount", 0.0))),
                 float(tx.get("fee", 0.0)),
                 float(tx.get("burned", 0.0)),
-                int(tx.get("gas_used", tx.get("gas", 21000))),
+                self._tx_gas_fields(tx)[1],
                 # Omitted status → fail-closed (normalize None → 0).
                 self._normalize_tx_status(tx.get("status")),
                 int(tx.get("timestamp", time.time())),
@@ -1496,7 +1539,7 @@ class Database:
             "value": float(row.get("value", 0.0)),
             "fee": float(row.get("fee", 0.0)),
             "burned": float(row.get("burned", 0.0)),
-            "gas_used": int(row.get("gas_used", row.get("gas", 21000))),
+            "gas_used": observed_optional_int(row, "gas_used"),
             "status": self._normalize_tx_status(row.get("status")),
             "timestamp": int(row.get("timestamp", 0)),
             "direction": direction,

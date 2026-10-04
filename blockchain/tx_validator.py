@@ -8,6 +8,17 @@ from typing import Dict, Tuple, Optional
 from runtime.amount import SATOSHI_MULTIPLIER, to_satoshi
 
 
+def _require_tx_gas(tx: dict) -> int:
+    """Explicit gas/gas_limit only — never invent 21000 for signature bind."""
+    raw = tx.get("gas_limit", tx.get("gas"))
+    if raw is None or str(raw).strip() == "":
+        raise ValueError("gas_required")
+    gas = int(raw)
+    if gas <= 0:
+        raise ValueError("gas_required")
+    return gas
+
+
 class TransactionValidator:
     """Полная валидация транзакций перед добавлением в блок или мемпул."""
 
@@ -26,6 +37,11 @@ class TransactionValidator:
     ) -> Tuple[bool, str]:
         if not cls._validate_basic_fields(tx):
             return False, "Missing required fields (from, to, amount)"
+
+        try:
+            _require_tx_gas(tx)
+        except ValueError as exc:
+            return False, str(exc)
 
         from_addr = tx.get("from", tx.get("from_addr", ""))
         to_addr = tx.get("to", tx.get("to_addr", ""))
@@ -130,7 +146,7 @@ class TransactionValidator:
                 "signature": signature,
                 "public_key": tx.get("public_key", ""),
                 "data": tx.get("data", tx.get("input", "")),
-                "gas_limit": tx.get("gas_limit") or tx.get("gas", 21000),
+                "gas_limit": _require_tx_gas(tx),
             }
             return verify_transaction_signature(tx_dict)
         except Exception:

@@ -211,6 +211,19 @@ class StateService:
         return addrs
 
 
+    def _total_supply_satoshi(self, snap: Dict | None = None) -> int:
+        """Prefer storage satoshi total; float ABS only as fallback."""
+        from runtime.amount import to_satoshi
+
+        if hasattr(self.storage, "get_total_supply_satoshi"):
+            return int(self.storage.get_total_supply_satoshi() or 0)
+        if hasattr(self.storage, "get_total_supply"):
+            return int(to_satoshi(self.storage.get_total_supply()))
+        if snap:
+            return sum(int(v.get("balance", 0) or 0) for v in snap.values())
+        return 0
+
+
     def _accounts_sat_snapshot(self, addresses) -> Dict[str, Dict[str, int]]:
         out: Dict[str, Dict[str, int]] = {}
         for addr in addresses:
@@ -254,27 +267,33 @@ class StateService:
 
     def _apply_simple_block_native(self, block: "Block") -> int:
         """Apply simple transfers via abs_native; returns burned satoshi."""
-        from runtime.amount import from_satoshi_float, plan_transfer_fees_sat, to_satoshi
+        from runtime.amount import (
+            from_satoshi_float,
+            plan_transfer_fees_sat,
+            resolve_tx_value_satoshi,
+            to_satoshi,
+        )
 
         addrs = self._collect_addrs_for_simple_block(block)
         snap = self._accounts_sat_snapshot(addrs)
         txs = []
         for tx in block.transactions:
+            gas = int(getattr(tx, "gas", 0) or 0)
+            if gas <= 0:
+                raise RuntimeError("gas_required")
+            value_sat = int(resolve_tx_value_satoshi(tx))
             txs.append(
                 {
                     "from": tx.from_addr,
                     "to": tx.to_addr,
                     "value": float(tx.value),
-                    "gas": int(tx.gas or 21000),
+                    "amount_satoshi": value_sat,
+                    "gas": gas,
                     "nonce": int(tx.nonce),
                     "data": getattr(tx, "data", "") or "",
                 }
             )
-        supply_sat = 0
-        if hasattr(self.storage, "get_total_supply"):
-            supply_sat = int(to_satoshi(self.storage.get_total_supply()))
-        else:
-            supply_sat = sum(int(v["balance"]) for v in snap.values())
+        supply_sat = self._total_supply_satoshi(snap)
         max_supply_sat = int(to_satoshi(float(getattr(self.config, "max_supply", MAX_SUPPLY_ABS))))
         raw = native.blockchain_apply_simple_block(
             json.dumps(snap, separators=(",", ":"), ensure_ascii=False),
@@ -298,6 +317,7 @@ class StateService:
                 self.config.gas_price_wei,
                 self.config.burn_rate,
                 tx.value,
+                value_satoshi=resolve_tx_value_satoshi(tx),
             )
             tx.fee = from_satoshi_float(plan["fee_sat"])
             tx.burned = from_satoshi_float(plan["burned_sat"])
@@ -312,6 +332,9 @@ class StateService:
         if not getattr(self, "evm", None):
             return {"success": False, "error": "evm_unavailable"}
         target_acct = self.storage.get_account(tx.to_addr) if tx.to_addr else None
+        from runtime.amount import resolve_tx_value_satoshi
+
+        value_sat = int(resolve_tx_value_satoshi(tx))
         if target_acct and target_acct.get("code"):
             evm_res = self.evm.call_contract(
                 tx.from_addr,
@@ -319,6 +342,7 @@ class StateService:
                 tx.data,
                 tx.value,
                 gas_limit=tx.gas or self.config.evm_gas_limit,
+                amount_satoshi=value_sat,
             )
             if not evm_res.success:
                 return {"success": False, "error": evm_res.error or "evm_call_failed"}
@@ -338,6 +362,7 @@ class StateService:
                 gas_limit=tx.gas or self.config.evm_gas_limit,
                 salt=deploy_salt,
                 block_number=block_height,
+                amount_satoshi=value_sat,
             )
             if not evm_res.success:
                 return {"success": False, "error": evm_res.error or "evm_deploy_failed"}
@@ -351,22 +376,31 @@ class StateService:
 
     def _apply_evm_host_block_native(self, block: "Block") -> int:
         """Run EVM host per tx, then native fee/nonce/reward apply. Returns burned satoshi."""
-        from runtime.amount import from_satoshi_float, plan_transfer_fees_sat, to_satoshi
+        from runtime.amount import (
+            from_satoshi_float,
+            plan_transfer_fees_sat,
+            resolve_tx_value_satoshi,
+            to_satoshi,
+        )
 
         effects = []
         addrs = self._collect_addrs_for_simple_block(block)
         for tx in block.transactions:
+            tx_gas = int(getattr(tx, "gas", 0) or 0)
+            if tx_gas <= 0:
+                raise RuntimeError("gas_required")
             host = self._run_evm_host_only(tx, block.height)
             if not host.get("success"):
                 raise RuntimeError(host.get("error") or "evm_host_failed")
-            gas_used = int(host.get("gas_used") or tx.gas or 0)
+            gas_used = int(host.get("gas_used") or tx_gas)
             effects.append(
                 {
                     "from": tx.from_addr,
                     "to": tx.to_addr or "",
                     "value": float(tx.value or 0),
+                    "amount_satoshi": int(resolve_tx_value_satoshi(tx)),
                     "apply_value": False,
-                    "gas": int(tx.gas or 21000),
+                    "gas": tx_gas,
                     "gas_used": gas_used,
                     "nonce": int(tx.nonce),
                 }
@@ -387,11 +421,7 @@ class StateService:
             tx.status = 1
 
         snap = self._accounts_sat_snapshot(addrs)
-        supply_sat = 0
-        if hasattr(self.storage, "get_total_supply"):
-            supply_sat = int(to_satoshi(self.storage.get_total_supply()))
-        else:
-            supply_sat = sum(int(v["balance"]) for v in snap.values())
+        supply_sat = self._total_supply_satoshi(snap)
         max_supply_sat = int(to_satoshi(float(getattr(self.config, "max_supply", MAX_SUPPLY_ABS))))
         raw = native.blockchain_apply_host_effects(
             json.dumps(snap, separators=(",", ":"), ensure_ascii=False),
@@ -417,7 +447,12 @@ class StateService:
         at the end (plus final reward). Avoids per-tx full-account DB rewrite and
         repeated get_total_supply scans.
         """
-        from runtime.amount import from_satoshi_float, plan_transfer_fees_sat, to_satoshi
+        from runtime.amount import (
+            from_satoshi_float,
+            plan_transfer_fees_sat,
+            resolve_tx_value_satoshi,
+            to_satoshi,
+        )
 
         if not getattr(self, "evm", None):
             raise RuntimeError("evm_unavailable")
@@ -436,36 +471,39 @@ class StateService:
             if tx.to_addr:
                 session_addrs.add(tx.to_addr)
         session = self._accounts_sat_snapshot(session_addrs)
-        if hasattr(self.storage, "get_total_supply"):
-            supply_sat = int(to_satoshi(self.storage.get_total_supply()))
-        else:
-            supply_sat = sum(int(v["balance"]) for v in session.values())
+        supply_sat = self._total_supply_satoshi(session)
 
         for tx in block.transactions:
             addrs = {miner, burn_addr, tx.from_addr or "", tx.to_addr or ""}
             addrs.discard("")
+            tx_gas = int(getattr(tx, "gas", 0) or 0)
+            if tx_gas <= 0:
+                raise RuntimeError("gas_required")
+            value_sat = int(resolve_tx_value_satoshi(tx))
             if self._tx_is_simple(tx):
-                gas_used = int(tx.gas or 21000)
+                gas_used = tx_gas
                 effect = {
                     "from": tx.from_addr,
                     "to": tx.to_addr or "",
                     "value": float(tx.value or 0),
+                    "amount_satoshi": value_sat,
                     "apply_value": True,
-                    "gas": int(tx.gas or 21000),
+                    "gas": tx_gas,
                     "gas_used": gas_used,
                     "nonce": int(tx.nonce),
                 }
                 plan = plan_transfer_fees_sat(
-                    tx.gas,
+                    tx_gas,
                     self.config.gas_price_wei,
                     self.config.burn_rate,
                     tx.value,
+                    value_satoshi=value_sat,
                 )
             else:
                 host = self._run_evm_host_only(tx, block.height)
                 if not host.get("success"):
                     raise RuntimeError(host.get("error") or "evm_host_failed")
-                gas_used = int(host.get("gas_used") or tx.gas or 0)
+                gas_used = int(host.get("gas_used") or tx_gas)
                 if host.get("contract_address"):
                     caddr = str(host["contract_address"])
                     addrs.add(caddr)
@@ -477,8 +515,9 @@ class StateService:
                     "from": tx.from_addr,
                     "to": tx.to_addr or "",
                     "value": float(tx.value or 0),
+                    "amount_satoshi": value_sat,
                     "apply_value": False,
-                    "gas": int(tx.gas or 21000),
+                    "gas": tx_gas,
                     "gas_used": gas_used,
                     "nonce": int(tx.nonce),
                 }
@@ -631,6 +670,7 @@ class StateService:
             can_afford_transfer_sat,
             from_satoshi_float,
             plan_transfer_fees_sat,
+            resolve_tx_value_satoshi,
             to_satoshi,
         )
 
@@ -639,6 +679,7 @@ class StateService:
             self.config.gas_price_wei,
             self.config.burn_rate,
             tx.value,
+            value_satoshi=resolve_tx_value_satoshi(tx),
         )
         fee_sat = plan["fee_sat"]
         burn_sat = plan["burned_sat"]
@@ -680,6 +721,7 @@ class StateService:
                     tx.data,
                     tx.value,
                     gas_limit=tx.gas or self.config.evm_gas_limit,
+                    amount_satoshi=resolve_tx_value_satoshi(tx),
                 )
                 if not evm_res.success:
                     return {"success": False, "error": evm_res.error or "evm_call_failed"}
@@ -689,6 +731,7 @@ class StateService:
                     self.config.burn_rate,
                     tx.value,
                     gas_used=evm_res.gas_used,
+                    value_satoshi=resolve_tx_value_satoshi(tx),
                 )
                 fee_sat = plan["fee_sat"]
                 burn_sat = plan["burned_sat"]
@@ -737,6 +780,7 @@ class StateService:
                     gas_limit=tx.gas or self.config.evm_gas_limit,
                     salt=deploy_salt,
                     block_number=block_height,
+                    amount_satoshi=resolve_tx_value_satoshi(tx),
                 )
                 if not evm_res.success:
                     return {"success": False, "error": evm_res.error or "evm_deploy_failed"}
@@ -746,6 +790,7 @@ class StateService:
                     self.config.burn_rate,
                     tx.value,
                     gas_used=evm_res.gas_used,
+                    value_satoshi=resolve_tx_value_satoshi(tx),
                 )
                 fee_sat = plan["fee_sat"]
                 burn_sat = plan["burned_sat"]

@@ -44,7 +44,9 @@ def _mine_one(bc: Blockchain, *, value: float = 1.0) -> Block:
     recipient = "0x" + "b2" * 20
     _fund(bc, sender, 100.0)
     nonce = bc.db.get_nonce(sender)
-    tx = Transaction(from_addr=sender, to_addr=recipient, value=value, nonce=int(nonce))
+    tx = Transaction(
+        from_addr=sender, to_addr=recipient, value=value, nonce=int(nonce), gas=21000
+    )
     block = bc.create_block([tx], proposer="0x" + "c3" * 20)
     assert bc.add_block(block)
     return block

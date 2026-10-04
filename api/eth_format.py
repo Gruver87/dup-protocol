@@ -160,6 +160,14 @@ def _burned_satoshi(row: Optional[Dict[str, Any]], key: str = "burned") -> int:
 
 
 def _observed_uint_hex(row: Optional[Dict], *keys: str) -> Optional[str]:
+    n = observed_uint(row, *keys)
+    if n is None:
+        return None
+    return hex(n)
+
+
+def observed_uint(row: Optional[Dict[str, Any]], *keys: str) -> Optional[int]:
+    """First present non-negative int. Missing is None — never invent 0/21000."""
     if not isinstance(row, dict):
         return None
     for key in keys:
@@ -174,8 +182,67 @@ def _observed_uint_hex(row: Optional[Dict], *keys: str) -> Optional[str]:
             return None
         if n < 0:
             return None
-        return hex(n)
+        return n
     return None
+
+
+def observed_uint_hex(row: Optional[Dict[str, Any]], *keys: str) -> Optional[str]:
+    return _observed_uint_hex(row, *keys)
+
+
+def observed_block_gas_limit(blk: Optional[Dict[str, Any]], *, protocol_limit=None) -> Optional[int]:
+    """Stored header gas_limit, else protocol apply cap. Never Ethereum 30M."""
+    n = observed_uint(blk, "gas_limit", "gasLimit")
+    if n is not None and n > 0:
+        return n
+    if protocol_limit is None:
+        return None
+    try:
+        p = int(protocol_limit)
+    except (TypeError, ValueError):
+        return None
+    return p if p > 0 else None
+
+
+def observed_tx_input(tx: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Calldata. Missing is null — empty stored calldata is 0x, not an invented transfer."""
+    if not isinstance(tx, dict):
+        return None
+    if "data" not in tx and "tx_data" not in tx and "input" not in tx:
+        return None
+    raw = tx.get("data", tx.get("tx_data", tx.get("input")))
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return "0x"
+    if s.startswith(("0x", "0X")):
+        return s
+    return "0x" + s
+
+
+def block_extra_data(blk: Optional[Dict[str, Any]]) -> Optional[str]:
+    """RPC extraData from the stored header. Missing is null, not a hardcoded empty hex."""
+    if not isinstance(blk, dict):
+        return None
+    if "extra_data" not in blk and "extraData" not in blk:
+        return None
+    raw = blk.get("extra_data")
+    if raw is None:
+        raw = blk.get("extraData")
+    if raw is None:
+        return None
+    if raw == "":
+        return "0x"
+    s = str(raw)
+    if s.startswith(("0x", "0X")):
+        hexpart = s[2:]
+        if not hexpart:
+            return "0x"
+        if any(c not in "0123456789abcdefABCDEF" for c in hexpart):
+            return "0x" + s.encode("utf-8").hex()
+        return "0x" + hexpart.lower()
+    return "0x" + s.encode("utf-8").hex()
 
 
 def observed_value_hex(row: Optional[Dict[str, Any]]) -> Optional[str]:
@@ -229,16 +296,9 @@ def format_block(blk: Optional[Dict], full_tx: bool = False, *, query=None, bc=N
             bloom_out = logs_bloom([])  # empty observed bloom
     else:
         bloom_out = logs_bloom([])
-    limit = _observed_uint_hex(blk, "gas_limit", "gasLimit")
-    if limit is None and gas_limit is not None:
-        try:
-            gl = int(gas_limit)
-            limit = hex(gl) if gl > 0 else None
-        except (TypeError, ValueError):
-            limit = None
+    limit_i = observed_block_gas_limit(blk, protocol_limit=gas_limit)
+    limit = hex(limit_i) if limit_i is not None else None
     used = _observed_uint_hex(blk, "gas_used", "gasUsed")
-    if used is None and isinstance(txs, list) and not txs:
-        used = hex(0)
     ts = _observed_uint_hex(blk, "timestamp")
     return {
         "number": hex(number) if number is not None else None,
@@ -253,7 +313,7 @@ def format_block(blk: Optional[Dict], full_tx: bool = False, *, query=None, bc=N
         "miner": blk.get("miner") or blk.get("proposer") or None,
         "difficulty": "0x0",
         "totalDifficulty": "0x0",
-        "extraData": "0x",
+        "extraData": block_extra_data(blk),
         "size": _observed_uint_hex(blk, "size"),
         "gasLimit": limit,
         "gasUsed": used,
@@ -276,8 +336,8 @@ def format_tx(tx: Optional[Dict]) -> Optional[Dict]:
         "value": observed_value_hex(tx),
         "gas": _observed_uint_hex(tx, "gas", "gas_limit"),
         "gasUsed": _observed_uint_hex(tx, "gas_used", "gasUsed"),
-        "nonce": _observed_uint_hex(tx, "nonce") or hex(0),
-        "input": tx.get("data", tx.get("tx_data", "0x")),
+        "nonce": _observed_uint_hex(tx, "nonce"),
+        "input": observed_tx_input(tx),
         "burned": _burned_satoshi(tx, "burned"),
     }
 
@@ -544,10 +604,6 @@ def format_fee_history(
     protocol = getattr(cfg, "evm_gas_limit", None) if cfg is not None else None
     if protocol is None:
         protocol = DEFAULT_EVM_GAS_LIMIT
-    try:
-        protocol_i = int(protocol)
-    except (TypeError, ValueError):
-        protocol_i = DEFAULT_EVM_GAS_LIMIT
     ratios: List[float] = []
     bases: List[Optional[str]] = []
     rewards: List[Optional[List[str]]] = []
@@ -560,18 +616,8 @@ def format_fee_history(
                 blk = None
         if not isinstance(blk, dict):
             continue
-        used_raw = blk.get("gas_used", blk.get("gasUsed"))
-        limit_raw = blk.get("gas_limit", blk.get("gasLimit"))
-        try:
-            used = int(used_raw) if used_raw is not None and used_raw != "" else None
-        except (TypeError, ValueError):
-            used = None
-        try:
-            limit = int(limit_raw) if limit_raw is not None and limit_raw != "" else None
-        except (TypeError, ValueError):
-            limit = None
-        if limit is None or limit <= 0:
-            limit = protocol_i if protocol_i > 0 else None
+        used = observed_uint(blk, "gas_used", "gasUsed")
+        limit = observed_block_gas_limit(blk, protocol_limit=protocol)
         if used is None or limit is None or limit <= 0:
             continue
         ratios.append(min(1.0, max(0.0, used / float(limit))))

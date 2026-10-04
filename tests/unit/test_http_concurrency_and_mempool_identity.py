@@ -87,7 +87,7 @@ def test_mempool_rebinding_collapses_alternate_claimed_hashes():
         to_addr=signed["to"],
         value=signed["value"],
         nonce=signed["nonce"],
-        gas=int(signed.get("gas_limit") or 21_000),
+        gas=int(signed["gas_limit"]),
         data=signed.get("data") or "",
         timestamp=ts,
         chain_id=77777,
@@ -109,7 +109,7 @@ def test_mempool_rebinding_collapses_alternate_claimed_hashes():
             signature=signed.get("signature") or "",
             public_key=signed.get("public_key") or "",
             data=signed.get("data") or "",
-            gas=int(signed.get("gas_limit") or 21_000),
+            gas=int(signed["gas_limit"]),
             timestamp=float(ts),
         )
         try:

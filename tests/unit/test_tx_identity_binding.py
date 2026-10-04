@@ -27,6 +27,7 @@ def test_forged_alternate_hash_refused():
         to_addr="0x" + "b" * 40,
         value=1,
         nonce=0,
+        gas=21000,
         timestamp=1_700_000_000,
     )
     with pytest.raises(ValueError, match="tx_hash_mismatch"):
@@ -43,6 +44,7 @@ def test_harness_label_claim_rebounds_to_canonical():
         to_addr=to_addr,
         value=1,
         nonce=0,
+        gas=21000,
         timestamp=1_700_000_000,
     )
     canon, _ = compute_tx_identity_hash(
@@ -50,6 +52,7 @@ def test_harness_label_claim_rebounds_to_canonical():
         to_addr=to_addr,
         value=1,
         nonce=0,
+        gas=21000,
         timestamp=1_700_000_000,
     )
     assert bound == canon
@@ -97,6 +100,7 @@ def test_legacy_wallet_signing_digest_accepted_but_identity_is_canonical():
         to_addr=to_addr,
         value=1,
         nonce=0,
+        gas=21000,
         timestamp=1_700_000_000,
         chain_id=77777,
     )
@@ -106,6 +110,7 @@ def test_legacy_wallet_signing_digest_accepted_but_identity_is_canonical():
         value=1,
         nonce=0,
         chain_id=77777,
+        gas=21000,
     )
     # Same payload under signing-digest claim still yields canonical identity.
     bound2, _ = bind_identity_from_fields(
@@ -114,6 +119,7 @@ def test_legacy_wallet_signing_digest_accepted_but_identity_is_canonical():
         to_addr=to_addr,
         value=1,
         nonce=0,
+        gas=21000,
         timestamp=1_700_000_000,
         chain_id=77777,
     )
@@ -131,6 +137,7 @@ def test_same_payload_cannot_register_two_identities():
         to_addr=to_addr,
         value=5,
         nonce=3,
+        gas=21000,
         timestamp=1_700_000_001,
     )
     with pytest.raises(ValueError, match="tx_hash_mismatch"):
@@ -140,9 +147,21 @@ def test_same_payload_cannot_register_two_identities():
             to_addr=to_addr,
             value=5,
             nonce=3,
+            gas=21000,
             timestamp=1_700_000_001,
         )
     assert a
+
+
+def test_identity_refuses_missing_gas():
+    with pytest.raises(ValueError, match="gas_required"):
+        compute_tx_identity_hash(
+            from_addr="0x" + "a" * 40,
+            to_addr="0x" + "b" * 40,
+            value=1,
+            nonce=0,
+            timestamp=1_700_000_000,
+        )
 
 
 def test_tx_root_rejects_prefix():

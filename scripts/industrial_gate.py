@@ -1311,6 +1311,50 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         if "_replay_simple_range_native" not in bc_py and "_replay_simple_range_native" not in state_svc_py:
             errors.append("blockchain must expose native simple apply/replay helpers")
         if (
+            '"amount_satoshi"' not in state_svc_py
+            or "resolve_tx_value_satoshi" not in state_svc_py
+            or "value_satoshi=" not in state_svc_py
+        ):
+            errors.append(
+                "state_service native apply must bind amount_satoshi / value_satoshi (ADR 0021)"
+            )
+        if "_tx_affordable_sat" not in (
+            ROOT / "execution" / "block_builder.py"
+        ).read_text(encoding="utf-8"):
+            errors.append("BlockBuilder must afford via satoshi (not float gasPrice*gas)")
+        if "gas_limit_required" not in (
+            ROOT / "core" / "tx_builder.py"
+        ).read_text(encoding="utf-8"):
+            errors.append("TransactionBuilder must refuse invent gas_limit=21000")
+        if "stake_required" not in (
+            ROOT / "consensus" / "slashing.py"
+        ).read_text(encoding="utf-8"):
+            errors.append("SlashingEngine.register_validator must refuse invent stake=100")
+        evm_ad_py = (ROOT / "execution" / "evm_adapter.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "_resolve_call_value_sat" not in evm_ad_py:
+            errors.append("evm_adapter must resolve call/deploy value in satoshi")
+        if "wei_to_abs = value_wei / 10**18" in evm_ad_py:
+            errors.append("evm_adapter nested writeback must not transfer via wei/1e18 float")
+        if "int(value * 10**18)" in evm_ad_py:
+            errors.append("evm_adapter must not convert ABS float to wei via *1e18")
+        if "satoshi_store_required_selfdestruct" not in evm_ad_py:
+            errors.append("evm_adapter SELFDESTRUCT must refuse float store")
+        eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "def observed_tx_input" not in eth_fmt_py:
+            errors.append("eth_format must expose observed_tx_input (null if unobserved)")
+        if "def observed_block_gas_limit" not in eth_fmt_py:
+            errors.append("eth_format must not invent gasLimit as Ethereum 30M")
+        if 'tx.get("data", tx.get("tx_data", "0x"))' in eth_fmt_py:
+            errors.append("format_tx must not default missing input to 0x")
+        if '"extraData": "0x"' in eth_fmt_py:
+            errors.append("format_block must not hardcode extraData as empty")
+        if "def block_extra_data" not in eth_fmt_py:
+            errors.append("eth_format must expose extraData from the stored header")
+        if (
             "blockchain_replay_simple_blocks" not in bc_py
             and "blockchain_replay_simple_blocks" not in state_svc_py
         ):
@@ -3276,6 +3320,44 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             encoding="utf-8", errors="replace"
         ):
             errors.append("Transaction must refuse invent gas=21000")
+        ident_py = (ROOT / "core" / "tx_identity.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "_require_positive_gas" not in ident_py:
+            errors.append("tx_identity must refuse omitted gas (_require_positive_gas)")
+        state_svc_src = (ROOT / "core" / "components" / "state_service.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "tx.gas or 21000" in state_svc_src:
+            errors.append("state_service must not invent gas=21000")
+        if "gas_required" not in state_svc_src:
+            errors.append("state_service must raise gas_required when gas missing")
+        bb_src = (ROOT / "execution" / "block_builder.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if 'gas", 21000)' in bb_src:
+            errors.append("block_builder must not invent gas_limit=21000")
+        if 'tx.get("gas", 21000)' in (
+            ROOT / "blockchain" / "tx_validator.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append("tx_validator must not invent gas=21000 on signature bind")
+        db_py = (ROOT / "storage" / "database.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if 'tx.get("gas", 21000)' in db_py or 'tx.get("gas_used", tx.get("gas", 21000))' in db_py:
+            errors.append("SQLite tx persist must not invent gas=21000")
+        if "_tx_gas_fields" not in db_py:
+            errors.append("SQLite must expose _tx_gas_fields (no invent gas)")
+        rocks_store_py = (ROOT / "storage" / "rocks_store.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if 'tx.get("gas_used", tx.get("gas", 21000))' in rocks_store_py:
+            errors.append("Rocks tx persist must not invent gas_used=21000")
+        hash_py = (ROOT / "crypto" / "hashing.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if 'tx.get("gas_limit", 21000)' in hash_py:
+            errors.append("Hasher.hash_transaction must not invent gas_limit=21000")
         if 'gas: int = 0  # explicit gas required on add' not in (
             ROOT / "blockchain" / "mempool.py"
         ).read_text(encoding="utf-8", errors="replace"):
