@@ -26,8 +26,11 @@ class ConsensusEngineCasper:
         self._blocks: Dict[str, Dict] = {}
         self._slot = 0
 
-    def add_validator(self, validator_id: str, stake: int = 100):
-        self.lmd.add_validator(validator_id, stake)
+    def add_validator(self, validator_id: str, stake: int = 0):
+        stake_i = int(stake)
+        if stake_i <= 0:
+            raise ValueError("stake_required")
+        self.lmd.add_validator(validator_id, stake_i)
         self.finality.set_total_stake(self.lmd.get_stats()["total_stake"])
 
     def add_block(self, block: Dict):

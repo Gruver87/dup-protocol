@@ -3808,7 +3808,10 @@ class RESTHandler(BaseHTTPRequestHandler):
                 pqm = self.__class__.pq_manager
                 if pqm:
                     try:
-                        stats = pqm.get_stats() if hasattr(pqm, "get_stats") else {"enabled": True}
+                        # Manager bound → enabled; do not invent a fake stats dict.
+                        stats = pqm.get_stats() if hasattr(pqm, "get_stats") else {}
+                        if not isinstance(stats, dict):
+                            stats = {"raw": str(stats)}
                         self._json({
                             "post_quantum": "enabled",
                             "enabled": True,

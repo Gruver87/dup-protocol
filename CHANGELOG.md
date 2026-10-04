@@ -12,6 +12,7 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ### Industrial harden (no new features)
 
+- **P1 (2026-10-04):** Consensus refuse invent `stake=100` — LMD/Casper/Beacon/Slashing `stake_required`; main LMD binds `min_stake` satoshi; `/pq/status` no fake `{"enabled":True}` stats. Units `test_exp_consensus_stake_required.py`. **Not** soak.
 - **P1 (2026-10-04):** Hot persist fail-closed — Rocks/SQLite/chain_storage raise `PersistError` (no soft `False`); chain_backup refuses silent live-DB `copy2`. `evm_writeback` refuses float `balance_satoshi` + insufficient transfer. Units `test_persist_fail_closed.py`. **Not** soak.
 - **P1 (2026-10-04):** Native `amount.rs` fail-closed satoshi (refuse float JSON, no `0.0` paint, `balance_satoshi` twins). REST `WireMoneyMismatch` remap + `/status` degrades on prod+require_native mempool_store demote. **Not** soak.
 - **P1 (2026-10-04):** ADR 0021 phase-1/3 `MempoolKernel` on pin — Rust `mempool_kernel.rs` + PyO3 `mempool_validate_post_sig` / `mempool_admit_evm_deploy`; `NativeFamily.MEMPOOL_KERNEL`; TxPipeline post-sig snapshot + EVM deploy admit; golden fixtures. Python mirror fallback. **Not** soak / mesh not re-run this layer.

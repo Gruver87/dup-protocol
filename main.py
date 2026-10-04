@@ -1218,7 +1218,13 @@ class NodeOrchestrator:
                 from consensus.lmd import LMDTable as _LMD
                 self.lmd_table = _LMD()
                 if config.miner_address:
-                    self.lmd_table.add_validator(config.miner_address)
+                    # Explicit min_stake satoshi — do not invent stake=100 via LMD default.
+                    from runtime.amount import to_satoshi as _to_sat_lmd
+
+                    _lmd_stake = int(
+                        _to_sat_lmd(getattr(config, "min_stake", 0) or 0)
+                    )
+                    self.lmd_table.add_validator(config.miner_address, _lmd_stake)
                 print("[Node] LMDTable: LMD-GHOST fork choice ready")
             except Exception as _e:
                 self.lmd_table = None

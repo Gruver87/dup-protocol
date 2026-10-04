@@ -30,8 +30,12 @@ class LMDTable:
         self.latest_vote: Dict[str, Tuple[str, int]] = {}
         self.validator_stake: Dict[str, int] = {}
 
-    def add_validator(self, validator: str, stake: int = 100):
-        self.validator_stake[validator] = stake
+    def add_validator(self, validator: str, stake: int = 0):
+        """Register validator weight. Refuse invent stake=100 when omitted."""
+        stake_i = int(stake)
+        if stake_i <= 0:
+            raise ValueError("stake_required")
+        self.validator_stake[validator] = stake_i
 
     def update(self, validator: str, block_hash: str, slot: int) -> bool:
         """Update latest vote for validator (strict LMD)"""

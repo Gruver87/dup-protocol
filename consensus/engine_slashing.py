@@ -28,10 +28,13 @@ class ConsensusEngineSlashing:
         self._blocks: Dict[str, Dict] = {}
         self._slot = 0
 
-    def add_validator(self, validator_id: str, stake: int = 100):
-        """Добавляет валидатора во все подсистемы"""
-        self.lmd.add_validator(validator_id, stake)
-        self.slashing.register_validator(validator_id, stake)
+    def add_validator(self, validator_id: str, stake: int = 0):
+        """Добавляет валидатора во все подсистемы (explicit stake required)."""
+        stake_i = int(stake)
+        if stake_i <= 0:
+            raise ValueError("stake_required")
+        self.lmd.add_validator(validator_id, stake_i)
+        self.slashing.register_validator(validator_id, stake_i)
         self.finality.set_total_stake(self.slashing.get_total_active_stake())
 
     def add_block(self, block: Dict):
