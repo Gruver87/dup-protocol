@@ -1604,6 +1604,47 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("api/http.py must remap WireMoneyMismatch (ADR 0021)")
         if "mempool_store_demoted" not in http_py_money:
             errors.append("/status must degrade when mempool_store demoted in prod+require_native")
+        types_py = (ROOT / "storage" / "types.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "class PersistError" not in types_py:
+            errors.append("storage.types must define PersistError (persist fail-closed)")
+        wb_rs = (ROOT / "native" / "abs_native" / "src" / "evm_writeback.rs").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "balance_satoshi must be integer" not in wb_rs:
+            errors.append("evm_writeback must refuse float balance_satoshi")
+        if "f * 1_000_000.0" in wb_rs or "(sat as f64) / 1_000_000.0" in wb_rs:
+            errors.append("evm_writeback must not use IEEE×1e6 money path")
+        for rel, label in (
+            ("storage/rocks_store.py", "rocks_store"),
+            ("storage/database.py", "database"),
+            ("storage/chain_storage.py", "chain_storage"),
+        ):
+            src = (ROOT / rel).read_text(encoding="utf-8", errors="replace")
+            if "raise PersistError" not in src:
+                errors.append(f"{label} must raise PersistError on hot persist failure")
+        backup_rocks = (ROOT / "storage" / "rocks_store.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        backup_db = (ROOT / "storage" / "database.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        for label, src in (("rocks_store.backup_to", backup_rocks), ("database.backup_to", backup_db)):
+            chunk = src.split("def backup_to", 1)[1].split("\n    def ", 1)[0]
+            if "raise PersistError" not in chunk:
+                errors.append(f"{label} must raise PersistError (fail-closed backup)")
+            if "return False" in chunk:
+                errors.append(f"{label} must not soft-return False")
+        chain_bak = (ROOT / "storage" / "chain_backup.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "never silent copy2 of a live DB" not in chain_bak:
+            errors.append("chain_backup must refuse silent copy2 fallback for live SQLite")
+        if 'if hasattr(db, "backup_to") and not db.backup_to' in chain_bak:
+            errors.append("chain_backup must not soft-fallback copy2 after backup_to False")
+        if not (ROOT / "tests" / "unit" / "test_persist_fail_closed.py").is_file():
+            errors.append("test_persist_fail_closed.py missing")
         if "_tx_affordable_sat" not in (
             ROOT / "execution" / "block_builder.py"
         ).read_text(encoding="utf-8"):

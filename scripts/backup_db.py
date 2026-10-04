@@ -25,7 +25,8 @@ def backup_database(source: str, dest: str) -> bool:
     db = Database(source)
     db.initialize()
     try:
-        return bool(db.backup_to(dest))
+        db.backup_to(dest)
+        return True
     finally:
         db.close()
 

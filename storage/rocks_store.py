@@ -428,15 +428,21 @@ class RocksChainStore:
             logger.info(msg)
             print(msg)
 
-    def backup_to(self, dest_path: str) -> bool:
+    def backup_to(self, dest_path: str) -> None:
+        """RocksDB checkpoint backup. Raises PersistError on failure (fail-closed)."""
+        from storage.types import PersistError
+
         try:
             if os.path.isdir(dest_path):
                 shutil.rmtree(dest_path)
             self._engine.checkpoint(dest_path)
-            return True
+        except PersistError:
+            raise
         except Exception as exc:
-            print(f"[RocksDB] backup_to error: {exc}")
-            return False
+            logger.error("[RocksDB] backup_to error: %s", exc)
+            raise PersistError(
+                f"backup_to failed: {exc}", reason_code="backup_failed"
+            ) from exc
 
     # ── meta ──────────────────────────────────────────────────────────────
 
@@ -553,13 +559,21 @@ class RocksChainStore:
         )
 
     def save_block(self, block: Dict) -> bool:
+        """Persist block body. Raises PersistError on failure (fail-closed)."""
+        from storage.types import PersistError
+
         with self._write_lock:
             try:
                 self._insert_block(block)
                 return True
+            except PersistError:
+                raise
             except Exception as exc:
-                print(f"[RocksDB] save_block error: {exc}")
-                return False
+                logger.exception("[RocksDB] save_block failed")
+                raise PersistError(
+                    f"save_block failed: {exc}",
+                    reason_code="persist_failed",
+                ) from exc
 
     def get_block(self, height: int) -> Optional[Dict]:
         raw = self._raw_get(kc.key_block_height(int(height)))
@@ -1251,13 +1265,21 @@ class RocksChainStore:
         )
 
     def save_transaction(self, tx: Dict) -> bool:
+        """Persist tx row. Raises PersistError on failure (fail-closed)."""
+        from storage.types import PersistError
+
         with self._write_lock:
             try:
                 self._insert_transaction(tx)
                 return True
+            except PersistError:
+                raise
             except Exception as exc:
-                print(f"[RocksDB] save_transaction error: {exc}")
-                return False
+                logger.exception("[RocksDB] save_transaction failed")
+                raise PersistError(
+                    f"save_transaction failed: {exc}",
+                    reason_code="persist_failed",
+                ) from exc
 
     def get_transaction(self, tx_hash: str) -> Optional[Dict]:
         raw = self._raw_get(kc.key_tx(tx_hash))
@@ -1909,13 +1931,21 @@ class RocksChainStore:
         burned_amount: float = 0.0,
         burn_address: str = "",
     ) -> bool:
+        """Atomic block+txs persist. Raises PersistError on failure (fail-closed)."""
+        from storage.types import PersistError
+
         with self.atomic():
             try:
                 self._persist_block_locked(block, transactions, burned_amount, burn_address)
                 return True
+            except PersistError:
+                raise
             except Exception as exc:
-                print(f"[RocksDB] persist_block_atomic error: {exc}")
-                return False
+                logger.exception("[RocksDB] persist_block_atomic failed")
+                raise PersistError(
+                    f"persist_block_atomic failed: {exc}",
+                    reason_code="persist_failed",
+                ) from exc
 
     def _persist_block_locked(
         self,
