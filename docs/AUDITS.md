@@ -30,11 +30,11 @@ Do **not** mark tracker items complete with template notes.
 
 Related: [SECURITY.md](../SECURITY.md) · [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md) · [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) · [INDUSTRIAL_HARDEN_RUNBOOK.md](INDUSTRIAL_HARDEN_RUNBOOK.md) · [DEPENDABOT_TRIAGE.md](DEPENDABOT_TRIAGE.md)
 
-## Safe Hybrid work (Exp→pin honesty CLOSED at `adc8547` / docs tip `d8da83b`)
+## Safe Hybrid work (Exp→pin honesty CLOSED — code tip `adc8547`)
 
-Experimental owns libp2p / Long-Range R&D. **B1** (libp2p 48h) is **PASS** on Experimental — that is **not** a Hybrid transport cutover. Honesty Exp→pin merge is **CLOSED** (units + `industrial_gate`; **not** a new 48h soak). On **this** pin, prefer:
+Experimental owns libp2p / Long-Range R&D. **B1** (libp2p 48h) is **PASS** on Experimental — that is **not** a Hybrid transport cutover. Honesty Exp→pin merge is **CLOSED** (units + `industrial_gate`; **not** a new 48h soak). Working tip: `git rev-parse --short HEAD`. On **this** pin, prefer:
 
-1. External audit engagement prep ([AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md), [AUDIT_PACK_CHECKLIST.md](AUDIT_PACK_CHECKLIST.md), regenerate audit pack) — **Phase 6 / org**
+1. External audit engagement prep — [FIRM_KICKOFF_CHECKLIST.md](FIRM_KICKOFF_CHECKLIST.md) · [AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md) · [AUDIT_PACK_CHECKLIST.md](AUDIT_PACK_CHECKLIST.md) · regenerate audit pack (**Phase 6 / org**)
 2. Ops dry-runs (DR / ceremony / bridge-OFF) — no prod secret `-Force` unless cutover day
 3. Actions-only Dependabot when CI green (see [DEPENDABOT_TRIAGE](DEPENDABOT_TRIAGE.md)) — **hold** pyo3 / socket2 majors
 4. Sprout profiles **off** `778888` (staging / L2 / shard lab compose)
@@ -47,5 +47,7 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 python scripts/external_audit_tracker.py --list
 python scripts/industrial_gate.py
 ```
+
+Optional Exp Phase 6 appendix (prep only, **not** pin PASS): [EXTERNAL_AUDIT_ENGAGEMENT](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/EXTERNAL_AUDIT_ENGAGEMENT.md) · [phase6prep1](https://github.com/Gruver87/dup-protocol-experimental/tree/main/evidence/runs/phase6prep1).
 
 **Do not:** port libp2p/Long-Range from Experimental · flip refused `feature_*` · claim Experimental soaks (`3c801b87`, `0a7932c4`, `lr2hmesh`, `lr48pass1`, `evm48pass1`) as Hybrid tip-v2 evidence · run Experimental soaks from this tree.

@@ -1,10 +1,12 @@
 # Audit scope letter — industrial L1
 
-**Product:** Absolute Blockchain Ultimate Hybrid  
+**Product:** DUP Protocol (DUP Labs)  
+**Formerly:** Absolute Blockchain Ultimate Hybrid (same pin)  
+**Repo:** https://github.com/Gruver87/dup-protocol  
 **Chain under review:** prod-profile `778888` (Docker 3-node mesh / future mainnet-v1)  
-**Date:** 2026-08-07  
-**Release pin:** tag **`v1.3.1339-tip-v2-industrial`** (engagement brief: [AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md))  
-**Phase status:** Phase 2 tip-v2 48h PASS · Phase 3 ops dry-run PASS · Phase 4 audit binder READY — external firm engagement pending
+**Date:** 2026-10-05 (brand sync; freeze tag unchanged from 2026-08-07)  
+**Release pin:** tag **`v1.3.1339-tip-v2-industrial`** (`0531995`; engagement brief: [AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md))  
+**Phase status:** Phase 2 tip-v2 48h PASS · Phase 3 ops dry-run PASS · Phase 4 audit binder READY · Exp→pin honesty CLOSED (units+gate) — external firm engagement pending
 
 ## In scope
 
@@ -26,6 +28,7 @@
 | NFT / app staging | Profile C; not L1 trust path |
 | Public mainnet ops / legal / listing | Organizational, not code audit of this tree |
 | Full Ethereum client compatibility | EVM subset only |
+| Tip proof / Long-Range / libp2p rewrite | Not claimed — R&D in [dup-protocol-experimental](https://github.com/Gruver87/dup-protocol-experimental) |
 
 ## Deliverables expected from auditor
 

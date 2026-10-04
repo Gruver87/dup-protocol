@@ -53,8 +53,9 @@ Session note: `rotate_prod_secrets.ps1` without `-Force` is the documented dry-r
 **Status (2026-08-07):** Phase 4 binder **READY for firm engagement** — evidence `docs/evidence/runs/phase4-691329c/`:
 - threat model + audit scope refreshed  
 - `industrial_gate.py --min-soak-hours 48` PASS (tip-v2 report)  
-- `export_audit_pack` → `logs/audit_pack_20260807.zip`  
+- `export_audit_pack` → historical binder zip `logs/audit_pack_20260807.zip` (Phase 4 day); regenerate current: `.\scripts\export_audit_pack.ps1` → latest `logs/audit_pack_YYYYMMDD.zip` (operator: `20261004`)  
 - tracker **6/8** (2 firm-owned: pen-test + L1/SC audit)  
+- Human kickoff: [FIRM_KICKOFF_CHECKLIST.md](FIRM_KICKOFF_CHECKLIST.md)  
 - **Not** “audited” until PDF under `audits/<firm>/`  
 - Engagement brief: [AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md) · pin tag `v1.3.1339-tip-v2-industrial`  
 

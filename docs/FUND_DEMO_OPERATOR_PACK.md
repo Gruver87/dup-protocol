@@ -1,11 +1,11 @@
 # Fund / demo operator pack — industrial pin (honest)
 
-**Date:** 2026-10-05 · **Repo tip:** `adc8547` (run `git rev-parse --short HEAD` to confirm)  
+**Date:** 2026-10-05 · **Repo tip:** run `git rev-parse --short HEAD` (honesty code tip `adc8547`)  
 **Brand:** DUP Labs · DUP Protocol  
 **Repo:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)  
 **Not:** public audited mainnet · not firm pen-test PASS · not a new 48h soak claim.
 
-Operator checklist after Exp→pin honesty merge close (`adc8547`). Pin transport remains **TCP+TLS** (libp2p stays Experimental / opt-in only).
+Operator checklist after Exp→pin honesty merge close. Pin transport remains **TCP+TLS** (libp2p stays Experimental / opt-in only).
 
 ---
 
@@ -13,11 +13,11 @@ Operator checklist after Exp→pin honesty merge close (`adc8547`). Pin transpor
 
 | Layer | Status | Proof |
 |-------|--------|-------|
-| Industrial pin (TCP+TLS freeze) | Show for firm scope | tag `v1.3.1339-tip-v2-industrial` + honesty tip `adc8547` |
+| Industrial pin (TCP+TLS freeze) | Show for firm scope | tag `v1.3.1339-tip-v2-industrial` (`0531995`) + honesty code tip `adc8547` |
 | Fail-closed satoshi / RPC / health honesty | Code + units + industrial_gate | Exp→pin merge CLOSED — see [EVIDENCE_MATRIX](EVIDENCE_MATRIX.md) CI row |
 | STRICT 48h scoreboard | Historical packs only | Do not claim soak on current HEAD unless a new pack exists |
 | Showcase / diligence docs | Pin stub + Exp GitHub | [SHOWCASE](SHOWCASE.md) · [DILIGENCE_BRIEF (Exp)](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DILIGENCE_BRIEF.md) · [FUND_READINESS (Exp)](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/FUND_READINESS.md) |
-| Phase 6 firm prep | Prep only | [AUDITS.md](AUDITS.md) · [AUDIT_ENGAGEMENT_BRIEF](AUDIT_ENGAGEMENT_BRIEF.md) |
+| Phase 6 firm prep | Prep only | [FIRM_KICKOFF_CHECKLIST](FIRM_KICKOFF_CHECKLIST.md) · [AUDITS.md](AUDITS.md) · [AUDIT_ENGAGEMENT_BRIEF](AUDIT_ENGAGEMENT_BRIEF.md) · `logs/audit_pack_20261004.zip` |
 
 ---
 

@@ -6,9 +6,10 @@
 **Repo:** https://github.com/Gruver87/dup-protocol  
 **Pin tag:** `v1.3.1339-tip-v2-industrial`  
 **Pin commit:** `git rev-list -n 1 v1.3.1339-tip-v2-industrial`  
-**Date:** 2026-10-03 (brand sync; scope unchanged from 2026-08-07)  
+**Date:** 2026-10-05 (pack path + kickoff stub; freeze tag unchanged)  
 **Owner:** Gruver87 (Uladzimir Dabranski / D.U.P.)  
-**Funds / ПВТ front door (Experimental):** [SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md)
+**Funds / ПВТ front door (Experimental):** [SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md)  
+**Human kickoff:** [FIRM_KICKOFF_CHECKLIST.md](FIRM_KICKOFF_CHECKLIST.md)
 
 ---
 
@@ -46,7 +47,7 @@ Full scope letter: [AUDIT_SCOPE.md](AUDIT_SCOPE.md) · threat model: [THREAT_MOD
 
 | Artifact | Path |
 |----------|------|
-| Static audit zip | `logs/audit_pack_20260807.zip` (operator-local; regenerate: [AUDIT_PACK_CHECKLIST.md](AUDIT_PACK_CHECKLIST.md) → `.\scripts\export_audit_pack.ps1`) |
+| Static audit zip | Latest `logs/audit_pack_YYYYMMDD.zip` (operator current: `logs/audit_pack_20261004.zip`; regenerate: [AUDIT_PACK_CHECKLIST.md](AUDIT_PACK_CHECKLIST.md) → `.\scripts\export_audit_pack.ps1`). Historical Phase 4 binder zip `logs/audit_pack_20260807.zip` remains under `docs/evidence/runs/phase4-691329c/` narrative only. |
 | Tip-v2 **48h soak PASS** | `docs/evidence/runs/375d14f/` (`passed=true`, fail=0, mesh_warn=0, Aug 5–7 2026) |
 | Phase 3 ops dry-run PASS | `docs/evidence/runs/phase3-da25c34/` |
 | Phase 4 binder READY | `docs/evidence/runs/phase4-691329c/` |

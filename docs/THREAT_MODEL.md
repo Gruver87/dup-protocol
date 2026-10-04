@@ -1,9 +1,10 @@
-# Threat model — Absolute Blockchain Ultimate Hybrid (industrial L1)
+# Threat model — DUP Protocol (industrial L1)
 
+**Product:** DUP Protocol (DUP Labs) · Formerly Absolute Blockchain Ultimate Hybrid  
 **Audience:** external auditors / operators  
-**Scope:** single-tip prod-profile chain `778888` (Profile A)  
-**Out of scope:** shard lab, L2 sandbox, ZK/PQ, bridge ON  
-**Updated:** 2026-08-07
+**Scope:** single-tip prod-profile chain `778888` (Profile A) · TCP+TLS pin  
+**Out of scope:** shard lab, L2 sandbox, ZK/PQ, bridge ON, libp2p / Long-Range (Experimental)  
+**Updated:** 2026-10-05 (brand sync; assets unchanged)
 
 ## Assets
 

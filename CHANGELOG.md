@@ -12,6 +12,7 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ### Industrial harden (no new features)
 
+- **Docs (2026-10-05):** Phase 6 engagement handoff — thin [FIRM_KICKOFF_CHECKLIST.md](docs/FIRM_KICKOFF_CHECKLIST.md); AUDIT brief pack path → `audit_pack_20261004.zip`; AUDIT_SCOPE / THREAT_MODEL DUP-first; AUDITS Safe Hybrid pointers. **Not** firm PASS / **not** soak.
 - **Docs (2026-10-05):** Close-out Exp→pin honesty merge at tip `adc8547` — CHANGELOG / EVIDENCE_MATRIX / FUND_DEMO pack sync. Diligence brief + fund card remain on Experimental GitHub (pin links fixed). **Not** soak / **not** Phase 6 firm PASS.
 - **P1 Exp→pin honesty merge close (2026-10-05, tip `adc8547`):** Layered fail-closed ports from Experimental — ZK range refuse; committed `get_state_root`; height-bounded Rocks `eth_getLogs`; `tip_skew` / prod P2P-null `/health/ready`; harness cached account count; tip-head / tip-root store refuse; SyncEngine genesis fail-closed; MEV `simulation_only` stamps; AI forge `update_performance` removed; oracle/Lightning/AI `parse_finite_number`; Rocks obs count meta; bridge lock debit+burn both required. Units + `industrial_gate` needles. **Not** soak / mesh not re-run / libp2p+Long-Range still off on pin.
 - **P1 (2026-10-04):** EVM adapter fail-closed — nested pure/host re-raise under `require_native_crypto`; native writeback refuse in prod/require (`evm_native_writeback_required`); balances via `writeback_balance_abs` (no float paint). **Not** soak.
