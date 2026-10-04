@@ -329,7 +329,8 @@ def _normalize_eth_root(raw: Any) -> Optional[str]:
     return out
 
 
-def _burned_satoshi(row: Optional[Dict[str, Any]], key: str = "burned") -> int:
+def burned_satoshi(row: Optional[Dict[str, Any]], key: str = "burned") -> int:
+    """ABS burn as integer satoshi. Missing/unparseable is 0, never a float."""
     if not isinstance(row, dict):
         return 0
     raw = row.get(key)
@@ -339,6 +340,9 @@ def _burned_satoshi(row: Optional[Dict[str, Any]], key: str = "burned") -> int:
         return int(to_satoshi(raw or 0))
     except (TypeError, ValueError):
         return 0
+
+
+_burned_satoshi = burned_satoshi
 
 
 def _observed_uint_hex(row: Optional[Dict], *keys: str) -> Optional[str]:
@@ -513,28 +517,16 @@ def format_block(blk: Optional[Dict], full_tx: bool = False, *, query=None, bc=N
     state_root = observed_state_root(blk)
     tx_root = block_transactions_root(blk)
     receipts_root = block_receipts_root(blk)
-    bloom_raw = blk.get("logs_bloom") or blk.get("logsBloom")
-    if bloom_raw is not None and str(bloom_raw).strip():
-        bloom_s = str(bloom_raw).strip().lower()
-        if not bloom_s.startswith("0x"):
-            bloom_s = "0x" + bloom_s
-        hexpart = bloom_s[2:]
-        if len(hexpart) == 512 and any(c != "0" for c in hexpart):
-            bloom_out = "0x" + hexpart
-        else:
-            bloom_out = logs_bloom([])  # empty observed bloom
-    else:
-        bloom_out = logs_bloom([])
+    used_i = block_gas_used(blk, query=query, bc=bc)
     limit_i = observed_block_gas_limit(blk, protocol_limit=gas_limit)
-    limit = hex(limit_i) if limit_i is not None else None
-    used = _observed_uint_hex(blk, "gas_used", "gasUsed")
+    tx_count = block_transaction_count(blk)
     return {
         "number": hex(number) if number is not None else None,
         "hash": observed_block_hash(blk=blk),
         "parentHash": observed_parent_hash(blk),
         "nonce": observed_block_nonce(blk),
         "sha3Uncles": block_sha3_uncles(blk),
-        "logsBloom": bloom_out,
+        "logsBloom": block_logs_bloom(blk, query=query, bc=bc),
         "transactionsRoot": tx_root,
         "stateRoot": state_root,
         "receiptsRoot": receipts_root,
@@ -543,13 +535,13 @@ def format_block(blk: Optional[Dict], full_tx: bool = False, *, query=None, bc=N
         "totalDifficulty": "0x0",
         "extraData": block_extra_data(blk),
         "size": observed_block_size(blk),
-        "gasLimit": limit,
-        "gasUsed": used,
+        "gasLimit": hex(limit_i) if limit_i is not None else None,
+        "gasUsed": hex(used_i) if used_i is not None else None,
         "timestamp": observed_block_timestamp(blk),
         "uncles": block_uncle_hashes(blk),
         "transactions": txs if full_tx else tx_hashes,
-        "totalBurned": _burned_satoshi(blk, "total_burned"),
-        "txCount": blk.get("tx_count", len(tx_hashes)),
+        "totalBurned": burned_satoshi(blk, "total_burned"),
+        "txCount": tx_count,
     }
 
 
@@ -570,7 +562,7 @@ def format_tx(tx: Optional[Dict]) -> Optional[Dict]:
         "nonce": _observed_uint_hex(tx, "nonce"),
         "input": observed_tx_input(tx),
         "type": _observed_uint_hex(tx, "type"),
-        "burned": _burned_satoshi(tx, "burned"),
+        "burned": burned_satoshi(tx, "burned"),
     }
 
 
@@ -679,6 +671,183 @@ def block_uncle_hashes(blk: Optional[Dict[str, Any]]) -> List[str]:
         if h:
             hashes.append(h)
     return hashes
+
+
+def block_transaction_count(blk: Optional[Dict[str, Any]]) -> Optional[int]:
+    """Tx count for an observed block. None if the listing was not loaded."""
+    if not isinstance(blk, dict) or not blk:
+        return None
+    txs = blk.get("transactions")
+    if isinstance(txs, list):
+        return len(txs)
+    if "tx_count" in blk and blk.get("tx_count") is not None:
+        try:
+            return int(blk.get("tx_count"))
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def format_block_tx_count(blk: Optional[Dict[str, Any]]) -> Optional[str]:
+    n = block_transaction_count(blk)
+    return hex(n) if n is not None else None
+
+
+def format_uncle_count(blk: Optional[Dict[str, Any]]) -> Optional[str]:
+    if not isinstance(blk, dict) or not blk:
+        return None
+    return hex(len(block_uncle_hashes(blk)))
+
+
+def _rpc_index(raw: Any) -> Optional[int]:
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return int(raw)
+    s = str(raw if raw is not None else "0").strip() or "0"
+    try:
+        return int(s, 16) if s.startswith(("0x", "0X")) else int(s)
+    except (TypeError, ValueError):
+        return None
+
+
+def format_uncle_by_index(
+    blk: Optional[Dict[str, Any]],
+    index: Any,
+    *,
+    query=None,
+    bc=None,
+) -> Optional[Dict[str, Any]]:
+    """Uncle header at index, or None.
+
+    Missing parent block, out-of-range index, or a hash-only uncle without a
+    stored header → JSON null. Never invent a block object from a hash.
+    """
+    if not isinstance(blk, dict) or not blk:
+        return None
+    idx = _rpc_index(index)
+    if idx is None or idx < 0:
+        return None
+    uncles = blk.get("uncles") or []
+    if not isinstance(uncles, list) or idx >= len(uncles):
+        return None
+    entry = uncles[idx]
+    if isinstance(entry, dict) and (
+        entry.get("height") is not None
+        or entry.get("parent_hash")
+        or entry.get("transactions") is not None
+        or entry.get("state_root")
+        or entry.get("miner")
+        or entry.get("proposer")
+    ):
+        return format_block(entry, False, query=query, bc=bc)
+    if isinstance(entry, dict):
+        uncle_hash = str(entry.get("hash") or entry.get("block_hash") or "")
+    else:
+        uncle_hash = str(entry or "")
+    if not uncle_hash:
+        return None
+    src = query if query is not None else bc
+    if src is None:
+        return None
+    get_block = getattr(src, "get_block", None)
+    if not callable(get_block):
+        return None
+    try:
+        found = get_block(BlockQuery(block_hash=str(uncle_hash)))
+    except TypeError:
+        try:
+            found = get_block(uncle_hash)
+        except Exception:
+            return None
+    except Exception:
+        return None
+    if not isinstance(found, dict) or not found:
+        return None
+    return format_block(found, False, query=query, bc=bc)
+
+
+def _logs_for_block(height: int, query=None, bc=None) -> List[Dict[str, Any]]:
+    """Load raw EVM log rows for one height via QueryFacadePort (ADR 0011)."""
+    facade = query
+    if facade is not None and hasattr(facade, "get_evm_logs_by_block"):
+        rows = facade.get_evm_logs_by_block(int(height))
+        return list(rows) if rows else []
+    if bc is not None:
+        qf = getattr(bc, "query_facade", None)
+        if qf is not None and hasattr(qf, "get_evm_logs_by_block"):
+            rows = qf.get_evm_logs_by_block(int(height))
+            return list(rows) if rows else []
+    return []
+
+
+def _block_height(blk: Dict[str, Any]) -> int:
+    height = blk.get("height", blk.get("block_height"))
+    if height is not None:
+        try:
+            return int(height)
+        except (TypeError, ValueError):
+            return 0
+    num = blk.get("number")
+    if isinstance(num, str) and num.startswith(("0x", "0X")):
+        try:
+            return int(num, 16)
+        except ValueError:
+            return 0
+    if num is not None:
+        try:
+            return int(num)
+        except (TypeError, ValueError):
+            return 0
+    return 0
+
+
+def block_logs_bloom(blk: Dict[str, Any], query=None, bc=None) -> str:
+    """Yellow Paper block logsBloom from stored header or reconstructed logs."""
+    stored = blk.get("logsBloom") or blk.get("logs_bloom")
+    if stored:
+        s = str(stored).strip().lower()
+        hexpart = s[2:] if s.startswith("0x") else s
+        if len(hexpart) == 512 and any(c != "0" for c in hexpart):
+            return "0x" + hexpart
+    return logs_bloom(_logs_for_block(_block_height(blk), query=query, bc=bc))
+
+
+def _sum_block_tx_gas(blk: Dict[str, Any], query=None, bc=None) -> Optional[int]:
+    """Sum gas_used of every tx in block list order. None if any slot is unobserved."""
+    txs = blk.get("transactions")
+    if not isinstance(txs, list) or not txs:
+        return None
+    total = 0
+    for entry in txs[:10_000]:
+        parsed = _tx_entry_hash_and_gas(entry, query=query, bc=bc)
+        if parsed is None:
+            return None
+        total += parsed[1]
+    return total
+
+
+def block_gas_used(blk: Optional[Dict[str, Any]], query=None, bc=None) -> Optional[int]:
+    """Block gasUsed: reconstructed from observed tx gas, else stored header.
+
+    Incomplete lists do not invent a total. An observed empty tx list with no
+    stored header is 0. Missing both is None — never a fake empty-block 0x0.
+    """
+    if not blk:
+        return None
+    reconstructed = _sum_block_tx_gas(blk, query=query, bc=bc)
+    if reconstructed is not None:
+        return reconstructed
+    stored = blk.get("gas_used")
+    if stored is not None:
+        try:
+            return max(0, int(stored))
+        except (TypeError, ValueError):
+            return None
+    txs = blk.get("transactions")
+    if isinstance(txs, list) and not txs:
+        return 0
+    return None
 
 
 def block_sha3_uncles(blk: Dict[str, Any]) -> str:
@@ -842,7 +1011,7 @@ def format_receipt(tx: Optional[Dict], bc=None, query=None) -> Optional[Dict]:
         "status": observed_receipt_status(tx),
         "type": _observed_uint_hex(tx, "type"),
         "effectiveGasPrice": _observed_uint_hex(tx, "gas_price", "gasPrice"),
-        "burned": _burned_satoshi(tx, "burned"),
+        "burned": burned_satoshi(tx, "burned"),
     }
 
 
@@ -1005,7 +1174,7 @@ def format_fee_history(
                 blk = None
         if not isinstance(blk, dict):
             continue
-        used = observed_uint(blk, "gas_used", "gasUsed")
+        used = block_gas_used(blk, query=query)
         limit = observed_block_gas_limit(blk, protocol_limit=protocol)
         if used is None or limit is None or limit <= 0:
             continue

@@ -578,6 +578,16 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
                 errors.append("receipt cumulativeGasUsed must not copy gasUsed")
             if '"transactionIndex": hex(int(tx_index)),' in eth_fmt_py:
                 errors.append("receipt transactionIndex must be null when unobserved")
+            if "def burned_satoshi" not in eth_fmt_py:
+                errors.append("eth_format must emit burn as satoshi integers")
+            if "def block_gas_used" not in eth_fmt_py:
+                errors.append("block_gas_used must not invent 0 when header gas is missing")
+            if "def block_logs_bloom" not in eth_fmt_py:
+                errors.append("eth_format must expose block_logs_bloom from stored/reconstructed logs")
+            if "def format_uncle_by_index" not in eth_fmt_py:
+                errors.append("eth_format must not invent uncle headers from bare hashes")
+            if '"totalBurned": blk.get("total_burned", 0.0)' in eth_fmt_py:
+                errors.append("format_block totalBurned must not be an IEEE float default")
         if '"bridge_relayer_live": bool(cfg.bridge_enabled)' in http_py:
             errors.append("bridge_relayer_live must not equal bridge_enabled alone")
         if '"bridge_rust_binary_healthy"' not in http_py:

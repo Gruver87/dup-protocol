@@ -178,6 +178,27 @@ def test_format_eth_log_no_invented_indexes():
     assert with_gas["gasUsed"] == hex(21000)
 
 
+def test_block_gas_used_and_uncle_index_honesty():
+    from api.eth_format import (
+        block_gas_used,
+        format_block,
+        format_block_tx_count,
+        format_uncle_by_index,
+        format_uncle_count,
+    )
+
+    assert block_gas_used({"transactions": []}) == 0
+    assert block_gas_used({"transactions": ["0xab"]}) is None
+    assert block_gas_used({"gas_used": 42, "transactions": ["0xab"]}) == 42
+    assert format_block_tx_count({"height": 1}) is None
+    assert format_block_tx_count({"transactions": [1, 2]}) == hex(2)
+    assert format_uncle_count({"transactions": []}) == hex(0)
+    assert format_uncle_by_index({"uncles": ["0x" + "ab" * 32]}, 0) is None
+    missing_listing = format_block({"height": 9})
+    assert missing_listing["txCount"] is None
+    assert missing_listing["gasUsed"] is None
+
+
 def test_multisig_amount_satoshi_and_execution_failed():
     from features.multisig import MultiSigWallet
 
