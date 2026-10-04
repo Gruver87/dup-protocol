@@ -603,7 +603,7 @@ class RocksChainStore:
     # ── accounts / state ──────────────────────────────────────────────────
 
     def _load_account(self, address: str) -> Dict[str, Any]:
-        from runtime.amount import account_satoshi, dual_write_balance
+        from runtime.amount import account_satoshi, dual_write_balance, from_satoshi_float
 
         raw = self._raw_get(kc.key_account(address))
         if not raw:
@@ -625,8 +625,9 @@ class RocksChainStore:
         if row.get("balance_satoshi") is None:
             dual_write_balance(row, row.get("balance", 0) or 0)
         else:
-            row["balance_satoshi"] = account_satoshi(row)
-            row["balance"] = float(row.get("balance", 0) or 0)
+            sat = account_satoshi(row)
+            row["balance_satoshi"] = sat
+            row["balance"] = from_satoshi_float(sat)
         return row
 
     def _save_account_row(self, row: Dict[str, Any]) -> None:
@@ -714,7 +715,7 @@ class RocksChainStore:
             self._apply_balance_delta(address, delta)
             return self.get_balance(address)
 
-    def set_balance(self, address: str, balance: float) -> None:
+    def set_balance(self, address: str, balance: int) -> None:
         from runtime.amount import dual_write_balance, from_satoshi_float, to_satoshi
 
         if isinstance(balance, bool):
@@ -779,7 +780,7 @@ class RocksChainStore:
         Prefers ``RocksEngine.get_account_rows``; falls back to ``_load_account``.
         Applies satoshi dual-write backfill like ``_load_account``.
         """
-        from runtime.amount import account_satoshi, dual_write_balance
+        from runtime.amount import account_satoshi, dual_write_balance, from_satoshi_float
         from storage.database import Database as SqliteDatabase
 
         addrs: List[str] = []
@@ -810,8 +811,9 @@ class RocksChainStore:
             if row.get("balance_satoshi") is None:
                 dual_write_balance(row, row.get("balance", 0) or 0)
             else:
-                row["balance_satoshi"] = account_satoshi(row)
-                row["balance"] = float(row.get("balance", 0) or 0)
+                sat = account_satoshi(row)
+                row["balance_satoshi"] = sat
+                row["balance"] = from_satoshi_float(sat)
             if row.get("code") is None:
                 row["code"] = ""
             if row.get("storage") is None:
@@ -833,7 +835,7 @@ class RocksChainStore:
         Prefers ``RocksEngine.commit_writeback_bundle`` (single WriteBatch) when
         outside ``atomic()``; falls back to ``_save_account_row`` / dual log puts.
         """
-        from runtime.amount import dual_write_balance, from_satoshi_float
+        from runtime.amount import dual_write_balance, writeback_balance_abs
         from storage.database import Database as SqliteDatabase
 
         accounts = dict(accounts or {})
@@ -852,10 +854,8 @@ class RocksChainStore:
                 addr = SqliteDatabase._normalize_address(str(addr_raw))
                 merged = self._load_account(addr)
                 row = dict(row_in or {})
-                if row.get("balance_satoshi") is not None:
-                    dual_write_balance(merged, from_satoshi_float(int(row["balance_satoshi"])))
-                elif row.get("balance") is not None:
-                    dual_write_balance(merged, float(row.get("balance") or 0))
+                if row.get("balance_satoshi") is not None or row.get("balance") is not None:
+                    dual_write_balance(merged, writeback_balance_abs(row))
                 if "nonce" in row:
                     merged["nonce"] = int(row.get("nonce") or 0)
                 if "code" in row:

@@ -2049,6 +2049,10 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("RocksEngine must expose commit_writeback_bundle (v1.3.63)")
         if "def commit_writeback_bundle" not in rocks_py:
             errors.append("rocks_store must define commit_writeback_bundle (v1.3.63)")
+        if "writeback_balance_abs" not in rocks_py:
+            errors.append("rocks_store commit_writeback must use writeback_balance_abs")
+        if 'row["balance"] = float(' in rocks_py:
+            errors.append("rocks_store must not rehydrate ABS via float(balance) when satoshi exists")
         if "commit_writeback_bundle" not in (
             ROOT / "execution" / "evm_adapter.py"
         ).read_text(encoding="utf-8"):
@@ -4352,10 +4356,29 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         add_src = inspect.getsource(Blockchain.add_block)
         if "record_state_root_mismatch failed" not in add_src:
             errors.append("Blockchain.add_block must log mismatch audit failures")
+        tx_from = inspect.getsource(
+            __import__("core.blockchain", fromlist=["Transaction"]).Transaction.from_dict
+        )
+        if "parse_rpc_value_abs" not in tx_from:
+            errors.append("Transaction.from_dict must parse value via parse_rpc_value_abs")
+        if "value=float(" in tx_from:
+            errors.append("Transaction.from_dict must not float() value")
     except Exception as exc:
         errors.append(f"fail-loud blockchain inspect failed: {exc}")
     try:
+        main_py = (ROOT / "main.py").read_text(encoding="utf-8")
+        if "self.db.set_balance(addr, float(amount))" in main_py:
+            errors.append("Node genesis alloc must not float() balances")
+        if "self.db.set_balance(addr, int(amount))" not in main_py:
+            errors.append("Node genesis alloc must mint integer ABS amounts")
+    except Exception as exc:
+        errors.append(f"fail-loud main.py inspect failed: {exc}")
+    try:
         http_py = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+        if "parse_rpc_value_abs" not in http_py:
+            errors.append("JSON-RPC/REST money must use parse_rpc_value_abs (no IEEE wei divide)")
+        if "wei / 10**18" in http_py:
+            errors.append("HTTP _parse_tx_value must not IEEE-divide wei by 10**18")
         if "peer_probe_error" not in http_py:
             errors.append("GET /chain/state-root/status must expose peer_probe_error")
         if "peer_probe_error" not in http_py or "state consistency harness peer probe failed" not in http_py:

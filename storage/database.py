@@ -1952,18 +1952,14 @@ class Database:
     # ── Аккаунты / балансы ───────────────────────────────────────────────────
 
     def get_balance(self, address: str) -> float:
-        from runtime.amount import from_satoshi_float
+        from runtime.amount import account_balance_abs
 
         with self.lock:
             row = self.conn.execute(
                 "SELECT balance, balance_satoshi FROM accounts WHERE address=?",
                 (address,),
             ).fetchone()
-            if not row:
-                return 0.0
-            if row["balance_satoshi"] is not None:
-                return from_satoshi_float(int(row["balance_satoshi"]))
-            return float(row["balance"]) if row["balance"] is not None else 0.0
+            return account_balance_abs(dict(row) if row else None)
 
     def get_balance_satoshi(self, address: str) -> int:
         from runtime.amount import account_satoshi
@@ -2005,9 +2001,11 @@ class Database:
             self.conn.commit()
             return self.get_balance(address)
 
-    def set_balance(self, address: str, balance: float) -> None:
+    def set_balance(self, address: str, balance: int) -> None:
         from runtime.amount import dual_write_balance
 
+        if isinstance(balance, bool):
+            raise TypeError("bool is not an amount")
         payload: dict = {}
         dual_write_balance(payload, balance)
         with self.lock:

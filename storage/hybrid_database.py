@@ -372,13 +372,13 @@ class HybridDatabase:
     def get_account(self, address: str) -> Optional[Dict]:
         return self._core.get_account(address)
 
-    def update_balance(self, address: str, delta: float) -> float:
+    def update_balance(self, address: str, delta: int) -> float:
         return self._core.update_balance(address, delta)
 
-    def set_balance(self, address: str, balance: float) -> None:
+    def set_balance(self, address: str, balance: int) -> None:
         self._core.set_balance(address, balance)
 
-    def balance_delta(self, address: str, delta: float) -> None:
+    def balance_delta(self, address: str, delta: int) -> None:
         self._core.balance_delta(address, delta)
 
     def balance_delta_satoshi(self, address: str, delta_sat: int) -> None:
@@ -397,7 +397,7 @@ class HybridDatabase:
     def save_account(
         self,
         address: str,
-        balance: float = 0.0,
+        balance: int = 0,
         nonce: int = 0,
         code: str | None = None,
         storage: str | None = None,

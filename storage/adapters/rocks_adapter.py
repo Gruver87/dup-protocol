@@ -653,9 +653,11 @@ class RocksDBStorageAdapter:
         except Exception as exc:
             raise map_engine_error(exc) from exc
 
-    def balance_delta(self, address: str, delta: float) -> None:
+    def balance_delta(self, address: str, delta: int) -> None:
+        if isinstance(delta, bool):
+            raise TypeError("bool is not an amount")
         try:
-            self._store.balance_delta(str(address or ""), float(delta))
+            self._store.balance_delta(str(address or ""), delta)
         except Exception as exc:
             raise map_engine_error(exc) from exc
 
@@ -665,15 +667,19 @@ class RocksDBStorageAdapter:
         except Exception as exc:
             raise map_engine_error(exc) from exc
 
-    def update_balance(self, address: str, delta: float) -> float:
+    def update_balance(self, address: str, delta: int) -> float:
+        if isinstance(delta, bool):
+            raise TypeError("bool is not an amount")
         try:
-            return float(self._store.update_balance(str(address or ""), float(delta)))
+            return float(self._store.update_balance(str(address or ""), delta))
         except Exception as exc:
             raise map_engine_error(exc) from exc
 
-    def set_balance(self, address: str, balance: float) -> None:
+    def set_balance(self, address: str, balance: int) -> None:
+        if isinstance(balance, bool):
+            raise TypeError("bool is not an amount")
         try:
-            self._store.set_balance(str(address or ""), float(balance))
+            self._store.set_balance(str(address or ""), balance)
         except Exception as exc:
             raise map_engine_error(exc) from exc
 
@@ -696,15 +702,17 @@ class RocksDBStorageAdapter:
     def save_account(
         self,
         address: str,
-        balance: float = 0.0,
+        balance: int = 0,
         nonce: int = 0,
         code: Any = None,
         storage: Any = None,
     ) -> None:
+        if isinstance(balance, bool):
+            raise TypeError("bool is not an amount")
         try:
             self._store.save_account(
                 str(address or ""),
-                balance=float(balance),
+                balance=balance,
                 nonce=int(nonce),
                 code=code,
                 storage=storage,

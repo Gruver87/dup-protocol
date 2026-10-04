@@ -161,7 +161,18 @@ class Transaction:
 
     @classmethod
     def from_dict(cls, d: Dict) -> "Transaction":
-        from runtime.amount import from_satoshi_float, to_satoshi
+        from runtime.amount import from_satoshi_float, parse_rpc_value_abs, to_satoshi
+
+        # Refuse invent gas=21000 on deserialize — wire/storage must carry gas.
+        raw_gas = d.get("gas", d.get("gas_limit", d.get("gasLimit")))
+        if raw_gas is None or raw_gas == "":
+            raise ValueError("gas_required")
+        try:
+            gas = int(raw_gas)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"gas_required: {exc}") from exc
+        if gas <= 0:
+            raise ValueError("gas_required")
 
         amount_satoshi = None
         raw_sat = d.get("amount_satoshi", d.get("value_satoshi"))
@@ -173,26 +184,18 @@ class Transaction:
             if amount_satoshi < 0:
                 raise ValueError("value_negative")
             value = float(from_satoshi_float(amount_satoshi))
-            if "value" in d and d.get("value") is not None:
-                abs_sat = int(to_satoshi(float(d.get("value"))))
+            # Dual-write mismatch refuse when ABS float also present.
+            if "value" in d and d.get("value") is not None and d.get("value") != "":
+                abs_sat = int(to_satoshi(parse_rpc_value_abs(d.get("value"), field="value")))
                 if abs_sat != amount_satoshi:
                     raise ValueError("value_satoshi_mismatch")
-            if "amount" in d and d.get("amount") is not None and "value" not in d:
-                abs_sat = int(to_satoshi(float(d.get("amount"))))
+            elif "amount" in d and d.get("amount") is not None and d.get("amount") != "":
+                abs_sat = int(to_satoshi(parse_rpc_value_abs(d.get("amount"), field="value")))
                 if abs_sat != amount_satoshi:
                     raise ValueError("value_satoshi_mismatch")
         else:
-            value = float(d.get("value", d.get("amount", 0)))
-        # Refuse invent gas=21000 on deserialize — wire/storage must carry gas.
-        raw_gas = d.get("gas", d.get("gas_limit", d.get("gasLimit")))
-        if raw_gas is None or raw_gas == "":
-            raise ValueError("gas_required")
-        try:
-            gas = int(raw_gas)
-        except (TypeError, ValueError) as exc:
-            raise ValueError(f"gas_required: {exc}") from exc
-        if gas <= 0:
-            raise ValueError("gas_required")
+            value = parse_rpc_value_abs(d.get("value", d.get("amount", 0)), field="value")
+
         tx = cls(
             from_addr=d.get("from_addr", d.get("from", "")),
             to_addr=d.get("to_addr", d.get("to", "")),
@@ -206,8 +209,13 @@ class Transaction:
             timestamp=int(d.get("timestamp", 0)),
             amount_satoshi=amount_satoshi,
         )
-        tx.fee = float(d.get("fee", 0.0))
-        tx.burned = float(d.get("burned", 0.0))
+        if d.get("gas_used") is not None and d.get("gas_used") != "":
+            try:
+                tx.gas_used = int(d["gas_used"])
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"invalid gas_used: {exc}") from exc
+        tx.fee = parse_rpc_value_abs(d.get("fee", 0.0), field="fee")
+        tx.burned = parse_rpc_value_abs(d.get("burned", 0.0), field="burned")
         tx.block_height = int(d.get("block_height", 0))
         if "status" in d and d.get("status") is not None:
             tx.status = int(d.get("status"))
@@ -478,10 +486,11 @@ class Blockchain:
             founder = self._resolve_genesis_founder()
             alloc = genesis_balances(founder or None)
             initials = getattr(self.config, "founder_initials", "D.U.P.")
-            total_minted = 0.0
+            total_minted = 0
             for addr, amount in alloc.items():
-                self.storage.set_balance(addr, float(amount))
-                total_minted += amount
+                amount_abs = int(amount)
+                self.storage.set_balance(addr, amount_abs)
+                total_minted += amount_abs
             state_root = self._compute_state_root_from_db()
             genesis = Block(
                 height=0,
@@ -968,7 +977,7 @@ class Blockchain:
                 founder = self._resolve_genesis_founder()
         alloc = genesis_balances(founder or None)
         for addr, amount in alloc.items():
-            self.storage.set_balance(addr, float(amount))
+            self.storage.set_balance(addr, int(amount))
         try:
             self.storage.set_meta("genesis_founder", founder or "")
             self.storage.set_meta("tokenomics", get_tokenomics_summary(founder or None))

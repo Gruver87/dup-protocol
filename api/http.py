@@ -9060,13 +9060,8 @@ def _tx_at_block_index(bc, blk: Optional[Dict], index: int) -> Optional[Dict]:
 
 
 def _parse_tx_value(value_raw) -> float:
-    """ABS amount: plain float, or 0x wei when value looks like Ethereum wei."""
-    if isinstance(value_raw, str):
-        if value_raw.startswith("0x"):
-            wei = int(value_raw, 16)
-            return wei / 10**18 if wei >= 10**15 else float(wei)
-        return float(value_raw)
-    return float(value_raw)
+    """ABS amount via satoshi-quantized RPC parse (no IEEE wei÷1e18)."""
+    return parse_rpc_value_abs(value_raw, field="value")
 
 
 def _build_testnet_mesh(p2p, bc, cfg) -> Dict:

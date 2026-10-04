@@ -1682,7 +1682,7 @@ class NodeOrchestrator:
                 for addr, amount in alloc.items():
                     cur = self.db.get_balance(addr)
                     if cur < amount * 0.99:
-                        self.db.set_balance(addr, float(amount))
+                        self.db.set_balance(addr, int(amount))
                 self.db.set_meta("genesis_alloc_applied", True)
                 self.db.set_meta("tokenomics", get_tokenomics_summary(founder or None))
                 print(
@@ -1693,7 +1693,7 @@ class NodeOrchestrator:
             expected = int(genesis_balances(founder or None).get(founder, FOUNDER_AMOUNT_ABS))
             cur = self.db.get_balance(founder)
             if cur < expected * 0.99:
-                self.db.set_balance(founder, float(expected))
+                self.db.set_balance(founder, int(expected))
                 print(f"[Node] Founder wallet synced: {expected:,.0f} ABS -> {founder}")
         except Exception as exc:
             print(f"[Node] Genesis allocation note: {exc}")
