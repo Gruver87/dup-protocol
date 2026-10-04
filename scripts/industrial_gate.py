@@ -530,6 +530,16 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("/health/ready peer_count probe failure must fail-closed")
         if 'p2p_fallback' not in http_py or "SyncEngine missing" not in http_py:
             errors.append("p2p_fallback sync status must fail-closed when SyncEngine missing")
+        if '"enabled": False' not in http_py or '"sync_engine_missing": True' not in http_py:
+            errors.append("p2p_fallback must set enabled=false and sync_engine_missing=true")
+        native_py = (ROOT / "crypto" / "native.py").read_text(encoding="utf-8", errors="replace")
+        if "Exceptions must not paint as invalid signature" not in native_py:
+            errors.append("native secp verify must return None on probe failure (not False)")
+        txv_py = (ROOT / "blockchain" / "tx_validator.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "signature verify unavailable" not in txv_py:
+            errors.append("tx_validator must not paint probe failure as Invalid signature")
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"

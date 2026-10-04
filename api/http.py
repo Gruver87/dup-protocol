@@ -9242,10 +9242,11 @@ def _build_sync_status(se, p2p, bc, cfg) -> Dict:
             )
         return status
 
-    # No SyncEngine: fail-closed wire-probe fields (never claim a completed probe).
+    # No SyncEngine: fail-closed — do not paint enabled:true without SyncEngine.
     # With peers, do not claim synced — SyncEngine missing means we cannot prove tip.
     return {
-        "enabled": True,
+        "enabled": False,
+        "sync_engine_missing": True,
         "source": "p2p_fallback",
         "syncing": peer_count > 0,
         "local_height": local_h,

@@ -2164,6 +2164,11 @@ def state_root_accumulator_root_from_blobs(blobs: List[bytes]) -> str:
 def verify_secp256k1_sha256(
     message: bytes, signature_der: bytes, public_key_xy: bytes
 ) -> Optional[bool]:
+    """Return True/False from native verify, or None when unavailable.
+
+    Exceptions must not paint as invalid signature (False) — that hides
+    probe/native failure as a cryptographic reject.
+    """
     if _native is None:
         return None
     try:
@@ -2171,12 +2176,13 @@ def verify_secp256k1_sha256(
             message, signature_der, public_key_xy
         ))
     except Exception:
-        return False
+        return None
 
 
 def verify_secp256k1_sha256_batch(
     items: List[tuple[bytes, bytes, bytes]]
 ) -> Optional[List[bool]]:
+    """Batch verify; None when native missing or the batch probe fails."""
     if _native is None:
         return None
     try:
@@ -2185,7 +2191,7 @@ def verify_secp256k1_sha256_batch(
             for result in _native.verify_secp256k1_sha256_batch(items)
         ]
     except Exception:
-        return [False for _ in items]
+        return None
 
 
 def consensus_stake_weighted_proposer(
