@@ -242,15 +242,19 @@ class PoolLockManager:
         votes = pools[target_addr].setdefault("dao_votes", {})
         votes[voter] = True
 
-        total_validators = 1
+        # Do not invent total_validators=1 when the set is empty / missing.
+        total_validators = 0
         if validator_registry:
             if hasattr(validator_registry, "validators"):
-                total_validators = max(1, len(validator_registry.validators))
+                total_validators = len(validator_registry.validators)
             elif hasattr(validator_registry, "get_all"):
-                total_validators = max(1, len(validator_registry.get_all()))
+                total_validators = len(validator_registry.get_all())
 
         vote_count = len(votes)
-        quorum = vote_count / total_validators >= DAO_VOTE_THRESHOLD
+        if total_validators <= 0:
+            quorum = False
+        else:
+            quorum = vote_count / total_validators >= DAO_VOTE_THRESHOLD
         if quorum:
             pools[target_addr]["dao_unlocked"] = True
             pools[target_addr]["locked"] = False

@@ -2,17 +2,39 @@
 """AI VALIDATOR ENGINE — simulation / research surface (not consensus-wired)."""
 
 import random
-from typing import Dict, List, Any
 from dataclasses import dataclass
+from typing import Dict, List, Any
+from runtime.amount import from_satoshi_float, to_satoshi
+
+HONESTY = (
+    "ai_validator sprout: simulation_only — not consensus-wired / not mainnet / "
+    "prod feature_ai_validator=false"
+)
+
 
 @dataclass
 class Validator:
     address: str
     stake: float
+    stake_satoshi: int = 0
     performance: float = 0.5
     reliability: float = 0.5
     rewards: float = 0
+    rewards_satoshi: int = 0
     slashed: bool = False
+
+    def __post_init__(self) -> None:
+        if self.stake_satoshi:
+            self.stake_satoshi = max(0, int(self.stake_satoshi))
+            self.stake = from_satoshi_float(self.stake_satoshi)
+        else:
+            self.stake_satoshi = int(to_satoshi(self.stake or 0))
+            self.stake = from_satoshi_float(self.stake_satoshi)
+        if self.rewards_satoshi:
+            self.rewards_satoshi = max(0, int(self.rewards_satoshi))
+            self.rewards = from_satoshi_float(self.rewards_satoshi)
+        else:
+            self.rewards_satoshi = int(to_satoshi(self.rewards or 0))
 
 class AIValidatorEngine:
     """Heuristic validator scoring — simulation_only, not bound to block production."""
@@ -21,8 +43,12 @@ class AIValidatorEngine:
         self.validators: Dict[str, Validator] = {}
         self.history: List[Dict] = []
     
-    def add_validator(self, address: str, stake: float) -> None:
-        self.validators[address] = Validator(address, stake)
+    def add_validator(self, address: str, stake: float = 0.0, *, stake_satoshi: int | None = None) -> None:
+        self.validators[address] = Validator(
+            address=address,
+            stake=float(stake or 0),
+            stake_satoshi=int(stake_satoshi) if stake_satoshi is not None else 0,
+        )
     
     def calculate_score(self, validator: Validator) -> float:
         """Расчёт общей оценки валидатора"""
@@ -50,7 +76,9 @@ class AIValidatorEngine:
             val = self.validators[address]
             if success:
                 val.performance = min(1.0, val.performance + 0.05)
-                val.rewards += 100
+                reward_sat = int(to_satoshi(100))
+                val.rewards_satoshi += reward_sat
+                val.rewards = from_satoshi_float(val.rewards_satoshi)
             else:
                 val.performance = max(0, val.performance - 0.1)
     
@@ -93,14 +121,22 @@ class AIValidatorEngine:
         }
     
     def get_stats(self) -> Dict:
+        n = len(self.validators)
+        total_stake_sat = sum(v.stake_satoshi for v in self.validators.values())
+        total_rewards_sat = sum(v.rewards_satoshi for v in self.validators.values())
         return {
-            "validators": len(self.validators),
-            "total_stake": sum(v.stake for v in self.validators.values()),
-            "avg_performance": sum(v.performance for v in self.validators.values()) / max(1, len(self.validators)),
-            "total_rewards": sum(v.rewards for v in self.validators.values()),
+            "validators": n,
+            "total_stake": from_satoshi_float(total_stake_sat),
+            "total_stake_satoshi": int(total_stake_sat),
+            "avg_performance": (
+                sum(v.performance for v in self.validators.values()) / n if n else 0.0
+            ),
+            "total_rewards": from_satoshi_float(total_rewards_sat),
+            "total_rewards_satoshi": int(total_rewards_sat),
             "simulation_only": True,
             "consensus_wired": False,
             "model_bound": False,
+            "honesty": HONESTY,
             "note": "AI validator is a research/sim surface; not used for block proposer selection",
         }
 

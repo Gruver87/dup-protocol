@@ -553,14 +553,21 @@ class NFTMarketplace:
 
     def get_stats(self) -> Dict:
         with self.lock:
+            from runtime.amount import from_satoshi_float, to_satoshi
+
             persisted = bool(self.db and hasattr(self.db, "get_nft_tokens"))
             balance_bound = self._has_balance_backend()
+            total_sat = sum(
+                int(t.price_satoshi) for t in self.tokens.values() if t.for_sale
+            )
             return {
                 "total_tokens": len(self.tokens),
                 "on_sale": sum(1 for t in self.tokens.values() if t.for_sale),
                 "unique_owners": len({t.owner for t in self.tokens.values()}),
-                "total_value": sum(t.price for t in self.tokens.values() if t.for_sale),
+                "total_value": float(from_satoshi_float(total_sat)),
+                "total_value_satoshi": int(total_sat),
                 "mint_fee": self.MINT_FEE,
+                "mint_fee_satoshi": int(to_satoshi(self.MINT_FEE)),
                 "royalty_pct": self.ROYALTY * 100,
                 "total_sales": len(self.sales_history),
                 "total_offers": len(self.offers),

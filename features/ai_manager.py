@@ -1,9 +1,23 @@
-"""AI Agent Manager — trading agents with SQLite persistence (Wave 43)."""
+"""AI Agent Manager — trading agents with SQLite persistence (Wave 43).
+
+Honesty: ADR 0016 sprout (``feature_ai_agents``). Prod mesh keeps the flag false.
+Not consensus-wired. Not wallet custody. Money prefers integer satoshi.
+"""
 
 from crypto import native
+import logging
 import json
 import time
 from typing import Any, Callable, Dict, List, Optional
+
+from runtime.amount import from_satoshi_float, to_satoshi
+
+logger = logging.getLogger(__name__)
+
+HONESTY = (
+    "ai_agents sprout: lab/dev-test only — not consensus / not mainnet / "
+    "prod feature_ai_agents=false"
+)
 
 
 class AIAgent:
@@ -14,6 +28,7 @@ class AIAgent:
                  last_action: int = None,
                  performance_score: float = 0.0,
                  total_profit: float = 0.0,
+                 total_profit_satoshi: Optional[int] = None,
                  actions_count: int = 0,
                  strategy: Dict = None,
                  memory: List[Dict] = None):
@@ -25,7 +40,6 @@ class AIAgent:
         self.created_at = created_at if created_at is not None else int(time.time())
         self.last_action = last_action if last_action is not None else self.created_at
         self.performance_score = performance_score
-        self.total_profit = total_profit
         self.actions_count = actions_count
         self.strategy = strategy or {
             "type": "arbitrage",
@@ -33,6 +47,12 @@ class AIAgent:
             "max_position": 1000,
         }
         self.memory: List[Dict] = list(memory or [])
+        if total_profit_satoshi is not None:
+            self.total_profit_satoshi = max(0, int(total_profit_satoshi))
+            self.total_profit = from_satoshi_float(self.total_profit_satoshi)
+        else:
+            self.total_profit_satoshi = int(to_satoshi(total_profit or 0))
+            self.total_profit = from_satoshi_float(self.total_profit_satoshi)
 
     def predict(self, market_data: Dict) -> Dict:
         features = market_data.get("features") or market_data.get("prices", [])
@@ -42,6 +62,7 @@ class AIAgent:
                 "confidence": None,
                 "model_bound": False,
                 "prediction_method": "none",
+                "consensus_wired": False,
             }
         avg = sum(features) / len(features)
         return {
@@ -51,12 +72,17 @@ class AIAgent:
             "model_bound": False,
             "prediction_method": "feature_average",
             "agent_type": self.agent_type,
+            "consensus_wired": False,
         }
 
     def analyze_market(self, data: List[Dict]) -> Dict:
         prices = [d.get("price", 0) for d in data if d.get("price")]
         if len(prices) < 2:
-            return {"trend": "neutral", "confidence": 0}
+            return {
+                "trend": "neutral",
+                "confidence": None,
+                "heuristic": True,
+            }
         trend = (prices[-1] - prices[0]) / prices[0] if prices[0] > 0 else 0
         if trend > 0.05:
             direction = "bullish"
@@ -71,6 +97,9 @@ class AIAgent:
             "trend_strength": abs(trend),
             "recommendation": recommendation,
             "price_change_pct": round(trend * 100, 2),
+            "confidence": None,
+            "heuristic": True,
+            "consensus_wired": False,
         }
 
     def execute_trade(self, trade_type: str, amount: float,
@@ -92,8 +121,13 @@ class AIAgent:
         trade_id = str(execution.get("trade_id") or native.sha256_hex(
             f"{self.agent_id}_{trade_type}_{time.time_ns()}".encode()
         )[:16])
-        pnl = float(execution.get("pnl", 0.0))
-        self.total_profit += pnl
+        pnl_sat = (
+            int(execution["pnl_satoshi"])
+            if execution.get("pnl_satoshi") is not None
+            else int(to_satoshi(execution.get("pnl", 0.0)))
+        )
+        self.total_profit_satoshi = max(0, int(self.total_profit_satoshi) + pnl_sat)
+        self.total_profit = from_satoshi_float(self.total_profit_satoshi)
         self.actions_count += 1
         self.last_action = int(time.time())
         self.performance_score = self.total_profit / max(1, self.actions_count)
@@ -102,7 +136,8 @@ class AIAgent:
             "type": trade_type,
             "amount": amount,
             "price": price,
-            "pnl": pnl,
+            "pnl": from_satoshi_float(pnl_sat),
+            "pnl_satoshi": pnl_sat,
             "venue": execution.get("venue", ""),
             "execution_status": execution.get("status", "filled"),
             "timestamp": int(time.time()),
@@ -121,13 +156,12 @@ class AIAgent:
             "status": self.status,
             "performance_score": round(self.performance_score, 4),
             "total_profit": round(self.total_profit, 4),
+            "total_profit_satoshi": int(self.total_profit_satoshi),
             "actions_count": self.actions_count,
             "created_at": self.created_at,
         }
 
     def to_db(self) -> Dict:
-        from runtime.amount import to_satoshi
-
         return {
             "agent_id": self.agent_id,
             "name": self.name,
@@ -138,7 +172,7 @@ class AIAgent:
             "last_action": self.last_action,
             "performance_score": self.performance_score,
             "total_profit": self.total_profit,
-            "total_profit_satoshi": int(to_satoshi(self.total_profit)),
+            "total_profit_satoshi": int(self.total_profit_satoshi),
             "actions_count": self.actions_count,
             "strategy": self.strategy,
             "memory": self.memory,
@@ -172,6 +206,7 @@ class AIAgentManager:
                 last_action=row.get("last_action"),
                 performance_score=row.get("performance_score", 0),
                 total_profit=row.get("total_profit", 0),
+                total_profit_satoshi=row.get("total_profit_satoshi"),
                 actions_count=row.get("actions_count", 0),
                 strategy=row.get("strategy"),
                 memory=row.get("memory"),
@@ -183,16 +218,24 @@ class AIAgentManager:
             self.db.save_ai_agent(agent.to_db())
 
     def _charge_create_fee(self, owner: str) -> bool:
-        if (
-            not self.db
-            or not hasattr(self.db, "get_balance")
-            or not hasattr(self.db, "update_balance")
-        ):
+        if not self.db or not owner:
             return False
-        if self.db.get_balance(owner) < self.CREATE_FEE:
+        from runtime.amount import apply_store_delta_satoshi
+
+        fee_sat = int(to_satoshi(self.CREATE_FEE))
+        if hasattr(self.db, "get_balance_satoshi"):
+            if int(self.db.get_balance_satoshi(owner) or 0) < fee_sat:
+                return False
+        elif hasattr(self.db, "get_balance"):
+            if self.db.get_balance(owner) < self.CREATE_FEE:
+                return False
+        else:
             return False
-        self.db.update_balance(owner, -self.CREATE_FEE)
-        return True
+        return bool(
+            apply_store_delta_satoshi(
+                self.db, owner, -fee_sat, allow_float_fallback=False
+            )
+        )
 
     def create_agent(self, name: str, owner: str,
                      agent_type: str = "transformer") -> Optional[str]:
@@ -277,6 +320,7 @@ class AIAgentManager:
                 result = dict(result)
                 result["amount_satoshi"] = int(amt_sat)
                 result["price_satoshi"] = int(px_sat)
+                result.setdefault("simulation_only", True)
         return result
 
     def deactivate(self, agent_id: str) -> bool:
@@ -289,16 +333,26 @@ class AIAgentManager:
 
     def get_stats(self) -> Dict:
         active = sum(1 for a in self.agents.values() if a.status == "active")
-        total_profit = sum(a.total_profit for a in self.agents.values())
+        total_profit_sat = sum(
+            int(a.total_profit_satoshi) for a in self.agents.values()
+        )
+        executor_bound = self.trade_executor is not None
         return {
             "total_agents": len(self.agents),
             "active_agents": active,
-            "total_profit": round(total_profit, 4),
+            "total_profit": from_satoshi_float(total_profit_sat),
+            "total_profit_satoshi": int(total_profit_sat),
             "total_trades": sum(a.actions_count for a in self.agents.values()),
             "persisted": bool(self.db),
             "create_fee": self.CREATE_FEE,
+            "create_fee_satoshi": int(to_satoshi(self.CREATE_FEE)),
             "model_bound": False,
-            "executor_bound": False,
-            "operational": False,
-            "note": "agent registry only — no ML model or trade executor bound",
+            "executor_bound": executor_bound,
+            "operational": bool(executor_bound),
+            "consensus_wired": False,
+            "honesty": HONESTY,
+            "note": (
+                "agent registry"
+                + (" + trade executor" if executor_bound else " — no trade executor")
+            ),
         }

@@ -6105,7 +6105,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     stake, stake_sat = _http_stake_abs(body, cfg)
                 except ValueError as exc:
                     self._error(400, str(exc)); return
-                ai.add_validator(address, stake)
+                ai.add_validator(address, stake, stake_satoshi=int(stake_sat))
                 self._json({
                     "registered": address,
                     "stake": stake,
