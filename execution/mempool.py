@@ -88,6 +88,15 @@ class Mempool(_BaseMempool):
             tx_hash = tx.get("hash") or (
                 "0x" + native.sha256_hex(f"{sender}{recipient}{amount}{nonce}".encode())
             )
+            raw_gas = tx.get("gas", tx.get("gas_limit", tx.get("gasLimit")))
+            if raw_gas is None or raw_gas == "":
+                return False
+            try:
+                gas_i = int(raw_gas)
+            except (TypeError, ValueError):
+                return False
+            if gas_i <= 0:
+                return False
             mempool_tx = MempoolTransaction(
                 tx_hash=tx_hash,
                 from_addr=sender,
@@ -95,6 +104,7 @@ class Mempool(_BaseMempool):
                 amount=amount,
                 fee=fee,
                 nonce=nonce,
+                gas=gas_i,
                 timestamp=time.time(),
                 amount_satoshi=int(amount_sat),
             )
@@ -109,6 +119,9 @@ class Mempool(_BaseMempool):
             if _require_wire_satoshi():
                 return False
             amt_sat = int(to_satoshi(tx.amount))
+        gas_obj = int(getattr(tx, "gas", 0) or 0)
+        if gas_obj <= 0:
+            return False
         mempool_tx = MempoolTransaction(
             tx_hash=tx.hash,
             from_addr=tx.sender,
@@ -116,6 +129,7 @@ class Mempool(_BaseMempool):
             amount=tx.amount,
             fee=tx.gas_price,
             nonce=tx.nonce,
+            gas=gas_obj,
             timestamp=time.time(),
             amount_satoshi=amt_sat,
         )

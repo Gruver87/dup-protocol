@@ -40,6 +40,15 @@ class SecureMempool(Mempool):
                 return False, "fee_required"
             if fee <= 0:
                 return False, "fee_required"
+            raw_gas = tx.get("gas", tx.get("gas_limit", tx.get("gasLimit")))
+            if raw_gas is None or raw_gas == "":
+                return False, "gas_required"
+            try:
+                gas_i = int(raw_gas)
+            except (TypeError, ValueError):
+                return False, "gas_required"
+            if gas_i <= 0:
+                return False, "gas_required"
             tx_hash = tx.get("hash") or (
                 "0x" + native.sha256_hex(f"{sender}{recipient}{amount}{nonce}".encode())
             )
@@ -56,6 +65,7 @@ class SecureMempool(Mempool):
                 amount=amount,
                 fee=fee,
                 nonce=nonce,
+                gas=gas_i,
                 signature=tx.get("signature", ""),
                 public_key=tx.get("public_key", ""),
                 timestamp=time.time(),

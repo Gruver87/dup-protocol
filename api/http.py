@@ -2102,10 +2102,27 @@ class RESTHandler(BaseHTTPRequestHandler):
                     "wire_probe_ok": False,
                     "wire_probe_probed": False,
                 }
+                peer_count_metrics = int(p2p.peer_count() if p2p else 0)
+                peer_gap_metrics = 0
+                mesh_min_metrics = int(
+                    getattr(cfg, "mesh_min_peers_before_mine", 0) or 0
+                )
                 if p2p is not None:
                     sync_status["state_consistent"] = bool(
                         getattr(p2p, "_state_consistent", False)
                     )
+                    if hasattr(p2p, "get_peers_info"):
+                        try:
+                            local_h_m = int(bc.get_height() if bc else 0)
+                            for peer in p2p.get_peers_info():
+                                ph = int(peer.get("height", 0) or 0)
+                                peer_gap_metrics = max(
+                                    peer_gap_metrics, abs(ph - local_h_m)
+                                )
+                        except Exception as exc:
+                            logger.warning(
+                                "/metrics peer_sync_gap snapshot failed: %s", exc
+                            )
                     se = getattr(p2p, "sync_engine", None)
                     if se is not None and hasattr(se, "get_status"):
                         try:
@@ -2122,6 +2139,20 @@ class RESTHandler(BaseHTTPRequestHandler):
                             )
                         except Exception as exc:
                             logger.warning("/metrics sync status snapshot failed: %s", exc)
+                p2p_sync_label = _derive_p2p_sync_status(
+                    peer_count=peer_count_metrics,
+                    peer_gap=peer_gap_metrics,
+                    state_consistent=bool(sync_status.get("state_consistent")),
+                    deployment_mode=getattr(cfg, "deployment_mode", "dev"),
+                    mesh_min_peers=mesh_min_metrics,
+                )
+                sync_status["p2p_sync_status"] = p2p_sync_label
+                sync_status["under_mesh"] = p2p_sync_label in (
+                    "under_mesh",
+                    "under_mesh_lagging",
+                )
+                sync_status["peer_sync_gap"] = peer_gap_metrics
+                sync_status["mesh_min_peers"] = mesh_min_metrics
                 chain_metrics = {}
                 if db is not None and hasattr(db, "get_chain_metrics"):
                     try:
@@ -8978,30 +9009,98 @@ def _build_state_consistency_harness(
     peers = []
     peer_roots_aligned = True
     peer_probe_error: Optional[str] = None
+    peer_probe_attempts = 0
     if p2p and hasattr(p2p, "request_peer_state_roots_sync"):
-        try:
-            wire = p2p.request_peer_state_roots_sync(timeout=peer_timeout)
-            if wire is None:
-                peer_probe_error = "timeout"
-                logger.warning("state consistency harness peer probe failed: timeout")
-                peer_roots_aligned = False
-                wire = []
-            for entry in wire:
-                pr = str(entry.get("state_root") or "")
-                pr_norm = pr.strip().lower()
-                match = (pr_norm == live_norm) if pr_norm and live_norm else None
-                if match is False:
+        # Two retries on timeout/empty — soak soft WARN root cause under GIL load.
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            peer_probe_attempts = attempt + 1
+            try:
+                wire = p2p.request_peer_state_roots_sync(timeout=peer_timeout)
+                if wire is None:
+                    peer_probe_error = "timeout"
                     peer_roots_aligned = False
-                peers.append({
-                    "peer_id": entry.get("peer_id", ""),
-                    "height": int(entry.get("height", 0) or 0),
-                    "state_root": pr,
-                    "match": match,
-                })
-        except Exception as exc:
-            peer_probe_error = str(exc)
-            logger.warning("state consistency harness peer probe failed: %s", exc)
-            peer_roots_aligned = False
+                    wire = []
+                elif not wire:
+                    connected = 0
+                    if hasattr(p2p, "peer_count"):
+                        try:
+                            connected = int(p2p.peer_count() or 0)
+                        except Exception:
+                            connected = 0
+                    if connected <= 0 and hasattr(p2p, "peers"):
+                        try:
+                            connected = len(getattr(p2p, "peers", None) or {})
+                        except Exception:
+                            connected = 0
+                    if connected > 0:
+                        peer_probe_error = "empty"
+                        peer_roots_aligned = False
+                    else:
+                        peer_probe_error = None
+                        peer_roots_aligned = True
+                else:
+                    peer_probe_error = None
+                    peer_roots_aligned = True
+
+                if peer_probe_error in ("timeout", "empty") and attempt + 1 < max_attempts:
+                    logger.warning(
+                        "state consistency harness peer probe %s (attempt %s/%s); retry",
+                        peer_probe_error,
+                        peer_probe_attempts,
+                        max_attempts,
+                    )
+                    time.sleep(0.25)
+                    continue
+
+                if peer_probe_error == "timeout":
+                    logger.warning("state consistency harness peer probe failed: timeout")
+                elif peer_probe_error == "empty":
+                    logger.warning(
+                        "state consistency harness peer probe empty after %s attempt(s)",
+                        peer_probe_attempts,
+                    )
+
+                peers = []
+                for entry in wire or []:
+                    pr = str(entry.get("state_root") or "")
+                    pr_norm = pr.strip().lower()
+                    ph = int(entry.get("height", 0) or 0)
+                    local_at = live_norm
+                    if (
+                        ph
+                        and ph != int(height or 0)
+                        and bc is not None
+                        and hasattr(bc, "get_block")
+                    ):
+                        blk = bc.get_block(ph)
+                        if isinstance(blk, dict):
+                            hist = str(blk.get("state_root") or "").strip().lower()
+                            if hist:
+                                local_at = hist
+                    match = (pr_norm == local_at) if pr_norm and local_at else None
+                    if match is False:
+                        peer_roots_aligned = False
+                    peers.append({
+                        "peer_id": entry.get("peer_id", ""),
+                        "height": ph,
+                        "state_root": pr,
+                        "match": match,
+                    })
+                break
+            except Exception as exc:
+                peer_probe_error = str(exc)
+                peer_roots_aligned = False
+                if attempt + 1 < max_attempts:
+                    logger.warning(
+                        "state consistency harness peer probe failed (attempt %s): %s; retry",
+                        peer_probe_attempts,
+                        exc,
+                    )
+                    time.sleep(0.25)
+                    continue
+                logger.warning("state consistency harness peer probe failed: %s", exc)
+                break
 
     # Long Docker chains: tip block metadata may lag while mesh agrees on live root
     tip_metadata_drift = not tip_aligned
@@ -9128,6 +9227,7 @@ def _build_state_consistency_harness(
         "peer_count": len(peers),
         "peers": peers,
         "peer_probe_error": peer_probe_error,
+        "peer_probe_attempts": int(peer_probe_attempts),
         "recent_mismatch_count": len(mismatches),
         "recent_mismatches": mismatches[:5],
         "checks": checks,

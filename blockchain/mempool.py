@@ -356,9 +356,21 @@ class Mempool:
         )
 
     def _store_put(self, tx: MempoolTransaction) -> bool:
+        try:
+            gas_i = int(getattr(tx, "gas", 0) or 0)
+        except (TypeError, ValueError):
+            return False
+        if gas_i <= 0:
+            # Validation refuse — not a Rust store fault (no demote).
+            return False
         if self._native_store is not None:
             try:
                 return bool(self._native_store.insert(_tx_to_store_dict(tx)))
+            except ValueError as exc:
+                # gas_required / money field refuses stay fail-closed without demote.
+                if "gas_required" in str(exc) or "fee_satoshi" in str(exc):
+                    return False
+                self._demote_store(f"insert:{exc}")
             except Exception as exc:
                 self._demote_store(f"insert:{exc}")
         if tx.tx_hash in self._py_txs:
