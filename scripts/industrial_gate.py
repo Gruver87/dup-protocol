@@ -1746,6 +1746,22 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         main_boot = (ROOT / "main.py").read_text(encoding="utf-8", errors="replace")
         if "stake_satoshi=_min_stake_sat" not in main_boot:
             errors.append("boot add_validator must pass stake_satoshi")
+        if "except TypeError:" in http_gate and "endswith(\"_satoshi\")" in http_gate:
+            errors.append("http must not soft-drop *_satoshi kwargs on TypeError")
+        if 'amount, amount_sat = 0.0, 0' in http_gate:
+            errors.append("l1-register must not invent amount=0 on ValueError")
+        if "use POST /nft/list with price_satoshi" not in http_gate:
+            errors.append("/nft/list-legacy must be 410 tombstone")
+        rocks_live = (ROOT / "storage" / "rocks_store.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "corrupt live_state_root_height meta" not in rocks_live:
+            errors.append("rocks get_live_state_root_meta must warn on corrupt height")
+        qf_py = (ROOT / "api" / "query_facade.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "canonical_balance_satoshi(store, address)" not in qf_py:
+            errors.append("QueryFacade.get_balance_satoshi must use canonical_balance_satoshi")
         validators_py = (ROOT / "middleware" / "validators.py").read_text(
             encoding="utf-8", errors="replace"
         )

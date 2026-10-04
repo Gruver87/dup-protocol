@@ -116,8 +116,10 @@ class QueryFacade:
         if hasattr(bc, "get_balance_satoshi"):
             return int(bc.get_balance_satoshi(address) or 0)
         store = self._store()
-        if store is not None and hasattr(store, "get_balance_satoshi"):
-            return int(store.get_balance_satoshi(address) or 0)
+        if store is not None:
+            from runtime.state_truth import canonical_balance_satoshi
+
+            return int(canonical_balance_satoshi(store, address))
         if hasattr(bc, "get_balance"):
             from runtime.amount import money_abs, to_satoshi
 

@@ -948,7 +948,10 @@ class RocksChainStore:
         root = raw_root.decode("utf-8") if raw_root else ""
         try:
             height = int(raw_h.decode("utf-8")) if raw_h else -1
-        except Exception:
+        except (UnicodeDecodeError, ValueError, TypeError) as exc:
+            logger.warning(
+                "[RocksStore] corrupt live_state_root_height meta: %s", exc
+            )
             height = -1
         return root, height
 

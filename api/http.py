@@ -104,14 +104,8 @@ def _http_amount_abs(
 
 
 def _call_drop_satoshi_kwargs(fn, *args, **kwargs):
-    """Invoke ``fn``; drop ``*_satoshi`` kwargs if the callee has no such params."""
-    try:
-        return fn(*args, **kwargs)
-    except TypeError:
-        slim = {k: v for k, v in kwargs.items() if not str(k).endswith("_satoshi")}
-        if slim == kwargs:
-            raise
-        return fn(*args, **slim)
+    """Invoke ``fn`` with satoshi kwargs intact (no soft-drop of money twins)."""
+    return fn(*args, **kwargs)
 
 
 def _nft_mutation_authorized(cfg: Any, body: Dict[str, Any], actor: str) -> Optional[str]:
@@ -4053,11 +4047,15 @@ class RESTHandler(BaseHTTPRequestHandler):
                         "source": "immutable_state",
                     })
                 else:
-                    bal = bc.get_balance(addr) if hasattr(bc, "get_balance") else 0
+                    from runtime.amount import from_satoshi_float
+
+                    bal_sat = db_sat
+                    if bc is not None and hasattr(bc, "get_balance_satoshi"):
+                        bal_sat = int(bc.get_balance_satoshi(addr) or 0)
                     self._json({
                         "address": addr,
-                        "balance": bal,
-                        "balance_satoshi": db_sat,
+                        "balance": float(from_satoshi_float(bal_sat)),
+                        "balance_satoshi": bal_sat,
                         # DB-only is never IMS-canonical when shadow state is absent.
                         "canonical": False,
                         "ims_available": False,
@@ -6650,75 +6648,13 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(501, "Cancel auction not supported")
 
             elif path == "/nft/list-legacy":
-                nft = self.__class__.nft
-                if not nft:
-                    self._error(503, "NFT not enabled"); return
-                token_id = body.get("token_id", "")
-                seller   = body.get("seller", "")
-                if not token_id or not seller:
-                    self._error(400, "token_id and seller required"); return
-                try:
-                    price, price_sat = _http_amount_abs(
-                        body,
-                        cfg,
-                        field="price",
-                        sat_keys=("price_satoshi", "amount_satoshi"),
-                        abs_keys=("price", "amount"),
-                    )
-                except ValueError as exc:
-                    self._error(400, str(exc)); return
-                try:
-                    if hasattr(nft, "create_listing"):
-                        lid = _call_drop_satoshi_kwargs(
-                            nft.create_listing,
-                            token_id,
-                            seller,
-                            price,
-                            price_satoshi=int(price_sat),
-                        )
-                        if lid:
-                            self._json({
-                                "success": True,
-                                "listing_id": lid,
-                                "price_satoshi": int(price_sat),
-                            })
-                        else:
-                            self._error(400, "Could not create listing")
-                    elif hasattr(nft, "list_token"):
-                        lid = _call_drop_satoshi_kwargs(
-                            nft.list_token,
-                            token_id,
-                            seller,
-                            price,
-                            price_satoshi=int(price_sat),
-                        )
-                        if lid:
-                            self._json({
-                                "success": True,
-                                "listing_id": lid,
-                                "price_satoshi": int(price_sat),
-                            })
-                        else:
-                            self._error(400, "Could not create listing")
-                    elif hasattr(nft, "list_for_sale"):
-                        result = _call_drop_satoshi_kwargs(
-                            nft.list_for_sale,
-                            token_id,
-                            seller,
-                            price,
-                            price_satoshi=int(price_sat),
-                        )
-                        if isinstance(result, dict) and result.get("success"):
-                            result = dict(result)
-                            result.setdefault("price_satoshi", int(price_sat))
-                            self._json(result)
-                        else:
-                            error = result.get("error", "Could not list token") if isinstance(result, dict) else "Could not list token"
-                            self._error(400, error)
-                    else:
-                        self._error(501, "Listings not supported")
-                except Exception as e:
-                    self._error(500, str(e))
+                # Dead-path honesty: former second /nft/list handler invented price.
+                # Canonical listing is the earlier /nft/list (Wave L auth + satoshi).
+                self._error(
+                    410,
+                    "use POST /nft/list with price_satoshi (legacy invent-price path removed)",
+                )
+                return
 
             # ── Immutable State: credit (dev/genesis only — not L1 canonical) ─
             elif path == "/state/credit":
@@ -7849,10 +7785,21 @@ class RESTHandler(BaseHTTPRequestHandler):
                 db.set_meta("bridge_l1_proofs", proofs[-500:])
                 br = getattr(self.__class__, "bridge", None)
                 recipient = (body.get("recipient") or body.get("to_address") or "").strip()
-                try:
-                    amount, amount_sat = _http_amount_abs(body, cfg, field="amount")
-                except ValueError:
-                    amount, amount_sat = 0.0, 0
+                # Amount optional on register-only; required only when enqueueing.
+                amount = 0.0
+                has_money = any(
+                    body.get(k) is not None and str(body.get(k)).strip() != ""
+                    for k in ("amount_satoshi", "value_satoshi", "amount", "value")
+                )
+                amount_sat = 0
+                if has_money:
+                    try:
+                        amount, amount_sat = _http_amount_abs(
+                            body, cfg, field="amount"
+                        )
+                    except ValueError as exc:
+                        self._error(400, str(exc))
+                        return
                 if br and hasattr(br, "enqueue_l1_incoming") and recipient and amount_sat > 0:
                     br.enqueue_l1_incoming(
                         l1_tx,
