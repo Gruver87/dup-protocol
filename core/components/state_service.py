@@ -329,13 +329,17 @@ class StateService:
 
     def _run_evm_host_only(self, tx: "Transaction", block_height: int) -> Dict:
         """Execute EVM call/deploy (storage/code/value) without fee/nonce writes."""
+        from execution.evm_precompiles import is_evm_call_target
+
         if not getattr(self, "evm", None):
             return {"success": False, "error": "evm_unavailable"}
         target_acct = self.storage.get_account(tx.to_addr) if tx.to_addr else None
         from runtime.amount import resolve_tx_value_satoshi
 
         value_sat = int(resolve_tx_value_satoshi(tx))
-        if target_acct and target_acct.get("code"):
+        if is_evm_call_target(
+            tx.to_addr or "", (target_acct or {}).get("code") if target_acct else None
+        ):
             evm_res = self.evm.call_contract(
                 tx.from_addr,
                 tx.to_addr,
@@ -710,8 +714,13 @@ class StateService:
 
         # EVM: contract call or deploy when calldata present
         if tx.data and getattr(self, "evm", None):
+            from execution.evm_precompiles import is_evm_call_target
+
             target_acct = self.storage.get_account(tx.to_addr)
-            if target_acct and target_acct.get("code"):
+            if is_evm_call_target(
+                tx.to_addr or "",
+                (target_acct or {}).get("code") if target_acct else None,
+            ):
                 evm_res = self.evm.call_contract(
                     tx.from_addr,
                     tx.to_addr,

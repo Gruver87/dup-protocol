@@ -1710,6 +1710,12 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append(
                 "evm_adapter.estimate_gas must use integer buffer (no float * 1.2)"
             )
+        if not (ROOT / "execution" / "evm_precompiles.py").is_file():
+            errors.append("execution/evm_precompiles.py missing (0x01–0x09 subset)")
+        if "_precompile_gas_outcome" not in evm_ad_py:
+            errors.append("EVM adapter must cap/burn precompile gas (geth CALL semantics)")
+        if "_precompile_nested_call" not in evm_ad_py:
+            errors.append("EVM nested precompile OOG must burn forwarded gas")
         wasm_py = (ROOT / "features" / "wasm_vm.py").read_text(
             encoding="utf-8", errors="replace"
         )

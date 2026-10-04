@@ -275,6 +275,63 @@ class EVMAdapter:
             raise RuntimeError(err)
 
     @staticmethod
+    def _precompile_gas_outcome(pre, gas_limit: int) -> tuple[bool, int, str]:
+        """Geth CALL semantics: encoding/run failure burns remaining forwarded gas.
+
+        Success charges Yellow Paper precompile gas, capped by the CALL stipend.
+        """
+        used = int(getattr(pre, "gas_used", 0) or 0)
+        limit = int(gas_limit or 0)
+        if not getattr(pre, "success", False):
+            burned = limit if limit > 0 else used
+            return False, burned, str(getattr(pre, "error", None) or "precompile_failed")
+        if limit > 0 and used > limit:
+            return False, limit, "precompile_out_of_gas"
+        return True, used, ""
+
+    def _precompile_nested_call(
+        self, target: str, calldata: bytes, gas: int
+    ) -> Optional[Dict[str, Any]]:
+        """Apply-path CALL/STATICCALL into 0x01–0x09. None if not a precompile."""
+        from execution.evm_precompiles import is_precompile, try_precompile
+
+        if not is_precompile(target):
+            return None
+        pre = try_precompile(target, bytes(calldata or b"").hex())
+        if pre is None:
+            return {
+                "success": False,
+                "reverted": True,
+                "return_data": b"",
+                "gas_used": 0,
+                "error": "precompile_unhandled",
+            }
+        ret = pre.return_value
+        if isinstance(ret, (bytes, bytearray)):
+            ret_b = bytes(ret)
+        elif ret is None:
+            ret_b = b""
+        elif isinstance(ret, int):
+            ret_b = int(ret).to_bytes(32, "big")
+        else:
+            ret_b = bytes(ret)
+        ok, used, err = self._precompile_gas_outcome(pre, gas)
+        if not ok:
+            return {
+                "success": False,
+                "reverted": True,
+                "return_data": b"" if err == "precompile_out_of_gas" else ret_b,
+                "gas_used": used,
+                "error": err,
+            }
+        return {
+            "success": True,
+            "reverted": False,
+            "return_data": ret_b,
+            "gas_used": used,
+        }
+
+    @staticmethod
     def _nested_call_kind(delegate: bool, static: bool, callcode: bool) -> str:
         if static:
             return "staticcall"
@@ -286,6 +343,11 @@ class EVMAdapter:
 
     @staticmethod
     def _writeback_ops_without_storage(ops: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Drop set_storage / append_logs for callees that did not execute bytecode.
+
+        Empty ``{}`` storage would wipe a DELEGATECALL caller or stamp a fake
+        account at a precompile / EOA. Value transfer still applies.
+        """
         keep: List[Dict[str, Any]] = []
         for op in ops or []:
             kind = str(op.get("op") or "")
@@ -356,6 +418,13 @@ class EVMAdapter:
                 "gas_used": 0,
                 "error": "insufficient_call_value",
             }
+        pre_out = self._precompile_nested_call(target, calldata, gas)
+        if pre_out is not None:
+            if pre_out.get("reverted"):
+                return pre_out
+            return self._finish_no_code_nested_call(
+                kind, parent_ro, caller_ctx.address, target, call_value, pre_out
+            )
         view = self._account_view(target)
         if view.get("corrupt"):
             return {"success": False, "reverted": True, "return_data": b"", "error": "corrupt_storage"}
@@ -384,6 +453,7 @@ class EVMAdapter:
                     )
                 account_row = account
             else:
+                # Yellow-paper empty account: CALL succeeds, returndata empty.
                 return self._finish_no_code_nested_call(
                     kind,
                     parent_ro,
@@ -1051,6 +1121,25 @@ class EVMAdapter:
         if value_sat > 0 and not self._sat_covers(caller, value_sat):
             return EVMResult(success=False, error="insufficient_call_value")
 
+        from execution.evm_precompiles import try_precompile
+
+        pre = try_precompile(contract_addr, calldata_hex)
+        if pre is not None:
+            ok, used, err = self._precompile_gas_outcome(pre, gas_limit)
+            if not ok:
+                return EVMResult(
+                    success=False,
+                    error=err,
+                    gas_used=used,
+                    return_value=pre.return_value if err != "precompile_out_of_gas" else None,
+                )
+            if value_sat > 0:
+                xfer_err = self._transfer_sat_fail_closed(caller, contract_addr, value_sat)
+                if xfer_err:
+                    return EVMResult(success=False, error=xfer_err, gas_used=used)
+            pre.gas_used = used
+            return pre
+
         account = self.db.get_account(contract_addr)
         if not account or not account.get("code"):
             return EVMResult(success=False, error="not_a_contract")
@@ -1127,6 +1216,21 @@ class EVMAdapter:
         Storage НЕ сохраняется. Nested CREATE/SELFDESTRUCT are rejected.
         """
         gas_limit = gas_limit or self.config.evm_gas_limit
+
+        from execution.evm_precompiles import try_precompile
+
+        pre = try_precompile(contract_addr, calldata_hex)
+        if pre is not None:
+            ok, used, err = self._precompile_gas_outcome(pre, gas_limit)
+            if not ok:
+                return EVMResult(
+                    success=False,
+                    error=err,
+                    gas_used=used,
+                    return_value=pre.return_value if err != "precompile_out_of_gas" else None,
+                )
+            pre.gas_used = used
+            return pre
 
         account = self.db.get_account(contract_addr)
         if not account or not account.get("code"):
