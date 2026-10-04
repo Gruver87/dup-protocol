@@ -2763,7 +2763,7 @@ class Database:
                     b2,
                     b2_sat,
                     ch.get("status", "open"),
-                    float(ch.get("fee_rate", 0.00001)),
+                    parse_finite_number(ch.get("fee_rate", 0.00001), field="fee_rate"),
                     int(ch.get("created_at", 0)),
                 ),
             )
@@ -2780,14 +2780,15 @@ class Database:
                 rows = self.conn.execute(
                     "SELECT * FROM lightning_channels ORDER BY created_at DESC"
                 ).fetchall()
-            out = []
-            for r in rows:
-                row = dict(r)
-                Database._overlay_sat(row, "capacity", "capacity_satoshi")
-                Database._overlay_sat(row, "balance1", "balance1_satoshi")
-                Database._overlay_sat(row, "balance2", "balance2_satoshi")
-                out.append(row)
-            return out
+            return [Database._lightning_channel_row(dict(r)) for r in rows]
+
+    @staticmethod
+    def _lightning_channel_row(row: Dict) -> Dict:
+        Database._overlay_sat(row, "capacity", "capacity_satoshi")
+        Database._overlay_sat(row, "balance1", "balance1_satoshi")
+        Database._overlay_sat(row, "balance2", "balance2_satoshi")
+        row["fee_rate"] = parse_finite_number(row.get("fee_rate", 0), field="fee_rate")
+        return row
 
     def save_lightning_payment(self, p: Dict) -> None:
         amt, amt_sat = self._resolve_abs_sat(
@@ -3241,7 +3242,9 @@ class Database:
                     agent.get("status", "active"),
                     int(agent.get("created_at", 0)),
                     int(agent.get("last_action", 0)),
-                    float(agent.get("performance_score", 0)),
+                    parse_finite_number(
+                        agent.get("performance_score", 0), field="performance_score"
+                    ),
                     profit,
                     profit_sat,
                     int(agent.get("actions_count", 0)),
@@ -3275,7 +3278,9 @@ class Database:
                     "status": r["status"],
                     "created_at": r["created_at"],
                     "last_action": r["last_action"],
-                    "performance_score": r["performance_score"],
+                    "performance_score": parse_finite_number(
+                        r["performance_score"], field="performance_score"
+                    ),
                     "total_profit": r["total_profit"],
                     "total_profit_satoshi": r["total_profit_satoshi"]
                     if "total_profit_satoshi" in r.keys()

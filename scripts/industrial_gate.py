@@ -725,6 +725,22 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             ROOT / "api" / "fake_rpc.py"
         ).read_text(encoding="utf-8", errors="replace"):
             errors.append("FakeQueryFacade must expose balances_satoshi twin")
+        rocks_meta = (ROOT / "storage" / "rocks_store.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "def _cached_prefix_len" not in rocks_meta:
+            errors.append("rocks_store must seed obs counts via _cached_prefix_len")
+        if 'self._bump_plain_meta_int("stats_account_count"' not in rocks_meta:
+            errors.append("rocks_store must bump stats_account_count on new accounts")
+        if "def _invalidate_obs_meta" not in rocks_meta:
+            errors.append("rocks_store must invalidate obs meta on alloc reset")
+        db_finite = (ROOT / "storage" / "database.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if 'field="fee_rate"' not in db_finite:
+            errors.append("Database lightning channels must parse_finite_number fee_rate")
+        if 'field="performance_score"' not in db_finite:
+            errors.append("Database AI agents must parse_finite_number performance_score")
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"

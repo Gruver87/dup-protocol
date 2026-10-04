@@ -682,6 +682,7 @@ class RocksChainStore:
 
         addr = SqliteDatabase._normalize_address(row.get("address", ""))
         row["address"] = addr
+        created = self._raw_get(kc.key_account(addr)) is None
         if row.get("balance_satoshi") is not None:
             sat = max(0, int(row["balance_satoshi"]))
             row["balance_satoshi"] = sat
@@ -690,6 +691,8 @@ class RocksChainStore:
             dual_write_balance(row, row.get("balance", 0) or 0)
         # v1.3.147: typed ABAR value when native pack_account_row is available.
         self._raw_put(kc.key_account(addr), self._pack_account_blob(row))
+        if created:
+            self._bump_plain_meta_int("stats_account_count", 1)
 
     def get_balance(self, address: str) -> float:
         from runtime.amount import account_balance_abs
@@ -1044,7 +1047,7 @@ class RocksChainStore:
 
     def _reset_accounts_locked(self, alloc: Dict[str, float]) -> None:
         self._drop_root_acc()
-        self._raw_delete(kc.key_meta("total_supply_abs"))
+        self._invalidate_obs_meta()
         for key, _value in self._scan_prefix(kc.prefix_accounts()):
             self._raw_delete(key)
         from runtime.amount import dual_write_balance
@@ -1061,6 +1064,16 @@ class RocksChainStore:
             dual_write_balance(row, amount)
             self._save_account_row(row)
 
+    def _invalidate_obs_meta(self) -> None:
+        for meta_key in (
+            "stats_tx_count",
+            "stats_account_count",
+            "stats_receipt_count",
+            "stats_proposer_audit",
+            "total_supply_abs",
+        ):
+            self._raw_delete(kc.key_meta(meta_key))
+
     def _read_plain_meta_int(self, name: str) -> int | None:
         raw = self._raw_get(kc.key_meta(name))
         if raw is None:
@@ -1069,6 +1082,20 @@ class RocksChainStore:
             return int(raw.decode("utf-8"))
         except (TypeError, ValueError, UnicodeDecodeError):
             return None
+
+    def _bump_plain_meta_int(self, name: str, delta: int) -> None:
+        cur = self._read_plain_meta_int(name)
+        if cur is None:
+            return
+        self._raw_put(kc.key_meta(name), str(cur + int(delta)).encode("utf-8"))
+
+    def _cached_prefix_len(self, meta_key: str, prefix: bytes) -> int:
+        cached = self._read_plain_meta_int(meta_key)
+        if cached is not None:
+            return cached
+        n = len(self._scan_prefix(prefix))
+        self._raw_put(kc.key_meta(meta_key), str(n).encode("utf-8"))
+        return n
 
     def get_cached_account_count(self) -> int | None:
         """O(1) meta only. None if never counted — callers must not prefix-scan."""
@@ -1218,7 +1245,10 @@ class RocksChainStore:
             row["gas_used"] = gas_used
         # v1.3.148: typed LTXV value when native pack_tx_row is available.
         payload = self._pack_tx_blob(row)
+        created = self._raw_get(kc.key_tx(tx_hash)) is None
         self._raw_put(kc.key_tx(tx_hash), payload)
+        if created:
+            self._bump_plain_meta_int("stats_tx_count", 1)
         if row["block_height"]:
             self._raw_put(kc.key_block_tx(row["block_height"], tx_hash), b"\x01")
         self._insert_tx_indexes(row)
@@ -1326,10 +1356,11 @@ class RocksChainStore:
         if gas_used is not None:
             receipt["gas_used"] = gas_used
         # v1.3.151: typed LTXR value when native pack_receipt_row is available.
-        self._raw_put(
-            kc.P_TX_RECEIPT + kc.key_tx(tx_hash)[1:],
-            self._pack_receipt_blob(receipt),
-        )
+        rkey = kc.P_TX_RECEIPT + kc.key_tx(tx_hash)[1:]
+        created = self._raw_get(rkey) is None
+        self._raw_put(rkey, self._pack_receipt_blob(receipt))
+        if created:
+            self._bump_plain_meta_int("stats_receipt_count", 1)
 
     def save_transaction(self, tx: Dict) -> bool:
         """Persist tx row. Raises PersistError on failure (fail-closed)."""
@@ -2321,8 +2352,10 @@ class RocksChainStore:
     def get_stats(self) -> Dict:
         stats = {
             "height": self.get_chain_tip(),
-            "total_transactions": len(self._scan_prefix(kc.P_TX)),
-            "total_accounts": len(self._scan_prefix(kc.prefix_accounts())),
+            "total_transactions": self._cached_prefix_len("stats_tx_count", kc.P_TX),
+            "total_accounts": self._cached_prefix_len(
+                "stats_account_count", kc.prefix_accounts()
+            ),
             "total_burned": self.get_total_burned(),
             "total_supply": self.get_total_supply(),
             "engine": self.engine,
