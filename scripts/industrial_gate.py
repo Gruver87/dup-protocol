@@ -599,6 +599,12 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("mempool must not invent gas=21000 on store reload")
         if 'raw_gas is not None and str(raw_gas).strip() != "" else 0' not in mempool_py:
             errors.append("mempool _tx_from_store_dict must default missing gas to 0")
+        if "min_fee_satoshi" not in mempool_py:
+            errors.append("mempool must gate/order fees via min_fee_satoshi")
+        if "fee_too_low (min_satoshi=" not in mempool_py:
+            errors.append("mempool fee gate must refuse with min_satoshi (not float ABS)")
+        if '"amount_satoshi"' not in mempool_py or '"fee_satoshi"' not in mempool_py:
+            errors.append("mempool get_sorted_transactions must export amount/fee_satoshi")
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"

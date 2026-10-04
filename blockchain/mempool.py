@@ -84,10 +84,11 @@ class MempoolTransaction:
             return False
 
 
-def _validate_mempool_tx(tx: MempoolTransaction, min_fee: float) -> Tuple[bool, str]:
+def _validate_mempool_tx(tx: MempoolTransaction, min_fee_satoshi: int) -> Tuple[bool, str]:
     """
     Полная валидация транзакции перед добавлением в мемпул.
     Использует middleware/validators.py если доступен.
+    Min-fee gate is satoshi-integer (not float ABS).
     """
     if not tx.tx_hash:
         return False, "missing_hash"
@@ -97,8 +98,14 @@ def _validate_mempool_tx(tx: MempoolTransaction, min_fee: float) -> Tuple[bool, 
         return False, "gas_required"
     if gas <= 0:
         return False, "gas_required"
-    if tx.fee < min_fee:
-        return False, f"fee_too_low (min={min_fee:.8f})"
+    fee_sat = int(getattr(tx, "fee_satoshi", -1))
+    if fee_sat < 0:
+        from runtime.amount import to_satoshi
+
+        fee_sat = int(to_satoshi(tx.fee))
+        tx.fee_satoshi = fee_sat
+    if fee_sat < int(min_fee_satoshi):
+        return False, f"fee_too_low (min_satoshi={int(min_fee_satoshi)})"
 
     if _VALIDATORS_AVAILABLE:
         # Validate addresses
@@ -209,9 +216,12 @@ class Mempool:
     """Пул транзакций с сортировкой по комиссии и полной валидацией."""
 
     def __init__(self, max_size: int = 10000, min_fee: float = 0.0001):
+        from runtime.amount import to_satoshi
+
         self.transactions: Dict[str, MempoolTransaction] = {}
         self.max_size = max_size
-        self.min_fee = min_fee
+        self.min_fee = float(min_fee)
+        self.min_fee_satoshi = int(to_satoshi(self.min_fee))
         self.lock = threading.RLock()
         self._rejected_count = 0
         self.blockchain = None
@@ -274,8 +284,8 @@ class Mempool:
             if tx.tx_hash in self.transactions:
                 return False
 
-            # Full validation
-            valid, reason = _validate_mempool_tx(tx, self.min_fee)
+            # Full validation (min fee in satoshi)
+            valid, reason = _validate_mempool_tx(tx, self.min_fee_satoshi)
             if not valid:
                 self._rejected_count += 1
                 return False
@@ -388,7 +398,13 @@ class Mempool:
         with self.lock:
             if tx.tx_hash in self.transactions:
                 return False
-            if tx.fee < self.min_fee:
+            fee_sat = int(getattr(tx, "fee_satoshi", -1))
+            if fee_sat < 0:
+                from runtime.amount import to_satoshi
+
+                fee_sat = int(to_satoshi(tx.fee))
+                tx.fee_satoshi = fee_sat
+            if fee_sat < int(self.min_fee_satoshi):
                 return False
             if len(self.transactions) >= self.max_size:
                 self._cleanup()
@@ -396,22 +412,29 @@ class Mempool:
             return True
 
     def get(self, limit: int = 100, min_fee: float = 0) -> List[MempoolTransaction]:
-        """Получить транзакции для майнинга (сортировка по комиссии)."""
+        """Получить транзакции для майнинга (сортировка по fee_satoshi)."""
+        from runtime.amount import to_satoshi
+
+        min_fee_sat = int(to_satoshi(min_fee)) if min_fee else 0
         with self.lock:
             sorted_txs = sorted(
                 self.transactions.values(),
-                key=lambda x: x.fee,
-                reverse=True
+                key=lambda x: int(getattr(x, "fee_satoshi", 0) or 0),
+                reverse=True,
             )
-            return [tx for tx in sorted_txs if tx.fee >= min_fee][:limit]
+            return [
+                tx
+                for tx in sorted_txs
+                if int(getattr(tx, "fee_satoshi", 0) or 0) >= min_fee_sat
+            ][:limit]
 
     def get_sorted_transactions(self) -> List[Dict]:
         """Возвращает транзакции в формате dict (для BlockBuilder System C)."""
         with self.lock:
             sorted_txs = sorted(
                 self.transactions.values(),
-                key=lambda x: x.fee,
-                reverse=True
+                key=lambda x: int(getattr(x, "fee_satoshi", 0) or 0),
+                reverse=True,
             )
             return [
                 {
@@ -424,6 +447,8 @@ class Mempool:
                     "nonce": tx.nonce,
                     "data": tx.data or "",
                     "timestamp": tx.timestamp,
+                    "fee_satoshi": int(getattr(tx, "fee_satoshi", 0) or 0),
+                    "amount_satoshi": int(getattr(tx, "amount_satoshi", -1)),
                 }
                 for tx in sorted_txs
             ]
@@ -446,24 +471,43 @@ class Mempool:
             return len(self.transactions)
 
     def get_stats(self) -> dict:
+        from runtime.amount import from_satoshi_float
+
         with self.lock:
             if not self.transactions:
-                return {"size": 0, "total_fees": 0, "avg_fee": 0, "rejected": self._rejected_count}
-            fees = [tx.fee for tx in self.transactions.values()]
+                return {
+                    "size": 0,
+                    "total_fees": 0,
+                    "avg_fee": 0,
+                    "rejected": self._rejected_count,
+                    "min_fee_satoshi": int(self.min_fee_satoshi),
+                }
+            fee_sats = [
+                int(getattr(tx, "fee_satoshi", 0) or 0)
+                for tx in self.transactions.values()
+            ]
+            total_sat = sum(fee_sats)
+            avg_sat = total_sat / len(fee_sats) if fee_sats else 0
             return {
                 "size": len(self.transactions),
-                "total_fees": sum(fees),
-                "avg_fee": sum(fees) / len(fees),
+                "total_fees": from_satoshi_float(total_sat),
+                "avg_fee": from_satoshi_float(avg_sat),
+                "total_fees_satoshi": int(total_sat),
+                "avg_fee_satoshi": int(avg_sat),
+                "min_fee_satoshi": int(self.min_fee_satoshi),
                 "rejected": self._rejected_count,
                 "validators_available": _VALIDATORS_AVAILABLE,
                 "ecdsa_available": _ECDSA_AVAILABLE,
             }
 
     def _cleanup(self):
-        """Удалить 10% самых дешёвых транзакций."""
+        """Удалить 10% самых дешёвых транзакций (by fee_satoshi)."""
         if len(self.transactions) < self.max_size * 0.8:
             return
-        sorted_txs = sorted(self.transactions.values(), key=lambda x: x.fee)
+        sorted_txs = sorted(
+            self.transactions.values(),
+            key=lambda x: int(getattr(x, "fee_satoshi", 0) or 0),
+        )
         to_remove = int(len(self.transactions) * 0.1)
         for tx in sorted_txs[:to_remove]:
             del self.transactions[tx.tx_hash]
