@@ -42,14 +42,20 @@ class MEVAnalyzer:
             self.attack_history.append(entry)
 
     def _record(self, sim_type: str, profit: float, payload: Dict) -> str:
+        from runtime.amount import to_satoshi
+
         sim_id = native.sha256_hex(
             f"{sim_type}{profit}{time.time()}".encode()
         )[:16]
+        profit_sat = int(payload.get("profit_satoshi", to_satoshi(profit)))
         entry = {
             "sim_id": sim_id,
             "type": sim_type,
             "profit": profit,
+            "profit_satoshi": profit_sat,
             "timestamp": int(time.time()),
+            "executed": False,
+            "heuristic": True,
             **payload,
         }
         self.attack_history.append(entry)
@@ -60,6 +66,7 @@ class MEVAnalyzer:
                 "sim_id": sim_id,
                 "sim_type": sim_type,
                 "profit": profit,
+                "profit_satoshi": profit_sat,
                 "payload": entry,
                 "created_at": entry["timestamp"],
             })

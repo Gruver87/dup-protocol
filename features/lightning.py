@@ -511,6 +511,8 @@ class LightningNetwork:
         return htlc_id
 
     def settle_htlc(self, htlc_id: str, preimage: str) -> bool:
+        from runtime.amount import from_satoshi_float, to_satoshi
+
         htlc = self.htlcs.get(htlc_id)
         if not htlc or htlc.status != "pending":
             return False
@@ -521,11 +523,19 @@ class LightningNetwork:
         ch = self.channels.get(htlc.channel_id)
         if not ch or ch.status != "open":
             return False
+        try:
+            amt_sat = int(to_satoshi(htlc.amount))
+            b1 = int(to_satoshi(ch.balance1))
+            b2 = int(to_satoshi(ch.balance2))
+        except (TypeError, ValueError):
+            return False
         if self.node_address == htlc.receiver:
             if self.node_address == ch.node1:
-                ch.balance1 += htlc.amount
+                b1 += amt_sat
             elif self.node_address == ch.node2:
-                ch.balance2 += htlc.amount
+                b2 += amt_sat
+            ch.balance1 = from_satoshi_float(b1)
+            ch.balance2 = from_satoshi_float(b2)
         htlc.status = "settled"
         htlc.preimage = preimage
         ch.state_version += 1
@@ -535,6 +545,8 @@ class LightningNetwork:
         return True
 
     def refund_htlc(self, htlc_id: str) -> bool:
+        from runtime.amount import from_satoshi_float, to_satoshi
+
         htlc = self.htlcs.get(htlc_id)
         if not htlc or htlc.status != "pending":
             return False
@@ -543,10 +555,18 @@ class LightningNetwork:
         ch = self.channels.get(htlc.channel_id)
         if not ch:
             return False
+        try:
+            amt_sat = int(to_satoshi(htlc.amount))
+            b1 = int(to_satoshi(ch.balance1))
+            b2 = int(to_satoshi(ch.balance2))
+        except (TypeError, ValueError):
+            return False
         if htlc.sender == ch.node1:
-            ch.balance1 += htlc.amount
+            b1 += amt_sat
         elif htlc.sender == ch.node2:
-            ch.balance2 += htlc.amount
+            b2 += amt_sat
+        ch.balance1 = from_satoshi_float(b1)
+        ch.balance2 = from_satoshi_float(b2)
         htlc.status = "refunded"
         ch.state_version += 1
         self._persist_channel(ch)

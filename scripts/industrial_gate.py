@@ -1741,6 +1741,18 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("nft_ports must forward price_satoshi (ADR 0021)")
         if "float(price)" in nft_ports_gate and "price_satoshi" not in nft_ports_gate:
             errors.append("nft_ports must not coerce list price via float() alone")
+        lightning_py = (ROOT / "features" / "lightning.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "ch.balance1 += htlc.amount" in lightning_py or "ch.balance2 += htlc.amount" in lightning_py:
+            errors.append("lightning settle/refund must not float-mutate channel balances")
+        if "amt_sat = int(to_satoshi(htlc.amount))" not in lightning_py:
+            errors.append("lightning settle/refund must use satoshi int arithmetic")
+        mev_py = (ROOT / "features" / "mev_analyzer.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if '"profit_satoshi": profit_sat' not in mev_py:
+            errors.append("mev_analyzer._record must dual-write profit_satoshi")
         wasm_py = (ROOT / "features" / "wasm_vm.py").read_text(
             encoding="utf-8", errors="replace"
         )
