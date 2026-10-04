@@ -1616,6 +1616,14 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("evm_writeback must refuse float balance_satoshi")
         if "f * 1_000_000.0" in wb_rs or "(sat as f64) / 1_000_000.0" in wb_rs:
             errors.append("evm_writeback must not use IEEE×1e6 money path")
+        xshard = (ROOT / "consensus" / "cross_shard_coordinator.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "balance_satoshi_required" not in xshard or "get_balance_satoshi_required" not in xshard:
+            errors.append("cross_shard migration must require balance_satoshi (ADR 0021)")
+        shard_py = (ROOT / "dynamic_sharding.py").read_text(encoding="utf-8", errors="replace")
+        if "allow_float_fallback=False" not in shard_py or "amount_satoshi" not in shard_py:
+            errors.append("dynamic_sharding must use satoshi ledger (ADR 0021)")
         for rel, label in (
             ("storage/rocks_store.py", "rocks_store"),
             ("storage/database.py", "database"),

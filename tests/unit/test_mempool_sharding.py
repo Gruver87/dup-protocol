@@ -101,7 +101,14 @@ def test_tx_send_routes_to_shard_same_shard(sharding_api):
     base, _, sh, db = sharding_api
     addr = "0x" + "c" * 40
     db.set_balance(addr, 50.0)
-    body = {"from": addr, "to": addr, "value": 1.0, "nonce": 0}
+    body = {
+        "from": addr,
+        "to": addr,
+        "value": 1.0,
+        "amount_satoshi": 1_000_000,
+        "nonce": 0,
+        "gas": 21_000,
+    }
     status, raw = _post(f"{base}/tx/send", body)
     data = json.loads(raw)
     assert status == 200
@@ -125,7 +132,14 @@ def test_tx_send_cross_shard_pending(sharding_api):
     base, _, sh, db = sharding_api
     sender, recipient = _addresses_on_different_shards(sh)
     db.set_balance(sender, 100.0)
-    body = {"from": sender, "to": recipient, "value": 2.0, "nonce": 0}
+    body = {
+        "from": sender,
+        "to": recipient,
+        "value": 2.0,
+        "amount_satoshi": 2_000_000,
+        "nonce": 0,
+        "gas": 21_000,
+    }
     status, raw = _post(f"{base}/tx/send", body)
     data = json.loads(raw)
     assert status == 200

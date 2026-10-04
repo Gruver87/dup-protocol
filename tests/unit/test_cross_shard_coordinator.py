@@ -23,7 +23,7 @@ def test_reshard_plan_and_migrations():
     plan = coord.plan_reshard(4, effective_epoch=10)
     assert plan["to_shards"] == 4
     added = coord.discover_migrations(
-        [{"address": "0xabc", "balance": 5.0}],
+        [{"address": "0xabc", "balance_satoshi": 5_000_000}],
         old_shards=2,
         new_shards=4,
     )
@@ -34,6 +34,28 @@ def test_reshard_plan_and_migrations():
     assert coord.num_shards == 4
     assert coord.complete_migration("0xabc") or coord.complete_migration("0xdef")
     assert coord.pending_migrations() == []
+
+
+def test_migration_credit_refuses_float_only_payload():
+    coord = CrossShardCoordinator(2)
+
+    class _DB:
+        def balance_delta_satoshi(self, address, delta):
+            raise AssertionError("should not credit without balance_satoshi")
+
+    assert (
+        coord.apply_migration_credit(
+            {
+                "type": "shard_migration",
+                "address": "0xabc",
+                "to_shard": 0,
+                "balance": 1.0,
+            },
+            _DB(),
+            owns_shard=lambda s: True,
+        )
+        is False
+    )
 
 
 def test_validator_quorum_requires_supermajority_per_shard():

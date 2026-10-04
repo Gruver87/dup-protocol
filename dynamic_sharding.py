@@ -34,6 +34,7 @@ class CrossShardTransaction:
     status: str  # pending, debited, confirmed, failed
     created_at: float
     confirmed_at: Optional[float] = None
+    amount_satoshi: Optional[int] = None
 
 
 class ShardingManager:
@@ -226,6 +227,16 @@ class ShardingManager:
                 sort_keys=True,
             ).encode()
         )[:16]
+        from runtime.amount import resolve_amount_satoshi
+
+        try:
+            amt_sat, amount = resolve_amount_satoshi(
+                amount, (tx or {}).get("amount_satoshi") if isinstance(tx, dict) else None
+            )
+        except (TypeError, ValueError, AttributeError):
+            from runtime.amount import to_satoshi
+
+            amt_sat = int(to_satoshi(amount))
         cross_tx = CrossShardTransaction(
             tx_id=tx_id,
             from_shard=from_shard,
@@ -235,6 +246,7 @@ class ShardingManager:
             amount=amount,
             status="pending",
             created_at=time.time(),
+            amount_satoshi=amt_sat,
         )
         with self.shard_lock:
             self.cross_shard_txs[tx_id] = cross_tx
@@ -256,11 +268,29 @@ class ShardingManager:
 
         return from_shard, tx_id
 
+    @staticmethod
+    def _cross_shard_amount_sat(tx: CrossShardTransaction) -> int:
+        from runtime.amount import resolve_amount_satoshi
+
+        sat, _ = resolve_amount_satoshi(tx.amount, tx.amount_satoshi)
+        return int(sat)
+
     def _debit_cross_shard_source(self, tx: CrossShardTransaction) -> bool:
+        from runtime.amount import apply_store_delta_satoshi
+
         if not self._validate_cross_shard_tx(tx):
             return False
-        self._db.update_balance(tx.from_addr, -float(tx.amount))
-        return True
+        try:
+            need = self._cross_shard_amount_sat(tx)
+        except (TypeError, ValueError):
+            return False
+        if need <= 0:
+            return False
+        return bool(
+            apply_store_delta_satoshi(
+                self._db, tx.from_addr, -need, allow_float_fallback=False
+            )
+        )
 
     def _gossip_cross_shard(self, tx_id: str) -> None:
         if not self._gossip_fn:
@@ -271,11 +301,16 @@ class ShardingManager:
                 self._gossip_fn(payload)
             except Exception as exc:
                 logger.warning("cross-shard tx gossip failed: %s", exc)
+
     def export_cross_shard_payload(self, tx_id: str) -> Optional[dict]:
         tx = self.cross_shard_txs.get(tx_id)
         if not tx:
             return None
-        return {
+        try:
+            amt_sat = self._cross_shard_amount_sat(tx)
+        except (TypeError, ValueError):
+            amt_sat = None
+        out = {
             "tx_id": tx.tx_id,
             "from_shard": tx.from_shard,
             "to_shard": tx.to_shard,
@@ -285,6 +320,9 @@ class ShardingManager:
             "status": tx.status,
             "source_node": self.node_id,
         }
+        if amt_sat is not None:
+            out["amount_satoshi"] = int(amt_sat)
+        return out
 
     def receive_cross_shard_credit(self, payload: dict) -> bool:
         """Dest-shard node: credit recipient after P2P gossip."""
@@ -300,13 +338,30 @@ class ShardingManager:
             existing = self.cross_shard_txs.get(tx_id)
             if existing and existing.status == "confirmed":
                 return True
-            amount = float(payload.get("amount", 0))
+            amount_raw = payload.get("amount", 0)
             to_addr = payload.get("to_addr", "")
-            if amount <= 0 or not to_addr:
+            try:
+                from runtime.amount import (
+                    apply_store_delta_satoshi,
+                    from_satoshi_float,
+                    resolve_amount_satoshi,
+                )
+
+                amount_sat, amount_abs = resolve_amount_satoshi(
+                    amount_raw if amount_raw is not None else None,
+                    payload.get("amount_satoshi"),
+                )
+            except (TypeError, ValueError):
                 return False
-            if not self._db or not hasattr(self._db, "update_balance"):
+            if amount_sat <= 0 or not to_addr:
                 return False
-            self._db.update_balance(to_addr, amount)
+            if not self._db or not hasattr(self._db, "balance_delta_satoshi"):
+                return False
+            if not apply_store_delta_satoshi(
+                self._db, to_addr, amount_sat, allow_float_fallback=False
+            ):
+                return False
+            amount = amount_abs if amount_abs is not None else from_satoshi_float(amount_sat)
             cross_tx = existing or CrossShardTransaction(
                 tx_id=tx_id,
                 from_shard=int(payload.get("from_shard", 0)),
@@ -316,7 +371,9 @@ class ShardingManager:
                 amount=amount,
                 status="confirmed",
                 created_at=time.time(),
+                amount_satoshi=amount_sat,
             )
+            cross_tx.amount_satoshi = amount_sat
             cross_tx.status = "confirmed"
             cross_tx.confirmed_at = time.time()
             self.cross_shard_txs[tx_id] = cross_tx
@@ -381,9 +438,25 @@ class ShardingManager:
         for tx_id in self.pending_cross_txs[:]:
             tx = self.cross_shard_txs[tx_id]
             if self._validate_cross_shard_tx(tx):
-                amount = float(tx.amount)
-                self._db.update_balance(tx.from_addr, -amount)
-                self._db.update_balance(tx.to_addr, amount)
+                from runtime.amount import apply_store_delta_satoshi
+
+                try:
+                    amount_sat = self._cross_shard_amount_sat(tx)
+                except (TypeError, ValueError):
+                    tx.status = "failed"
+                    self.pending_cross_txs.remove(tx_id)
+                    continue
+                if not (
+                    apply_store_delta_satoshi(
+                        self._db, tx.from_addr, -amount_sat, allow_float_fallback=False
+                    )
+                    and apply_store_delta_satoshi(
+                        self._db, tx.to_addr, amount_sat, allow_float_fallback=False
+                    )
+                ):
+                    tx.status = "failed"
+                    self.pending_cross_txs.remove(tx_id)
+                    continue
                 tx.status = "confirmed"
                 tx.confirmed_at = time.time()
                 self.pending_cross_txs.remove(tx_id)
@@ -392,19 +465,31 @@ class ShardingManager:
                 self.pending_cross_txs.remove(tx_id)
 
     def _validate_cross_shard_tx(self, tx: CrossShardTransaction) -> bool:
-        """Validate cross-shard transaction against chain balances."""
-        if tx.amount <= 0:
+        """Validate cross-shard transaction against chain balances (satoshi)."""
+        from runtime.amount import to_satoshi, try_debit_satoshi
+
+        try:
+            need = self._cross_shard_amount_sat(tx)
+        except (TypeError, ValueError):
+            return False
+        if need <= 0:
             return False
         if not tx.from_addr or not tx.to_addr:
             return False
-        if (
-            not self._db
-            or not hasattr(self._db, "get_balance")
-            or not hasattr(self._db, "update_balance")
+        if not self._db or not (
+            hasattr(self._db, "get_balance_satoshi")
+            or hasattr(self._db, "get_balance")
         ):
             return False
-        balance = float(self._db.get_balance(tx.from_addr))
-        return balance >= float(tx.amount)
+        if hasattr(self._db, "get_balance_satoshi"):
+            bal_sat = int(self._db.get_balance_satoshi(tx.from_addr))
+        else:
+            bal_sat = int(to_satoshi(self._db.get_balance(tx.from_addr)))
+        try:
+            try_debit_satoshi(bal_sat, debit_satoshi=need)
+        except ValueError:
+            return False
+        return True
 
     def get_shard_balance(self, address: str, shard_id: int = None) -> float:
         """Balance for address (logical shard routing; funds live on L1 state)."""

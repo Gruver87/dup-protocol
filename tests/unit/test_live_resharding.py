@@ -40,7 +40,18 @@ def test_distributed_migration_debit_credit(tmp_path):
     row = src.coordinator.queue_address_migration(addr, 0, 1)
     db0.set_balance(addr, 50.0)
     payload = src.coordinator.export_migration_debit(row, db0, src.owns_shard)
-    assert payload and payload.get("balance") == 50.0
+    assert payload and payload.get("balance_satoshi") == 50_000_000
+    assert payload.get("balance") == 50.0
     assert dst.coordinator.apply_migration_credit(payload, db1, dst.owns_shard) is True
     assert db1.get_balance(addr) == 50.0
     assert db0.get_balance(addr) == 0.0
+
+    # Float-only credit payload must refuse (ADR 0021).
+    bad = {
+        "type": "shard_migration",
+        "address": "0x" + "cd" * 20,
+        "from_shard": 0,
+        "to_shard": 1,
+        "balance": 10.0,
+    }
+    assert dst.coordinator.apply_migration_credit(bad, db1, dst.owns_shard) is False

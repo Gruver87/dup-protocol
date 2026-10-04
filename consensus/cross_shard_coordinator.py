@@ -183,6 +183,8 @@ class CrossShardCoordinator:
 
     def discover_migrations(self, accounts: List[dict], old_shards: int, new_shards: int) -> int:
         """Queue accounts whose shard assignment changes after resharding."""
+        from runtime.amount import from_satoshi_float, to_satoshi
+
         added = 0
         with self._lock:
             queued = {r["address"].lower() for r in self._migration_queue}
@@ -190,8 +192,17 @@ class CrossShardCoordinator:
                 addr = str(acc.get("address", "") or "").strip()
                 if not addr:
                     continue
-                balance = float(acc.get("balance", 0) or 0)
-                if balance <= 0:
+                if acc.get("balance_satoshi") is not None:
+                    try:
+                        sats = int(acc["balance_satoshi"])
+                    except (TypeError, ValueError):
+                        continue
+                else:
+                    try:
+                        sats = int(to_satoshi(float(acc.get("balance", 0) or 0)))
+                    except (TypeError, ValueError):
+                        continue
+                if sats <= 0:
                     continue
                 old = self.shard_for_address(addr, old_shards)
                 new = self.shard_for_address(addr, new_shards)
@@ -201,7 +212,8 @@ class CrossShardCoordinator:
                     "address": addr,
                     "from_shard": old,
                     "to_shard": new,
-                    "balance": balance,
+                    "balance_satoshi": sats,
+                    "balance": float(from_satoshi_float(sats)),
                     "queued_at": time.time(),
                     "status": "pending",
                 })
@@ -246,41 +258,96 @@ class CrossShardCoordinator:
         with self._lock:
             return [dict(row) for row in self._migration_queue if row.get("status") == "pending"]
 
+    @staticmethod
+    def _read_balance_satoshi(db, addr: str) -> Optional[int]:
+        if db is None or not addr:
+            return None
+        if hasattr(db, "get_balance_satoshi"):
+            try:
+                return int(db.get_balance_satoshi(addr))
+            except (TypeError, ValueError):
+                return None
+        return None
+
+    @staticmethod
+    def _apply_delta_satoshi(db, addr: str, delta_sats: int) -> bool:
+        """Apply integer satoshi delta; refuse float-only money move."""
+        from runtime.amount import apply_store_delta_satoshi
+
+        if db is None or not addr or not int(delta_sats):
+            return False
+        return bool(
+            apply_store_delta_satoshi(
+                db, addr, int(delta_sats), allow_float_fallback=False
+            )
+        )
+
     def export_migration_debit(self, row: dict, db, owns_shard: Callable[[int], bool]) -> Optional[dict]:
-        """Debit balance on source shard; return gossip payload for destination."""
+        """Debit balance on source shard; return gossip payload for destination.
+
+        Canonical money on the wire is ``balance_satoshi``. Float ``balance`` is
+        display-only. Float-only debit without satoshi read is refused (ADR 0021).
+        """
+        from runtime.amount import from_satoshi_float
+
         from_shard = int(row.get("from_shard", -1))
         if not owns_shard(from_shard):
             return None
         addr = row.get("address", "")
-        if not addr or not db or not hasattr(db, "get_balance"):
+        if not addr:
             return None
-        balance = float(db.get_balance(addr))
-        if balance <= 0:
+        sats = self._read_balance_satoshi(db, addr)
+        if sats is None:
+            logger.warning(
+                "cross_shard debit refused address=%s reason=get_balance_satoshi_required",
+                addr[:18],
+            )
+            return None
+        if sats <= 0:
             self.complete_migration(addr)
-            return {"address": addr, "status": "zero_balance"}
-        if hasattr(db, "update_balance"):
-            db.update_balance(addr, -balance)
-        row["balance"] = balance
+            return {"address": addr, "status": "zero_balance", "balance_satoshi": 0}
+        if not self._apply_delta_satoshi(db, addr, -sats):
+            logger.warning(
+                "cross_shard debit refused address=%s reason=no_satoshi_write_path",
+                addr[:18],
+            )
+            return None
+        row["balance_satoshi"] = sats
+        row["balance"] = float(from_satoshi_float(sats))
         row["status"] = "debited"
         return {
             "type": "shard_migration",
             "address": addr,
             "from_shard": from_shard,
             "to_shard": int(row.get("to_shard", 0)),
-            "balance": balance,
+            "balance_satoshi": sats,
+            "balance": float(from_satoshi_float(sats)),
         }
 
     def apply_migration_credit(self, payload: dict, db, owns_shard: Callable[[int], bool]) -> bool:
+        """Credit destination shard. Requires ``balance_satoshi`` (refuse float-only)."""
         if not isinstance(payload, dict) or payload.get("type") != "shard_migration":
             return False
         to_shard = int(payload.get("to_shard", -1))
         if not owns_shard(to_shard):
             return False
         addr = payload.get("address", "")
-        balance = float(payload.get("balance", 0) or 0)
-        if not addr or balance <= 0 or not db or not hasattr(db, "update_balance"):
+        if not addr:
             return False
-        db.update_balance(addr, balance)
+        if payload.get("balance_satoshi") is None:
+            logger.warning(
+                "cross_shard credit refused address=%s reason=balance_satoshi_required",
+                str(addr)[:18],
+            )
+            return False
+        try:
+            sats = int(payload["balance_satoshi"])
+        except (TypeError, ValueError):
+            return False
+        if sats <= 0:
+            return False
+        if not self._apply_delta_satoshi(db, addr, sats):
+            return False
         self.complete_migration(addr)
         return True
 

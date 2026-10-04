@@ -5870,12 +5870,17 @@ class RESTHandler(BaseHTTPRequestHandler):
                     from_addr = body.get("from", body.get("from_addr", ""))
                     to_addr = body.get("to", body.get("to_addr", ""))
                     value = body.get("value", body.get("amount", 0))
-                    shard_from, cross_id = sh.add_transaction({
+                    shard_tx = {
                         "from": from_addr,
                         "to": to_addr,
                         "value": value,
                         "hash": result,
-                    })
+                    }
+                    if body.get("amount_satoshi") is not None:
+                        shard_tx["amount_satoshi"] = body.get("amount_satoshi")
+                    elif body.get("value_satoshi") is not None:
+                        shard_tx["amount_satoshi"] = body.get("value_satoshi")
+                    shard_from, cross_id = sh.add_transaction(shard_tx)
                     resp["from_shard"] = shard_from
                     resp["to_shard"] = sh.get_shard_for_address(to_addr) if hasattr(sh, "get_shard_for_address") else None
                     resp["cross_shard"] = bool(cross_id)
