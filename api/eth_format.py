@@ -245,6 +245,57 @@ def block_extra_data(blk: Optional[Dict[str, Any]]) -> Optional[str]:
     return "0x" + s.encode("utf-8").hex()
 
 
+def observed_tx_address(
+    row: Optional[Dict[str, Any]],
+    *keys: str,
+    allow_zero: bool = False,
+) -> Optional[str]:
+    """Address from a tx/receipt row. Missing/empty is null, not ''."""
+    if not isinstance(row, dict):
+        return None
+    for key in keys:
+        if key not in row:
+            continue
+        raw = row.get(key)
+        if raw is None or str(raw).strip() == "":
+            continue
+        s = str(raw).strip()
+        hexpart = s[2:] if s.startswith(("0x", "0X")) else s
+        if hexpart and all(c in "0123456789abcdefABCDEF" for c in hexpart):
+            if not allow_zero and all(c == "0" for c in hexpart):
+                return None
+            return "0x" + hexpart.lower()
+        return s
+    return None
+
+
+def observed_tx_hash(row: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Tx hash from the row. Missing/empty/all-zero is null, not ''."""
+    if not isinstance(row, dict):
+        return None
+    raw = row.get("hash") or row.get("tx_hash") or row.get("transactionHash")
+    if raw is None or str(raw).strip() == "":
+        return None
+    s = str(raw).strip()
+    if not s.startswith(("0x", "0X")):
+        s = "0x" + s
+    hexpart = s[2:]
+    if not hexpart or any(c not in "0123456789abcdefABCDEF" for c in hexpart):
+        return None
+    if all(c == "0" for c in hexpart):
+        return None
+    return s
+
+
+def observed_receipt_status(row: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Receipt status 0x0/0x1 from a stored field. Missing is null, not reverted."""
+    if not isinstance(row, dict) or "status" not in row:
+        return None
+    from storage.database import Database
+
+    return hex(int(Database._normalize_tx_status(row.get("status"))))
+
+
 def observed_value_hex(row: Optional[Dict[str, Any]]) -> Optional[str]:
     """ABS value as wei hex. Missing is null; stored 0 is 0x0."""
     if not isinstance(row, dict):
@@ -329,10 +380,10 @@ def format_tx(tx: Optional[Dict]) -> Optional[Dict]:
     if not tx:
         return None
     return {
-        "hash": tx.get("hash", tx.get("tx_hash", "")),
+        "hash": observed_tx_hash(tx),
         "blockNumber": hex(tx.get("block_height", 0)) if tx.get("block_height") is not None else None,
-        "from": tx.get("from_addr", tx.get("from", "")),
-        "to": tx.get("to_addr", tx.get("to", "")),
+        "from": observed_tx_address(tx, "from_addr", "from"),
+        "to": observed_tx_address(tx, "to_addr", "to", allow_zero=True),
         "value": observed_value_hex(tx),
         "gas": _observed_uint_hex(tx, "gas", "gas_limit"),
         "gasUsed": _observed_uint_hex(tx, "gas_used", "gasUsed"),
@@ -432,24 +483,23 @@ def format_eth_log(row: Dict, bc=None) -> Dict:
 def format_receipt(tx: Optional[Dict], bc=None, query=None) -> Optional[Dict]:
     if not tx:
         return None
-    from storage.database import Database
 
-    tx_hash = tx.get("hash", tx.get("tx_hash", ""))
+    tx_hash = observed_tx_hash(tx)
     logs: List[Dict] = []
     facade = query
-    if facade is not None and hasattr(facade, "get_evm_logs_by_tx"):
+    if facade is not None and hasattr(facade, "get_evm_logs_by_tx") and tx_hash:
         rows = facade.get_evm_logs_by_tx(tx_hash)
         logs = [format_eth_log(row, facade) for row in rows]
-    elif bc is not None and getattr(bc, "query_facade", None) is not None:
+    elif bc is not None and getattr(bc, "query_facade", None) is not None and tx_hash:
         rows = bc.query_facade.get_evm_logs_by_tx(tx_hash)
         logs = [format_eth_log(row, bc.query_facade) for row in rows]
-    status_i = Database._normalize_tx_status(tx.get("status"))
+    status_hex = observed_receipt_status(tx)
     return {
-        "transactionHash": tx_hash,
+        "transactionHash": observed_tx_hash(tx),
         "blockNumber": hex(tx.get("block_height", 0)) if tx.get("block_height") is not None else None,
-        "from": tx.get("from_addr", tx.get("from", "")),
-        "to": tx.get("to_addr", tx.get("to", "")),
-        "status": hex(status_i),
+        "from": observed_tx_address(tx, "from_addr", "from"),
+        "to": observed_tx_address(tx, "to_addr", "to", allow_zero=True),
+        "status": status_hex,
         "gasUsed": _observed_uint_hex(tx, "gas_used", "gasUsed"),
         "logs": logs,
         "logsBloom": logs_bloom(logs),

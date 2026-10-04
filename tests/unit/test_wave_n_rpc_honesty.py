@@ -100,6 +100,10 @@ def test_format_tx_value_satoshi_no_invented_gas():
     assert out["input"] is None
     assert observed_value_hex({"amount": 1}) == hex(int(to_satoshi(1)) * WEI_PER_SATOSHI)
     assert observed_value_hex({}) is None
+    missing = format_tx({"value": 1})
+    assert missing["hash"] is None
+    assert missing["from"] is None
+    assert missing["to"] is None
 
 
 def test_format_block_no_invented_eth_stubs():

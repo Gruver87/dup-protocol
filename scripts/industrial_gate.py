@@ -534,8 +534,10 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"
             )
-            if "Database._normalize_tx_status(tx.get(\"status\"))" not in eth_fmt_py:
-                errors.append("receipt format must normalize omitted status fail-closed to 0")
+            if "def observed_receipt_status" not in eth_fmt_py:
+                errors.append(
+                    "receipt format must use observed_receipt_status (null if unobserved)"
+                )
         if '"bridge_relayer_live": bool(cfg.bridge_enabled)' in http_py:
             errors.append("bridge_relayer_live must not equal bridge_enabled alone")
         if '"bridge_rust_binary_healthy"' not in http_py:
@@ -1350,6 +1352,10 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("eth_format must not invent gasLimit as Ethereum 30M")
         if 'tx.get("data", tx.get("tx_data", "0x"))' in eth_fmt_py:
             errors.append("format_tx must not default missing input to 0x")
+        if "def observed_tx_hash" not in eth_fmt_py:
+            errors.append("eth_format must expose observed_tx_hash (null if unobserved)")
+        if "def observed_tx_address" not in eth_fmt_py:
+            errors.append("eth_format must expose observed_tx_address (null if unobserved)")
         if '"extraData": "0x"' in eth_fmt_py:
             errors.append("format_block must not hardcode extraData as empty")
         if "def block_extra_data" not in eth_fmt_py:
