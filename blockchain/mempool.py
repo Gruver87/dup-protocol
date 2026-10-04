@@ -44,7 +44,7 @@ class MempoolTransaction:
     signature: str = ""
     public_key: str = ""
     data: str = ""
-    gas: int = 21_000
+    gas: int = 0  # explicit gas required on add (no invent 21000)
     timestamp: float = field(default_factory=time.time)
     amount_satoshi: int = -1
     fee_satoshi: int = -1
@@ -76,7 +76,7 @@ class MempoolTransaction:
                 "signature": self.signature,
                 "public_key": self.public_key,
                 "data": self.data or "",
-                "gas_limit": int(self.gas or 21_000),
+                "gas_limit": int(self.gas),
             }
             return verify_transaction_signature(tx_dict)
         except Exception as exc:
@@ -91,6 +91,12 @@ def _validate_mempool_tx(tx: MempoolTransaction, min_fee: float) -> Tuple[bool, 
     """
     if not tx.tx_hash:
         return False, "missing_hash"
+    try:
+        gas = int(tx.gas)
+    except (TypeError, ValueError):
+        return False, "gas_required"
+    if gas <= 0:
+        return False, "gas_required"
     if tx.fee < min_fee:
         return False, f"fee_too_low (min={min_fee:.8f})"
 
@@ -131,7 +137,7 @@ def _mempool_tx_verify_dict(tx: MempoolTransaction, chain_id: int) -> Dict:
         "signature": tx.signature,
         "public_key": tx.public_key,
         "data": tx.data or "",
-        "gas_limit": int(tx.gas or 21_000),
+        "gas_limit": int(tx.gas),
     }
 
 
@@ -178,13 +184,17 @@ class Mempool:
                 bind_value = (
                     int(amt) if isinstance(amt, (int, float)) and amt == int(amt) else amt
                 )
+                gas_i = int(getattr(tx, "gas", 0) or 0)
+                if gas_i <= 0:
+                    self._rejected_count += 1
+                    return False
                 bound, ts = bind_identity_from_fields(
                     tx.tx_hash,
                     from_addr=tx.from_addr,
                     to_addr=tx.to_addr,
                     value=bind_value,
                     nonce=int(tx.nonce or 0),
-                    gas=int(getattr(tx, "gas", 0) or 0) or 21_000,
+                    gas=gas_i,
                     data=getattr(tx, "data", "") or "",
                     timestamp=int(tx.timestamp or 0),
                     chain_id=int(getattr(self, "chain_id", 1) or 1),
@@ -216,17 +226,23 @@ class Mempool:
 
             if self.blockchain and not chain_prevalidated:
                 from core.blockchain import Transaction
+                gas_i = int(getattr(tx, "gas", 0) or 0)
+                if gas_i <= 0:
+                    self._rejected_count += 1
+                    return False
+                amt_sat = int(getattr(tx, "amount_satoshi", -1))
                 chain_tx = Transaction(
                     from_addr=tx.from_addr,
                     to_addr=tx.to_addr,
                     value=tx.amount,
                     nonce=tx.nonce,
-                    gas=int(getattr(tx, "gas", 0) or 0) or self.blockchain.config.base_gas_price,
+                    gas=gas_i,
                     data=getattr(tx, "data", "") or "",
                     tx_hash=tx.tx_hash,
                     signature=tx.signature,
                     public_key=tx.public_key,
                     timestamp=int(tx.timestamp or 0),
+                    amount_satoshi=amt_sat if amt_sat >= 0 else None,
                 )
                 tx._chain_id = self.chain_id
                 check = self.blockchain.validate_transaction(chain_tx)
@@ -340,7 +356,7 @@ class Mempool:
                     "to": tx.to_addr,
                     "value": tx.amount,
                     "gasPrice": tx.fee,
-                    "gas": tx.gas or 21000,
+                    "gas": int(tx.gas or 0),
                     "nonce": tx.nonce,
                     "data": tx.data or "",
                     "timestamp": tx.timestamp,

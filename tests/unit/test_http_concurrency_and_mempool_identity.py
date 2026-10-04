@@ -79,7 +79,7 @@ def test_threaded_server_respects_max_concurrent():
 def test_mempool_rebinding_collapses_alternate_claimed_hashes():
     """Same payload under different claimed hashes → one canonical identity."""
     w = Wallet.create_new()
-    signed = w.sign_transaction(to="0x" + "ab" * 20, value=1, nonce=0, chain_id=77777)
+    signed = w.sign_transaction(to="0x" + "ab" * 20, value=1, nonce=0, chain_id=77777, gas_limit=21000)
     ts = 1_700_000_100
     canon, _ = bind_identity_from_fields(
         "",

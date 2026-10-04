@@ -101,7 +101,7 @@ def test_import_block_path_replays_via_same_uow_seam(tmp_path) -> None:
     sender = "0x" + "d4" * 20
     recv = "0x" + "e5" * 20
     node_a.db.set_balance(sender, 50.0)
-    tx = Transaction(from_addr=sender, to_addr=recv, value=5.0, nonce=0)
+    tx = Transaction(from_addr=sender, to_addr=recv, value=5.0, nonce=0, gas=21000)
     blk = node_a.create_block([tx], proposer="0x" + "f6" * 20)
     assert node_a.add_block(blk)
     exported = dict(node_a.db.get_block(blk.height))
@@ -149,7 +149,7 @@ def test_cas_stale_parent_via_storage_uow_rejects(chain_env) -> None:
 
     sender = "0x" + "11" * 20
     _fund(bc, sender, 50.0)
-    tx = Transaction(from_addr=sender, to_addr="0x" + "22" * 20, value=1.0, nonce=0)
+    tx = Transaction(from_addr=sender, to_addr="0x" + "22" * 20, value=1.0, nonce=0, gas=21000)
     block = bc.create_block([tx], proposer="0x" + "33" * 20)
     assert bc.add_block(block) is False
     assert bc.get_height() == tip_before
@@ -193,7 +193,7 @@ def test_enospc_on_uow_commit_rolls_back_outer_atomic(chain_env) -> None:
     sender = "0x" + "44" * 20
     _fund(bc, sender, 80.0)
     bal_before = bc.get_balance(sender)
-    tx = Transaction(from_addr=sender, to_addr="0x" + "55" * 20, value=2.0, nonce=0)
+    tx = Transaction(from_addr=sender, to_addr="0x" + "55" * 20, value=2.0, nonce=0, gas=21000)
     block = bc.create_block([tx], proposer="0x" + "66" * 20)
     assert bc.add_block(block) is False
     assert bc.get_height() == tip_before
@@ -213,7 +213,7 @@ def test_exception_before_uow_aborts_atomic_no_partial_block(chain_env) -> None:
 
     sender = "0x" + "77" * 20
     _fund(bc, sender, 60.0)
-    tx = Transaction(from_addr=sender, to_addr="0x" + "88" * 20, value=1.0, nonce=0)
+    tx = Transaction(from_addr=sender, to_addr="0x" + "88" * 20, value=1.0, nonce=0, gas=21000)
     block = bc.create_block([tx], proposer="0x" + "99" * 20)
     assert bc.add_block(block) is False
     assert bc.get_height() == tip_before

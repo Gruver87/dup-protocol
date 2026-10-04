@@ -43,7 +43,7 @@ def test_block_confirm_updates_trace():
     cfg.burn_address = "0x" + "d" * 40
     db.update_balance(miner, 10_000.0)
     bc = Blockchain(cfg, db, EventBus())
-    tx = Transaction(from_addr=miner, to_addr="0x" + "b" * 40, value=1.0, nonce=0)
+    tx = Transaction(from_addr=miner, to_addr="0x" + "b" * 40, value=1.0, nonce=0, gas=21000)
     block = bc.create_block([tx], miner)
     assert bc.add_block(block) is True
     trace = db.get_tx_propagation_trace(tx.hash)

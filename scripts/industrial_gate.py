@@ -3261,6 +3261,28 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             ROOT / "runtime" / "config.py"
         ).read_text(encoding="utf-8"):
             errors.append("config must expose p2p_mempool_require_wire_satoshi")
+        if "gas_missing" not in p2p_py:
+            errors.append("p2p_node must refuse missing/zero gas (no invent 21000)")
+        http_src = (ROOT / "api" / "http.py").read_text(encoding="utf-8", errors="replace")
+        if "plan_transfer_fees_sat" not in http_src:
+            errors.append("api/http admit must use plan_transfer_fees_sat")
+        if 'gas or gas_limit required' not in http_src:
+            errors.append("api/http must require explicit gas on send/deploy/call")
+        if "gas_limit_required" not in (ROOT / "crypto" / "wallet.py").read_text(
+            encoding="utf-8", errors="replace"
+        ):
+            errors.append("wallet.sign_transaction must refuse invent gas_limit=21000")
+        if "gas_required" not in (ROOT / "core" / "blockchain.py").read_text(
+            encoding="utf-8", errors="replace"
+        ):
+            errors.append("Transaction must refuse invent gas=21000")
+        if 'gas: int = 0  # explicit gas required on add' not in (
+            ROOT / "blockchain" / "mempool.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append("MempoolTransaction must default gas=0 (no invent 21000)")
+        main_py = (ROOT / "main.py").read_text(encoding="utf-8", errors="replace")
+        if "gas_required (no invent)" not in main_py:
+            errors.append("main mining must skip txs with missing gas (no invent)")
         if "abs_p2p_native_mempool_min_fee_refuse" not in (
             ROOT / "observability" / "metrics.py"
         ).read_text(encoding="utf-8"):

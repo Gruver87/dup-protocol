@@ -102,7 +102,7 @@ def test_eth_block_and_pending_filters(filter_rpc_env):
         0.01,
         signature="aa",
         public_key="bb" * 32,
-    )
+        gas=21000)
     assert mp.add(tx, signature_preverified=True) is True
     pending = _rpc(url, "eth_getFilterChanges", [pending_id])
     assert len(pending) == 1

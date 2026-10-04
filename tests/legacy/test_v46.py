@@ -65,7 +65,7 @@ test("Wallet has private key", len(wallet.private_key) > 0)
 
 # =========================================================
 log("\n[TEST 5] Transaction signing")
-tx_signed = wallet.sign_transaction("0xbob", 100, 0)
+tx_signed = wallet.sign_transaction("0xbob", 100, 0, gas_limit=21000)
 test("Transaction has signature", "signature" in tx_signed)
 test("Transaction has public_key", "public_key" in tx_signed)
 test("Transaction has hash", "hash" in tx_signed)
@@ -139,8 +139,8 @@ finally:
 
 # =========================================================
 log("\n[TEST 15] Chain ID protection")
-tx_chain1 = wallet.sign_transaction("0xbob", 100, 0, chain_id=1)
-tx_chain2 = wallet.sign_transaction("0xbob", 100, 0, chain_id=2)
+tx_chain1 = wallet.sign_transaction("0xbob", 100, 0, chain_id=1, gas_limit=21000)
+tx_chain2 = wallet.sign_transaction("0xbob", 100, 0, chain_id=2, gas_limit=21000)
 test("Different chain_id = different hash", tx_chain1["hash"] != tx_chain2["hash"])
 
 # =========================================================

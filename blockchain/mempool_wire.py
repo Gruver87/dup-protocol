@@ -145,6 +145,7 @@ def mempool_tx_to_wire(tx: "MempoolTransaction") -> Dict:
         "signature": tx.signature or "",
         "public_key": tx.public_key or "",
         "data": tx.data or "",
-        "gas": int(getattr(tx, "gas", 0) or 21_000),
+        # Do not invent gas=21000 on egress when unset — wire the real field.
+        "gas": int(getattr(tx, "gas", 0) or 0),
         "timestamp": float(tx.timestamp),
     }

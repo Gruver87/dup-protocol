@@ -52,7 +52,7 @@ def test_simple_transfer_receipt_status_one():
         to_addr="0x" + "2" * 40,
         value=1.0,
         nonce=0,
-    )
+        gas=21000)
     block = bc.create_block([tx], cfg.miner_address)
     assert bc.add_block(block) is True
     rcpt = db.get_tx_receipt(tx.hash)

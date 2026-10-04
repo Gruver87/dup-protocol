@@ -40,7 +40,7 @@ def test_mixed_classifier():
     db.initialize()
     bc = Blockchain(cfg, db, EventBus())
     bc.evm = EVMAdapter(db, cfg)
-    simple = Transaction(from_addr="0xa", to_addr="0xb", value=1.0, nonce=0)
+    simple = Transaction(from_addr="0xa", to_addr="0xb", value=1.0, nonce=0, gas=21000)
     evm_tx = Transaction(
         from_addr="0xa",
         to_addr="0x" + "0" * 40,
@@ -75,7 +75,7 @@ def test_mixed_block_simple_then_deploy():
     db.set_balance(sender, 200.0)
     db.set_balance(cfg.miner_address, 0.0)
 
-    simple = Transaction(from_addr=sender, to_addr=recv, value=5.0, nonce=0)
+    simple = Transaction(from_addr=sender, to_addr=recv, value=5.0, nonce=0, gas=21000)
     deploy = Transaction(
         from_addr=sender,
         to_addr="0x" + "0" * 40,

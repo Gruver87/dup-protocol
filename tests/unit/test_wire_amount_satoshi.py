@@ -239,3 +239,86 @@ def test_p2p_legacy_float_only_ingests_when_flag_off():
     mp_tx, _ = out
     assert mp_tx.amount_satoshi == int(to_satoshi(1.25))
     assert mp_tx.fee_satoshi == int(to_satoshi(0.002))
+
+
+def test_p2p_missing_gas_refuses_no_invent():
+    node = _p2p_node(require_wire_satoshi=False)
+    payload = {
+        "from": "0x" + "11" * 20,
+        "to": "0x" + "22" * 20,
+        "value": 1.0,
+        "fee": 0.01,
+        "nonce": 0,
+        "signature": "sig",
+        "public_key": "pk",
+        "hash": "aa" * 32,
+        "data": "",
+    }
+    out = _build_wire(node, payload)
+    assert out is None
+    assert node._last_tx_wire_reject == "gas_missing"
+
+
+def test_send_tx_obj_missing_gas_refuses():
+    from api.http import _handle_send_tx_obj
+
+    cfg = SimpleNamespace(
+        deployment_mode="dev",
+        is_production=False,
+        chain_id=778888,
+        gas_price_wei=0.0000001,
+        burn_rate=0.02,
+        node_id="t",
+        require_signatures=False,
+    )
+    try:
+        _handle_send_tx_obj(
+            {
+                "from": "0x" + "1" * 40,
+                "to": "0x" + "2" * 40,
+                "value": 1.0,
+                "nonce": 0,
+            },
+            None,
+            None,
+            cfg,
+        )
+        assert False, "expected gas required"
+    except ValueError as exc:
+        assert "gas" in str(exc)
+
+
+def test_transaction_amount_satoshi_mismatch_refuses():
+    from core.blockchain import Transaction
+    from runtime.amount import to_satoshi
+
+    sat = int(to_satoshi(1.0))
+    try:
+        Transaction("0x" + "1" * 40, "0x" + "2" * 40, 2.0, amount_satoshi=sat, gas=21000)
+        assert False, "expected value_satoshi_mismatch"
+    except ValueError as exc:
+        assert "value_satoshi_mismatch" in str(exc)
+    tx = Transaction("0x" + "1" * 40, "0x" + "2" * 40, 1.0, amount_satoshi=sat, gas=21000)
+    assert tx.amount_satoshi == sat
+    assert tx.to_dict()["amount_satoshi"] == sat
+
+
+def test_transaction_and_wallet_refuse_invent_gas():
+    from core.blockchain import Transaction
+    from crypto.wallet import Wallet
+    import pytest
+
+    with pytest.raises(ValueError, match="gas_required"):
+        Transaction("0x" + "1" * 40, "0x" + "2" * 40, 1.0)
+    with pytest.raises(ValueError, match="gas_required"):
+        Transaction.from_dict(
+            {
+                "from_addr": "0x" + "1" * 40,
+                "to_addr": "0x" + "2" * 40,
+                "value": 1.0,
+                "nonce": 0,
+            }
+        )
+    w = Wallet.create_new()
+    with pytest.raises(ValueError, match="gas_limit_required"):
+        w.sign_transaction(to="0x" + "ab" * 20, value=1, nonce=0, chain_id=778888)

@@ -37,7 +37,7 @@ def _wire(msg_type: str, data: dict) -> bytes:
 
 def _signed_tx(*, chain_id: int = CHAIN, to: str = "0x" + ("22" * 20)) -> dict:
     w = Wallet.create_new()
-    return w.sign_transaction(to=to, value=1, nonce=0, chain_id=chain_id)
+    return w.sign_transaction(to=to, value=1, nonce=0, chain_id=chain_id, gas_limit=21000)
 
 
 def test_needles_v13118():

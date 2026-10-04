@@ -42,7 +42,7 @@ test("Private key exists", len(alice.private_key) == 64)
 
 # =========================================================
 log("\n[TEST 2] Create signed transaction")
-tx = alice.sign_transaction(bob.address, 100, 0)
+tx = alice.sign_transaction(bob.address, 100, 0, gas_limit=21000)
 test("Transaction has signature", "signature" in tx)
 
 # =========================================================
@@ -67,7 +67,7 @@ test("Alice nonce = 0", state.get_nonce(alice.address) == 0)
 # =========================================================
 log("\n[TEST 6] Secure mempool")
 mempool = SecureMempool(state)
-tx_valid = alice.sign_transaction(bob.address, 100, 0)
+tx_valid = alice.sign_transaction(bob.address, 100, 0, gas_limit=21000)
 tx_valid["gas_price"] = 1
 tx_valid["gas_limit"] = 21000
 success, msg = mempool.add_transaction(tx_valid)
@@ -75,7 +75,7 @@ test("Valid transaction added to mempool", success)
 
 # =========================================================
 log("\n[TEST 7] Replay attack protection")
-tx_replay = alice.sign_transaction(bob.address, 100, 0)
+tx_replay = alice.sign_transaction(bob.address, 100, 0, gas_limit=21000)
 success, msg = mempool.add_transaction(tx_replay)
 test("Duplicate nonce rejected", not success)
 

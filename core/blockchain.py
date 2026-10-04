@@ -72,27 +72,52 @@ class Transaction:
         to_addr: str,
         value: float,
         nonce: int = 0,
-        gas: int = 21_000,
+        gas: int | None = None,
         data: str = "",
         tx_hash: str = "",
         signature: str = "",
         public_key: str = "",
         timestamp: int = 0,
+        *,
+        amount_satoshi: int | None = None,
     ):
+        # Refuse invent gas=21000 — callers must pass a positive gas limit.
+        if gas is None:
+            raise ValueError("gas_required")
+        try:
+            gas_i = int(gas)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"gas_required: {exc}") from exc
+        if gas_i <= 0:
+            raise ValueError("gas_required")
         self.from_addr = from_addr
         self.to_addr = to_addr
         self.value = value
         self.nonce = nonce
-        self.gas = gas
+        self.gas = gas_i
         self.data = data
         self.signature = signature
         self.public_key = public_key
         self.timestamp = timestamp or int(time.time())
+        if amount_satoshi is not None:
+            try:
+                self.amount_satoshi = int(amount_satoshi)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("amount_satoshi_invalid") from exc
+            if self.amount_satoshi < 0:
+                raise ValueError("value_negative")
+            from runtime.amount import to_satoshi
+
+            abs_sat = int(to_satoshi(value))
+            if abs_sat != self.amount_satoshi:
+                raise ValueError("value_satoshi_mismatch")
+        else:
+            self.amount_satoshi = None
         self.hash = tx_hash or self._compute_hash()
 
         # Заполняется при включении в блок
         self.block_height: int = 0
-        self.gas_used: int = gas
+        self.gas_used: int = gas_i
         self.fee: float = 0.0
         self.burned: float = 0.0
         # Receipt status: set to 1 only after successful apply (omit → fail-closed 0).
@@ -127,23 +152,59 @@ class Transaction:
             "timestamp": self.timestamp,
             "block_height": self.block_height,
         }
+        if getattr(self, "amount_satoshi", None) is not None:
+            out["amount_satoshi"] = int(self.amount_satoshi)
+            out["value_satoshi"] = int(self.amount_satoshi)
         if self.status is not None:
             out["status"] = int(self.status)
         return out
 
     @classmethod
     def from_dict(cls, d: Dict) -> "Transaction":
+        from runtime.amount import from_satoshi_float, to_satoshi
+
+        amount_satoshi = None
+        raw_sat = d.get("amount_satoshi", d.get("value_satoshi"))
+        if raw_sat is not None and raw_sat != "":
+            try:
+                amount_satoshi = int(raw_sat)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("amount_satoshi_invalid") from exc
+            if amount_satoshi < 0:
+                raise ValueError("value_negative")
+            value = float(from_satoshi_float(amount_satoshi))
+            if "value" in d and d.get("value") is not None:
+                abs_sat = int(to_satoshi(float(d.get("value"))))
+                if abs_sat != amount_satoshi:
+                    raise ValueError("value_satoshi_mismatch")
+            if "amount" in d and d.get("amount") is not None and "value" not in d:
+                abs_sat = int(to_satoshi(float(d.get("amount"))))
+                if abs_sat != amount_satoshi:
+                    raise ValueError("value_satoshi_mismatch")
+        else:
+            value = float(d.get("value", d.get("amount", 0)))
+        # Refuse invent gas=21000 on deserialize — wire/storage must carry gas.
+        raw_gas = d.get("gas", d.get("gas_limit", d.get("gasLimit")))
+        if raw_gas is None or raw_gas == "":
+            raise ValueError("gas_required")
+        try:
+            gas = int(raw_gas)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"gas_required: {exc}") from exc
+        if gas <= 0:
+            raise ValueError("gas_required")
         tx = cls(
             from_addr=d.get("from_addr", d.get("from", "")),
             to_addr=d.get("to_addr", d.get("to", "")),
-            value=float(d.get("value", d.get("amount", 0))),
+            value=value,
             nonce=int(d.get("nonce", 0)),
-            gas=int(d.get("gas", 21_000)),
+            gas=gas,
             data=d.get("data", d.get("tx_data", "")),
             tx_hash=d.get("hash", d.get("tx_hash", "")),
             signature=d.get("signature", ""),
             public_key=d.get("public_key", ""),
             timestamp=int(d.get("timestamp", 0)),
+            amount_satoshi=amount_satoshi,
         )
         tx.fee = float(d.get("fee", 0.0))
         tx.burned = float(d.get("burned", 0.0))

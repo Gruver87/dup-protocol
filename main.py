@@ -2109,12 +2109,14 @@ class NodeOrchestrator:
             txs = []
             for mp_tx in pending:
                 tx_gas = int(getattr(mp_tx, "gas", 0) or 0)
-                if not tx_gas:
-                    tx_gas = (
-                        self.config.evm_gas_limit
-                        if getattr(mp_tx, "data", "")
-                        else self.config.base_gas_price
+                # Refuse invent gas via config defaults when unset.
+                if tx_gas <= 0:
+                    _node_log.warning(
+                        "[Mining] skip tx %s: gas_required (no invent)",
+                        getattr(mp_tx, "tx_hash", "")[:16],
                     )
+                    continue
+                amt_sat = int(getattr(mp_tx, "amount_satoshi", -1))
                 txs.append(Transaction(
                     from_addr=mp_tx.from_addr,
                     to_addr=mp_tx.to_addr,
@@ -2126,6 +2128,7 @@ class NodeOrchestrator:
                     tx_hash=mp_tx.tx_hash,
                     signature=mp_tx.signature,
                     public_key=mp_tx.public_key,
+                    amount_satoshi=amt_sat if amt_sat >= 0 else None,
                 ))
 
             # Обновляем miner_address в конфиге если задан

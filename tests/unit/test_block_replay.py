@@ -31,7 +31,7 @@ def test_import_block_replays_balances(chain):
     recipient = "0x" + "b2" * 20
     chain.db.set_balance(sender, 100.0)
 
-    tx = Transaction(from_addr=sender, to_addr=recipient, value=10.0, nonce=0)
+    tx = Transaction(from_addr=sender, to_addr=recipient, value=10.0, nonce=0, gas=21000)
     block = chain.create_block([tx], proposer="0x" + "c3" * 20)
     assert chain.add_block(block)
 
@@ -51,7 +51,7 @@ def test_second_node_imports_block_state(tmp_path):
     sender = "0x" + "d4" * 20
     recv = "0x" + "e5" * 20
     node_a.db.set_balance(sender, 50.0)
-    tx = Transaction(from_addr=sender, to_addr=recv, value=5.0, nonce=0)
+    tx = Transaction(from_addr=sender, to_addr=recv, value=5.0, nonce=0, gas=21000)
     blk = node_a.create_block([tx], proposer="0x" + "f6" * 20)
     node_a.add_block(blk)
     exported = dict(node_a.db.get_block(blk.height))

@@ -183,8 +183,8 @@ def test_transaction_hash_native_matches_legacy_raw():
 
 
 def test_block_canonical_hash_native_matches_block_hash():
-    tx1 = Transaction("0xa", "0xb", 2.0, nonce=2, timestamp=100, tx_hash="b" * 64)
-    tx2 = Transaction("0xc", "0xd", 3.0, nonce=3, timestamp=101, tx_hash="a" * 64)
+    tx1 = Transaction("0xa", "0xb", 2.0, nonce=2, timestamp=100, tx_hash="b" * 64, gas=21000)
+    tx2 = Transaction("0xc", "0xd", 3.0, nonce=3, timestamp=101, tx_hash="a" * 64, gas=21000)
     block = Block(
         height=4,
         parent_hash="0" * 64,
@@ -218,8 +218,8 @@ def test_block_canonical_hash_native_matches_block_hash():
 
 
 def test_block_canonical_hash_keeps_serializer_format():
-    tx1 = Transaction("0xa", "0xb", 2.0, nonce=2, timestamp=100, tx_hash="b" * 64)
-    tx2 = Transaction("0xc", "0xd", 3.0, nonce=3, timestamp=101, tx_hash="a" * 64)
+    tx1 = Transaction("0xa", "0xb", 2.0, nonce=2, timestamp=100, tx_hash="b" * 64, gas=21000)
+    tx2 = Transaction("0xc", "0xd", 3.0, nonce=3, timestamp=101, tx_hash="a" * 64, gas=21000)
     block = Block(
         height=4,
         parent_hash="0" * 64,

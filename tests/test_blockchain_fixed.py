@@ -48,9 +48,9 @@ def test_merkle_root():
         from ABSOLUTE_BLOCKCHAIN_FINAL import QuantumHash, Transaction
         
         txs = [
-            Transaction("alice", "bob", 100),
-            Transaction("bob", "charlie", 50),
-            Transaction("charlie", "david", 25),
+            Transaction("alice", "bob", 100, gas=21000),
+            Transaction("bob", "charlie", 50, gas=21000),
+            Transaction("charlie", "david", 25, gas=21000),
         ]
         
         tx_hashes = [tx.hash() for tx in txs]
@@ -77,7 +77,7 @@ def test_transaction():
     try:
         from ABSOLUTE_BLOCKCHAIN_FINAL import Transaction
         
-        tx = Transaction("alice", "bob", 100.5, fee=0.001)
+        tx = Transaction("alice", "bob", 100.5, fee=0.001, gas=21000)
         
         assert tx.sender == "alice"
         assert tx.receiver == "bob"
@@ -107,8 +107,8 @@ def test_block():
         from ABSOLUTE_BLOCKCHAIN_FINAL import Block, Transaction
         
         txs = [
-            Transaction("alice", "bob", 100),
-            Transaction("bob", "charlie", 50),
+            Transaction("alice", "bob", 100, gas=21000),
+            Transaction("bob", "charlie", 50, gas=21000),
         ]
         
         block = Block(
@@ -187,8 +187,8 @@ def test_sharding():
         
         shards = ShardManager(64)
         
-        tx1 = Transaction("alice", "bob", 100)
-        tx2 = Transaction("bob", "charlie", 50)
+        tx1 = Transaction("alice", "bob", 100, gas=21000)
+        tx2 = Transaction("bob", "charlie", 50, gas=21000)
         
         shard1 = shards.assign_tx(tx1)
         shard2 = shards.assign_tx(tx2)
@@ -250,7 +250,7 @@ def test_self_healing():
         
         healer = SelfHealingEngine()
         
-        txs = [Transaction("alice", "bob", 100)]
+        txs = [Transaction("alice", "bob", 100, gas=21000)]
         
         block1 = Block(0, "0"*64, txs, "genesis", difficulty=1)
         block1.block_hash = block1.calculate_hash()
@@ -283,13 +283,13 @@ def test_threat_detector():
         
         detector = AIThreatDetector()
         
-        tx1 = Transaction("alice", "bob", 100, fee=0.001)
+        tx1 = Transaction("alice", "bob", 100, fee=0.001, gas=21000)
         assert detector.inspect(tx1) == True
         
-        tx2 = Transaction("alice", "bob", 200000, fee=0.001)
+        tx2 = Transaction("alice", "bob", 200000, fee=0.001, gas=21000)
         assert detector.inspect(tx2) == False
         
-        tx3 = Transaction("alice", "bob", 100, fee=0.00001)
+        tx3 = Transaction("alice", "bob", 100, fee=0.00001, gas=21000)
         assert detector.inspect(tx3) == False
         
         stats = detector.get_stats()
@@ -316,7 +316,7 @@ def test_blockchain_core():
         bc = AbsoluteBlockchain()
         
         for i in range(10):
-            tx = Transaction(f"sender_{i}", f"receiver_{i}", i*10)
+            tx = Transaction(f"sender_{i}", f"receiver_{i}", i*10, gas=21000)
             bc.add_transaction(tx)
         
         assert len(bc.mempool) == 10
@@ -384,7 +384,7 @@ def test_integration():
             sender = users[i % len(users)]
             receiver = users[(i+1) % len(users)]
             amount = (i + 1) * 10
-            tx = Transaction(sender, receiver, amount)
+            tx = Transaction(sender, receiver, amount, gas=21000)
             bc.add_transaction(tx)
         
         blocks_created = 0

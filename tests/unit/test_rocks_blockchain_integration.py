@@ -46,7 +46,7 @@ def test_hybrid_add_block_does_not_double_apply_burn(tmp_path):
     db.initialize()
     bc = Blockchain(cfg, db, EventBus())
 
-    tx = Transaction(from_addr=sender, to_addr=recipient, value=10.0, nonce=0)
+    tx = Transaction(from_addr=sender, to_addr=recipient, value=10.0, nonce=0, gas=21000)
     block = bc.create_block([tx], proposer="0x" + "c3" * 20)
     assert bc.add_block(block)
 

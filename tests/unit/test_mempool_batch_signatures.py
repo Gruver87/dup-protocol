@@ -28,8 +28,8 @@ def test_mempool_add_batch_uses_signature_batch(monkeypatch):
     )
 
     txs = [
-        MempoolTransaction("h1", "0x" + "1" * 40, "0x" + "2" * 40, 1.0, 0.01, signature="aa", public_key="bb" * 32),
-        MempoolTransaction("h2", "0x" + "3" * 40, "0x" + "4" * 40, 2.0, 0.02, signature="cc", public_key="dd" * 32),
+        MempoolTransaction("h1", "0x" + "1" * 40, "0x" + "2" * 40, 1.0, 0.01, signature="aa", public_key="bb" * 32, gas=21000),
+        MempoolTransaction("h2", "0x" + "3" * 40, "0x" + "4" * 40, 2.0, 0.02, signature="cc", public_key="dd" * 32, gas=21000),
     ]
     added, rejected, accepted_hashes = mempool.add_batch(txs)
     assert added == 2

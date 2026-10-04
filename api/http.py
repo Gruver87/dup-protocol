@@ -9584,6 +9584,10 @@ def _handle_deploy_tx(body: Dict, bc, mp, cfg, wallet=None, evm=None) -> str:
     """Queue EVM contract deploy as a signed mempool transaction."""
     from core.blockchain import Transaction
 
+    tx_body = dict(body or {})
+    # Prod auto_sign refuse before gas/bytecode — security policy must win the error.
+    _reject_auto_sign_in_prod(tx_body, cfg)
+
     bytecode = body.get("bytecode", body.get("data", ""))
     if not bytecode:
         raise ValueError("bytecode required")
@@ -9599,10 +9603,16 @@ def _handle_deploy_tx(body: Dict, bc, mp, cfg, wallet=None, evm=None) -> str:
     zero_addr = "0x0000000000000000000000000000000000000000"
     from_addr = body.get("from", body.get("from_address", ""))
     value = _parse_tx_value(body.get("value", body.get("amount", 0)))
-    gas = int(body.get("gas", getattr(cfg, "evm_gas_limit", 8_000_000)))
+    gas_raw = body.get("gas", body.get("gas_limit"))
+    if gas_raw is None or str(gas_raw).strip() == "":
+        raise ValueError("gas or gas_limit required")
+    if isinstance(gas_raw, str) and gas_raw.startswith(("0x", "0X")):
+        gas = int(gas_raw, 16)
+    else:
+        gas = int(gas_raw)
+    if gas <= 0:
+        raise ValueError("gas or gas_limit must be positive")
 
-    tx_body = dict(body or {})
-    _reject_auto_sign_in_prod(tx_body, cfg)
     if wallet and (body.get("auto_sign") or not from_addr):
         nonce = bc.db.get_nonce(wallet.address)
         signed = wallet.sign_transaction(
@@ -9620,6 +9630,19 @@ def _handle_deploy_tx(body: Dict, bc, mp, cfg, wallet=None, evm=None) -> str:
         raise ValueError("from address required (or auto_sign with wallet)")
 
     nonce = int(tx_body.get("nonce", bc.db.get_nonce(from_addr)))
+    from blockchain.mempool_wire import WireMoneyMissing, resolve_wire_amount_sat
+
+    money = {
+        "value": body.get("value", body.get("amount", value)),
+        "amount_satoshi": body.get("amount_satoshi"),
+        "value_satoshi": body.get("value_satoshi"),
+    }
+    try:
+        amount_sat, value = resolve_wire_amount_sat(
+            money, require_satoshi=_is_production_cfg(cfg)
+        )
+    except WireMoneyMissing as exc:
+        raise ValueError(str(exc)) from exc
     tx = Transaction(
         from_addr=from_addr,
         to_addr=zero_addr,
@@ -9629,11 +9652,13 @@ def _handle_deploy_tx(body: Dict, bc, mp, cfg, wallet=None, evm=None) -> str:
         data=bytecode,
         signature=tx_body.get("signature", ""),
         public_key=tx_body.get("public_key", ""),
+        amount_satoshi=int(amount_sat),
     )
     tx_body = {
         "from": from_addr,
         "to": zero_addr,
         "value": value,
+        "amount_satoshi": int(amount_sat),
         "nonce": nonce,
         "gas": gas,
         "data": tx.data,
@@ -9646,6 +9671,9 @@ def _handle_deploy_tx(body: Dict, bc, mp, cfg, wallet=None, evm=None) -> str:
 
 def _handle_call_tx(body: Dict, bc, mp, cfg, wallet=None) -> str:
     """Queue EVM contract call as a signed mempool transaction."""
+    tx_body = dict(body or {})
+    _reject_auto_sign_in_prod(tx_body, cfg)
+
     to_addr = body.get("to", body.get("contract", body.get("to_addr", "")))
     data = body.get("data", body.get("input", body.get("calldata", "")))
     if not to_addr:
@@ -9655,10 +9683,15 @@ def _handle_call_tx(body: Dict, bc, mp, cfg, wallet=None) -> str:
 
     from_addr = body.get("from", body.get("from_address", ""))
     value = _parse_tx_value(body.get("value", body.get("amount", 0)))
-    gas = int(body.get("gas", getattr(cfg, "evm_gas_limit", 500_000)))
-
-    tx_body = dict(body or {})
-    _reject_auto_sign_in_prod(tx_body, cfg)
+    gas_raw = body.get("gas", body.get("gas_limit"))
+    if gas_raw is None or str(gas_raw).strip() == "":
+        raise ValueError("gas or gas_limit required")
+    if isinstance(gas_raw, str) and gas_raw.startswith(("0x", "0X")):
+        gas = int(gas_raw, 16)
+    else:
+        gas = int(gas_raw)
+    if gas <= 0:
+        raise ValueError("gas or gas_limit must be positive")
     if wallet and (body.get("auto_sign") or not from_addr):
         nonce = bc.db.get_nonce(wallet.address)
         signed = wallet.sign_transaction(
@@ -9676,10 +9709,24 @@ def _handle_call_tx(body: Dict, bc, mp, cfg, wallet=None) -> str:
         raise ValueError("from address required (or auto_sign with wallet)")
 
     nonce = int(tx_body.get("nonce", bc.db.get_nonce(from_addr)))
+    from blockchain.mempool_wire import WireMoneyMissing, resolve_wire_amount_sat
+
+    money = {
+        "value": body.get("value", body.get("amount", value)),
+        "amount_satoshi": body.get("amount_satoshi"),
+        "value_satoshi": body.get("value_satoshi"),
+    }
+    try:
+        amount_sat, value = resolve_wire_amount_sat(
+            money, require_satoshi=_is_production_cfg(cfg)
+        )
+    except WireMoneyMissing as exc:
+        raise ValueError(str(exc)) from exc
     tx_body = {
         "from": from_addr,
         "to": to_addr,
         "value": value,
+        "amount_satoshi": int(amount_sat),
         "nonce": nonce,
         "gas": gas,
         "data": data,
@@ -9793,6 +9840,15 @@ def _handle_send_tx_with_wallet(tx_obj: Dict, bc, mp, cfg, wallet=None) -> str:
             )
         except WireMoneyMissing as exc:
             raise ValueError(str(exc)) from exc
+        gas_raw = body.get("gas", body.get("gas_limit"))
+        if gas_raw is None or str(gas_raw).strip() == "":
+            raise ValueError("gas or gas_limit required for auto_sign")
+        if isinstance(gas_raw, str) and gas_raw.startswith("0x"):
+            gas_limit = int(gas_raw, 16)
+        else:
+            gas_limit = int(gas_raw)
+        if gas_limit <= 0:
+            raise ValueError("gas or gas_limit must be positive")
         nonce_raw = body.get("nonce")
         if nonce_raw is None:
             nonce = bc.db.get_nonce(wallet.address)
@@ -9806,7 +9862,7 @@ def _handle_send_tx_with_wallet(tx_obj: Dict, bc, mp, cfg, wallet=None) -> str:
             nonce,
             getattr(cfg, "chain_id", 1),
             data=body.get("data", body.get("input", "")),
-            gas_limit=int(body.get("gas", body.get("gas_limit", 21000))),
+            gas_limit=gas_limit,
             amount_satoshi=int(_amount_sat),
         )
         body.update(signed)
@@ -9852,8 +9908,21 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
     except WireMoneyMissing as exc:
         raise ValueError(str(exc)) from exc
 
-    gas = int(tx_obj.get("gas", cfg.base_gas_price), 16) if isinstance(
-        tx_obj.get("gas"), str) else int(tx_obj.get("gas", cfg.base_gas_price))
+    import math
+
+    from runtime.amount import from_satoshi_float, plan_transfer_fees_sat
+
+    gas_raw = tx_obj.get("gas", tx_obj.get("gas_limit"))
+    if gas_raw is None or str(gas_raw).strip() == "":
+        raise ValueError("gas or gas_limit required")
+    if isinstance(gas_raw, str) and (
+        gas_raw.startswith("0x") or gas_raw.startswith("0X")
+    ):
+        gas = int(gas_raw, 16)
+    else:
+        gas = int(gas_raw)
+    if gas <= 0:
+        raise ValueError("gas or gas_limit must be positive")
     nonce = int(tx_obj.get("nonce", 0), 16) if isinstance(
         tx_obj.get("nonce"), str) else int(tx_obj.get("nonce", 0))
     data = tx_obj.get("data", tx_obj.get("input", ""))
@@ -9881,6 +9950,7 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
         public_key=tx_obj.get("public_key", ""),
         tx_hash=identity,
         timestamp=ts,
+        amount_satoshi=int(amount_sat),
     )
     if tx_obj.get("blob_hashes"):
         tx.blob_hashes = list(tx_obj.get("blob_hashes") or [])
@@ -9892,6 +9962,28 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
     validation = bc.validate_transaction(tx)
     if not validation["valid"]:
         raise ValueError(validation["error"])
+
+    _gp_raw = getattr(cfg, "gas_price_wei", None)
+    if _gp_raw is None:
+        raise ValueError("fee_gas_price_unset")
+    try:
+        _gp = float(_gp_raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("fee_gas_price_unparseable") from exc
+    if (not math.isfinite(_gp)) or _gp <= 0:
+        raise ValueError("fee_gas_price_unset")
+    _br_raw = getattr(cfg, "burn_rate", 0)
+    try:
+        _br = float(_br_raw if _br_raw is not None else 0.0)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("fee_burn_rate_unparseable") from exc
+    if (not math.isfinite(_br)) or _br < 0:
+        raise ValueError("fee_burn_rate_invalid")
+    fee_plan = plan_transfer_fees_sat(
+        int(gas), _gp, _br, value, value_satoshi=int(amount_sat)
+    )
+    fee_satoshi = int(fee_plan["fee_sat"])
+    fee = from_satoshi_float(fee_satoshi)
 
     # Extra validation via TransactionValidator (Database-backed)
     try:
@@ -9905,7 +9997,8 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
             "value": value,
             "amount_satoshi": int(amount_sat),
             "nonce": nonce,
-            "fee": gas * cfg.gas_price_wei,
+            "fee": fee,
+            "fee_satoshi": fee_satoshi,
             "signature": tx_obj.get("signature", ""),
             "public_key": tx_obj.get("public_key", ""),
             "hash": tx.hash,
@@ -9926,7 +10019,6 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
     except ValueError:
         raise
 
-    fee = gas * cfg.gas_price_wei
     mp_tx = MempoolTransaction(
         tx_hash=tx.hash,
         from_addr=from_addr,
@@ -9940,6 +10032,7 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
         gas=gas,
         timestamp=float(tx.timestamp),
         amount_satoshi=int(amount_sat),
+        fee_satoshi=int(fee_satoshi),
     )
     if not mp.add(mp_tx):
         raise ValueError("mempool_rejected")

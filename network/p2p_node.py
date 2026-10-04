@@ -3728,16 +3728,34 @@ class P2PNode:
                 return None
             nonce = 0
         # v1.3.203: Inf/junk gas must refuse, not raise into the ingest path.
+        # Honesty: never invent gas=21000 — missing/unparseable/zero refuse.
+        raw_gas = data.get("gas", data.get("gas_limit", None))
+        if raw_gas is None or raw_gas == "":
+            self._last_tx_wire_reject = "gas_missing"
+            self._mempool_gas_missing_refuse_total = int(
+                getattr(self, "_mempool_gas_missing_refuse_total", 0) or 0
+            ) + 1
+            return None
         try:
-            gas = int(data.get("gas", 0) or 0) or 21_000
+            gas = int(raw_gas)
         except (TypeError, ValueError, OverflowError):
-            if bool(getattr(self.config, "p2p_mempool_unparseable_gas_refuse", True)):
-                self._last_tx_wire_reject = "gas_unparseable"
-                self._mempool_gas_unparseable_refuse_total = int(
-                    getattr(self, "_mempool_gas_unparseable_refuse_total", 0) or 0
-                ) + 1
-                return None
-            gas = 21_000
+            self._last_tx_wire_reject = "gas_unparseable"
+            self._mempool_gas_unparseable_refuse_total = int(
+                getattr(self, "_mempool_gas_unparseable_refuse_total", 0) or 0
+            ) + 1
+            return None
+        if gas < 0:
+            self._last_tx_wire_reject = "gas_negative"
+            self._mempool_gas_negative_refuse_total = int(
+                getattr(self, "_mempool_gas_negative_refuse_total", 0) or 0
+            ) + 1
+            return None
+        if gas == 0:
+            self._last_tx_wire_reject = "gas_missing"
+            self._mempool_gas_missing_refuse_total = int(
+                getattr(self, "_mempool_gas_missing_refuse_total", 0) or 0
+            ) + 1
+            return None
         signature = data.get("signature", "")
         public_key = data.get("public_key", "")
         calldata = data.get("data", data.get("input", ""))
@@ -4127,7 +4145,6 @@ class P2PNode:
 
         # v1.3.187: cheap negative-gas refuse before validate_transaction.
         # Soft DoS honesty — complements gas_too_high; not Rust gas PQ.
-        # Note: `gas = int(...) or 21000` keeps negatives (truthy), only 0 defaults.
         if bool(getattr(self.config, "p2p_mempool_negative_gas_refuse", True)):
             try:
                 if int(gas) < 0:
@@ -4149,6 +4166,7 @@ class P2PNode:
             signature=signature,
             public_key=public_key,
             tx_hash=tx_hash,
+            amount_satoshi=int(amount_sat),
         )
         validation = self.blockchain.validate_transaction(tx)
         if not validation["valid"]:

@@ -17,7 +17,7 @@ def test_keccak256_empty_vector():
 
 
 def test_validate_imported_block_chain_accepts_valid_blocks():
-    tx = Transaction("0xa", "0xb", 1.0, nonce=1, timestamp=10)
+    tx = Transaction("0xa", "0xb", 1.0, nonce=1, timestamp=10, gas=21000)
     block = Block(
         height=2,
         parent_hash="p" * 64,
@@ -34,7 +34,7 @@ def test_validate_imported_block_chain_accepts_valid_blocks():
 
 
 def test_validate_imported_block_chain_rejects_tampered_hash():
-    tx = Transaction("0xa", "0xb", 1.0, nonce=1, timestamp=10)
+    tx = Transaction("0xa", "0xb", 1.0, nonce=1, timestamp=10, gas=21000)
     block = Block(
         height=2,
         parent_hash="p" * 64,

@@ -22,7 +22,7 @@ def test_proposer_audit_on_block_persist():
     db.update_balance(miner, 10_000.0)
 
     bc = Blockchain(cfg, db)
-    tx = Transaction(from_addr=miner, to_addr="0x" + "b" * 40, value=1.0, nonce=0)
+    tx = Transaction(from_addr=miner, to_addr="0x" + "b" * 40, value=1.0, nonce=0, gas=21000)
     block = bc.create_block([tx], miner)
     assert bc.add_block(block) is True
 
