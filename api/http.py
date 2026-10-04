@@ -189,6 +189,11 @@ def _nft_disabled_payload(*, loaded: bool = False) -> Dict[str, Any]:
     }
 
 
+_AI_AGENT_HONESTY = (
+    "ai_agents sprout — not consensus / not custody / prod feature_ai_agents=false"
+)
+
+
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Thread-per-request server with a hard concurrent-request cap (audit section 14)."""
 
@@ -2477,8 +2482,17 @@ class RESTHandler(BaseHTTPRequestHandler):
                         "note": "runtime capability flags — not external audit certification",
                     },
                     "lightning_enabled": self.__class__.lightning is not None,
+                    "lightning_execution_bound": bool(
+                        getattr(self.__class__.lightning, "db", None)
+                    ),
                     "plasma_enabled": self.__class__.plasma is not None,
+                    "plasma_execution_bound": bool(
+                        getattr(self.__class__.plasma, "db", None)
+                    ),
                     "crypto_will_enabled": self.__class__.crypto_will is not None,
+                    "crypto_will_execution_bound": bool(
+                        getattr(self.__class__.crypto_will, "db", None)
+                    ),
                     "wasm_enabled": self.__class__.wasm_vm is not None,
                     "wasm_operational": bool(
                         self.__class__.wasm_vm is not None
@@ -2486,8 +2500,39 @@ class RESTHandler(BaseHTTPRequestHandler):
                     )
                     if self.__class__.wasm_vm is not None
                     else False,
-                    "ai_agents_enabled": self.__class__.ai_manager is not None,
+                    "ai_agents_loaded": (
+                        _ai_sprout_enabled(
+                            cfg,
+                            self.__class__.ai_manager,
+                            feature_attr="feature_ai_agents",
+                        )[1]
+                    ),
+                    "ai_agents_enabled": (
+                        _ai_sprout_enabled(
+                            cfg,
+                            self.__class__.ai_manager,
+                            feature_attr="feature_ai_agents",
+                        )[0]
+                    ),
+                    "ai_validator_loaded": (
+                        _ai_sprout_enabled(
+                            cfg,
+                            self.__class__.ai_validator,
+                            feature_attr="feature_ai_validator",
+                        )[1]
+                    ),
+                    "ai_validator_enabled": (
+                        _ai_sprout_enabled(
+                            cfg,
+                            self.__class__.ai_validator,
+                            feature_attr="feature_ai_validator",
+                        )[0]
+                    ),
+                    "nft_loaded": _nft_sprout_enabled(cfg, self.__class__.nft)[1],
+                    "nft_enabled": _nft_sprout_enabled(cfg, self.__class__.nft)[0],
                     "mev_enabled": self.__class__.mev_simulator is not None,
+                    "mev_simulation_only": True,
+                    "mev_consensus_wired": False,
                     "reorg_predictor_enabled": self.__class__.reorg_predictor is not None,
                     "core_receipts_enabled": bool(
                         db and hasattr(db, "get_tx_receipt")
@@ -2731,12 +2776,21 @@ class RESTHandler(BaseHTTPRequestHandler):
                 })
 
             elif path == "/burn-stats":
+                from runtime.amount import from_satoshi_float
+
                 burn = db.get_burn_stats()
+                burn_sat = 0
+                if bc is not None and getattr(cfg, "burn_address", None):
+                    if hasattr(bc, "get_balance_satoshi"):
+                        burn_sat = int(bc.get_balance_satoshi(cfg.burn_address) or 0)
+                    elif hasattr(bc, "get_balance"):
+                        burn_sat = int(to_satoshi(bc.get_balance(cfg.burn_address) or 0))
                 self._json({
                     **burn,
                     "burn_rate_pct": cfg.burn_rate * 100,
                     "burn_address": cfg.burn_address,
-                    "burn_address_balance": bc.get_balance(cfg.burn_address),
+                    "burn_address_balance": float(from_satoshi_float(burn_sat)),
+                    "burn_address_balance_satoshi": burn_sat,
                 })
 
             elif path == "/validators":
@@ -3491,12 +3545,17 @@ class RESTHandler(BaseHTTPRequestHandler):
             # ── AI Validator ──────────────────────────────────────────────────
             elif path == "/ai/validators":
                 ai = self.__class__.ai_validator
-                if ai:
+                enabled, loaded = _ai_sprout_enabled(
+                    cfg, ai, feature_attr="feature_ai_validator"
+                )
+                if ai and enabled:
                     self._json({
                         "enabled": True,
+                        "loaded": True,
                         "simulation_only": True,
                         "consensus_wired": False,
                         "model_bound": False,
+                        "honesty": "ai_validator sprout — not forge / not consensus",
                         "stats": ai.get_stats(),
                         "validators": {addr: {"performance": v.performance,
                                                "reliability": v.reliability,
@@ -3507,47 +3566,64 @@ class RESTHandler(BaseHTTPRequestHandler):
                 else:
                     self._json({
                         "enabled": False,
+                        "loaded": loaded,
                         "simulation_only": True,
                         "consensus_wired": False,
                         "model_bound": False,
+                        "honesty": "ai_validator sprout — not forge / not consensus",
                     })
 
             elif path == "/ai/proposer":
                 ai = self.__class__.ai_validator
-                if ai:
+                enabled, loaded = _ai_sprout_enabled(
+                    cfg, ai, feature_attr="feature_ai_validator"
+                )
+                if ai and enabled:
                     proposer = ai.select_proposer()
                     self._json({
                         "enabled": True,
+                        "loaded": True,
                         "proposer": proposer,
                         "stats": ai.get_stats(),
                         "simulation_only": True,
                         "consensus_wired": False,
                         "model_bound": False,
                         "note": "heuristic pick; not used by block forge",
+                        "honesty": "ai_validator sprout — not forge / not consensus",
                     })
                 else:
                     self._json({
                         "enabled": False,
+                        "loaded": loaded,
                         "simulation_only": True,
                         "consensus_wired": False,
                         "model_bound": False,
+                        "honesty": "ai_validator sprout — not forge / not consensus",
                     })
 
             elif path == "/ai/mev-scan":
                 ai = self.__class__.ai_validator
                 mp = self.__class__.mempool
-                if ai and mp:
+                enabled, loaded = _ai_sprout_enabled(
+                    cfg, ai, feature_attr="feature_ai_validator"
+                )
+                if enabled and mp is not None:
                     pending = mp.get(limit=50)
                     mev_data = ai.detect_mev_opportunity(pending)
                     mev_data["enabled"] = True
+                    mev_data["simulation_only"] = True
+                    mev_data["consensus_wired"] = False
+                    mev_data["honesty"] = "ai_validator MEV stub — invented_numbers=false"
                     self._json(mev_data)
                 else:
                     self._json({
                         "enabled": False,
+                        "loaded": loaded,
                         "simulation_only": True,
                         "consensus_wired": False,
                         "model_bound": False,
                         "invented_numbers": False,
+                        "honesty": "ai_validator MEV stub — invented_numbers=false",
                     })
 
             # ── Reorg Predictor ───────────────────────────────────────────────
@@ -3994,13 +4070,23 @@ class RESTHandler(BaseHTTPRequestHandler):
 
             # ── Wallet balance ────────────────────────────────────────────────
             elif path.startswith("/wallet/balance"):
+                from runtime.amount import from_satoshi_float
+
                 addr = qs.get("address", [""])[0]
                 if not addr and "/" in path[16:]:
                     addr = path.split("/wallet/balance/")[-1]
                 if addr and bc:
-                    balance = bc.get_balance(addr) if hasattr(bc, "get_balance") else 0
-                    self._json({"address": addr, "balance": balance,
-                                "symbol": cfg.coin_symbol if cfg else "ABS"})
+                    if hasattr(bc, "get_balance_satoshi"):
+                        balance_sat = int(bc.get_balance_satoshi(addr) or 0)
+                    else:
+                        balance_sat = int(to_satoshi(bc.get_balance(addr) or 0))
+                    balance = float(from_satoshi_float(balance_sat))
+                    self._json({
+                        "address": addr,
+                        "balance": balance,
+                        "balance_satoshi": balance_sat,
+                        "symbol": cfg.coin_symbol if cfg else "ABS",
+                    })
                 else:
                     self._error(400, "address parameter required")
 
@@ -4273,21 +4359,62 @@ class RESTHandler(BaseHTTPRequestHandler):
             # ── AI Agent Manager ──────────────────────────────────────────────
             elif path == "/ai-agent/stats":
                 am = self.__class__.ai_manager
-                if am:
-                    self._json(am.get_stats())
+                enabled, loaded = _ai_sprout_enabled(
+                    cfg, am, feature_attr="feature_ai_agents"
+                )
+                if am and enabled:
+                    stats = dict(am.get_stats() or {})
+                    stats["enabled"] = True
+                    stats["loaded"] = True
+                    stats.setdefault("honesty", _AI_AGENT_HONESTY)
+                    self._json(stats)
                 else:
                     from features import probe_optional_module
 
                     probe = probe_optional_module("features.ai_manager", "AIAgentManager")
-                    self._json({"enabled": False, **probe})
+                    self._json({
+                        "enabled": False,
+                        "loaded": loaded,
+                        "honesty": _AI_AGENT_HONESTY,
+                        **probe,
+                    })
 
             elif path == "/ai-agent/list":
                 am = self.__class__.ai_manager
+                enabled, loaded = _ai_sprout_enabled(
+                    cfg, am, feature_attr="feature_ai_agents"
+                )
                 owner = qs.get("owner", [""])[0]
-                if am and owner:
-                    self._json({"agents": am.get_user_agents(owner)})
+                if am and enabled and owner:
+                    self._json({
+                        "agents": am.get_user_agents(owner),
+                        "enabled": True,
+                        "loaded": True,
+                        "simulation_only": True,
+                        "consensus_wired": False,
+                        "execution_bound": bool(getattr(am, "trade_executor", None)),
+                        "honesty": _AI_AGENT_HONESTY,
+                    })
+                elif am and enabled:
+                    self._json({
+                        "agents": am.get_all_agents(),
+                        "enabled": True,
+                        "loaded": True,
+                        "simulation_only": True,
+                        "consensus_wired": False,
+                        "execution_bound": bool(getattr(am, "trade_executor", None)),
+                        "honesty": _AI_AGENT_HONESTY,
+                    })
                 else:
-                    self._json({"agents": am.get_all_agents() if am else []})
+                    self._json({
+                        "agents": [],
+                        "enabled": False,
+                        "loaded": loaded,
+                        "simulation_only": True,
+                        "consensus_wired": False,
+                        "execution_bound": False,
+                        "honesty": _AI_AGENT_HONESTY,
+                    })
 
             # ── Cross-Chain Bridge ────────────────────────────────────────────
             elif path in ("/bridge", "/bridge/status"):
@@ -4299,9 +4426,17 @@ class RESTHandler(BaseHTTPRequestHandler):
                 ))
 
             elif path == "/wallet/status":
+                from runtime.amount import from_satoshi_float
+
                 w = self.__class__.wallet
                 addr = w.address if w else None
-                balance = bc.get_balance(addr) if addr else 0.0
+                balance_sat = 0
+                if addr and bc is not None:
+                    if hasattr(bc, "get_balance_satoshi"):
+                        balance_sat = int(bc.get_balance_satoshi(addr) or 0)
+                    elif hasattr(bc, "get_balance"):
+                        balance_sat = int(to_satoshi(bc.get_balance(addr) or 0))
+                balance = float(from_satoshi_float(balance_sat))
                 self._json({
                     "signing_enabled": w is not None,
                     "address": addr,
@@ -4309,6 +4444,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     "founder_address": getattr(cfg, "founder_address", ""),
                     "miner_address": cfg.miner_address,
                     "balance": balance,
+                    "balance_satoshi": balance_sat,
                     "balance_formatted": f"{balance:.6f} {cfg.coin_symbol}",
                     "hint": (
                         "Set WALLET_PRIVATE_KEY in .env — this wallet mines blocks and signs txs. "
@@ -5904,20 +6040,35 @@ class RESTHandler(BaseHTTPRequestHandler):
             # ── AI Validator: register / update ───────────────────────────────
             elif path == "/ai/register-validator":
                 ai = self.__class__.ai_validator
-                if not ai:
-                    self._error(503, "AI validator not enabled"); return
+                enabled, loaded = _ai_sprout_enabled(
+                    cfg, ai, feature_attr="feature_ai_validator"
+                )
+                if not enabled:
+                    self._error(
+                        503,
+                        "AI validator not enabled "
+                        f"(loaded={loaded}, feature_ai_validator gate)",
+                    )
+                    return
                 address = body.get("address", "")
-                stake   = float(body.get("stake", 100))
                 if not address:
                     self._error(400, "address required"); return
+                try:
+                    stake, stake_sat = _http_stake_abs(body, cfg)
+                except ValueError as exc:
+                    self._error(400, str(exc)); return
                 ai.add_validator(address, stake)
                 self._json({
                     "registered": address,
                     "stake": stake,
+                    "stake_satoshi": int(stake_sat),
                     "total_validators": len(ai.validators),
+                    "enabled": True,
+                    "loaded": True,
                     "simulation_only": True,
                     "consensus_wired": False,
                     "model_bound": False,
+                    "honesty": "ai_validator sprout — not forge / not consensus",
                 })
 
             # ── MEV: analyze mempool ───────────────────────────────────────────
@@ -6813,8 +6964,15 @@ class RESTHandler(BaseHTTPRequestHandler):
             # ── AI Agent Manager ──────────────────────────────────────────────
             elif path == "/ai-agent/create":
                 am = self.__class__.ai_manager
-                if not am:
-                    self._error(503, "AI Manager not enabled"); return
+                enabled, loaded = _ai_sprout_enabled(
+                    cfg, am, feature_attr="feature_ai_agents"
+                )
+                if not enabled:
+                    self._error(
+                        503,
+                        f"AI Manager not enabled (loaded={loaded}, feature_ai_agents gate)",
+                    )
+                    return
                 name = body.get("name", "")
                 owner = body.get("owner", "")
                 agent_type = body.get("type", "transformer")
@@ -6823,12 +6981,26 @@ class RESTHandler(BaseHTTPRequestHandler):
                 aid = am.create_agent(name, owner, agent_type)
                 if not aid:
                     self._error(400, "Could not create agent (insufficient balance for create fee?)"); return
-                self._json({"success": True, "agent_id": aid, "name": name, "type": agent_type})
+                self._json({
+                    "success": True,
+                    "agent_id": aid,
+                    "name": name,
+                    "type": agent_type,
+                    "enabled": True,
+                    "honesty": _AI_AGENT_HONESTY,
+                })
 
             elif path == "/ai-agent/predict":
                 am = self.__class__.ai_manager
-                if not am:
-                    self._error(503, "AI Manager not enabled"); return
+                enabled, loaded = _ai_sprout_enabled(
+                    cfg, am, feature_attr="feature_ai_agents"
+                )
+                if not enabled:
+                    self._error(
+                        503,
+                        f"AI Manager not enabled (loaded={loaded}, feature_ai_agents gate)",
+                    )
+                    return
                 agent_id = body.get("agent_id", "")
                 market_data = body.get("market_data", {})
                 if not agent_id:
@@ -6836,12 +7008,24 @@ class RESTHandler(BaseHTTPRequestHandler):
                 result = am.predict(agent_id, market_data)
                 if isinstance(result, dict) and result.get("error"):
                     self._error(404, result.get("error", "Agent not found")); return
+                if isinstance(result, dict):
+                    result = dict(result)
+                    result.setdefault("honesty", _AI_AGENT_HONESTY)
+                    result.setdefault("simulation_only", True)
+                    result.setdefault("consensus_wired", False)
                 self._json(result)
 
             elif path == "/ai-agent/analyze":
                 am = self.__class__.ai_manager
-                if not am:
-                    self._error(503, "AI Manager not enabled"); return
+                enabled, loaded = _ai_sprout_enabled(
+                    cfg, am, feature_attr="feature_ai_agents"
+                )
+                if not enabled:
+                    self._error(
+                        503,
+                        f"AI Manager not enabled (loaded={loaded}, feature_ai_agents gate)",
+                    )
+                    return
                 agent_id = body.get("agent_id", "")
                 price_history = body.get("price_history", [])
                 if not agent_id:
@@ -6849,12 +7033,24 @@ class RESTHandler(BaseHTTPRequestHandler):
                 result = am.analyze(agent_id, price_history)
                 if isinstance(result, dict) and result.get("error"):
                     self._error(404, result.get("error", "Agent not found")); return
+                if isinstance(result, dict):
+                    result = dict(result)
+                    result.setdefault("honesty", _AI_AGENT_HONESTY)
+                    result.setdefault("simulation_only", True)
+                    result.setdefault("consensus_wired", False)
                 self._json(result)
 
             elif path == "/ai-agent/trade":
                 am = self.__class__.ai_manager
-                if not am:
-                    self._error(503, "AI Manager not enabled"); return
+                enabled, loaded = _ai_sprout_enabled(
+                    cfg, am, feature_attr="feature_ai_agents"
+                )
+                if not enabled:
+                    self._error(
+                        503,
+                        f"AI Manager not enabled (loaded={loaded}, feature_ai_agents gate)",
+                    )
+                    return
                 agent_id = body.get("agent_id", "")
                 trade_type = body.get("type", "buy")
                 if not agent_id:
@@ -6892,6 +7088,13 @@ class RESTHandler(BaseHTTPRequestHandler):
                     result = dict(result)
                     result.setdefault("amount_satoshi", int(amount_sat))
                     result.setdefault("price_satoshi", int(price_sat))
+                    result.setdefault("simulation_only", True)
+                    result.setdefault(
+                        "execution_bound",
+                        bool(getattr(am, "trade_executor", None)),
+                    )
+                    result.setdefault("honesty", _AI_AGENT_HONESTY)
+                    result.setdefault("consensus_wired", False)
                 self._json(result)
 
             # ── Cross-Chain Bridge ────────────────────────────────────────────
@@ -7328,17 +7531,32 @@ class RESTHandler(BaseHTTPRequestHandler):
             # ── AI Agent: deactivate ──────────────────────────────────────────
             elif path == "/ai-agent/deactivate":
                 am = self.__class__.ai_manager
-                if not am:
-                    self._error(503, "AI Manager not enabled"); return
+                enabled, loaded = _ai_sprout_enabled(
+                    cfg, am, feature_attr="feature_ai_agents"
+                )
+                if not enabled:
+                    self._error(
+                        503,
+                        f"AI Manager not enabled (loaded={loaded}, feature_ai_agents gate)",
+                    )
+                    return
                 agent_id = body.get("agent_id", "")
                 if not agent_id:
                     self._error(400, "agent_id required"); return
                 if hasattr(am, "deactivate"):
                     ok = am.deactivate(agent_id)
-                    self._json({"success": bool(ok), "agent_id": agent_id})
+                    self._json({
+                        "success": ok is True,
+                        "agent_id": agent_id,
+                        "honesty": _AI_AGENT_HONESTY,
+                    })
                 elif hasattr(am, "agents") and agent_id in am.agents:
                     am.agents[agent_id].active = False
-                    self._json({"success": True, "agent_id": agent_id})
+                    self._json({
+                        "success": True,
+                        "agent_id": agent_id,
+                        "honesty": _AI_AGENT_HONESTY,
+                    })
                 else:
                     self._json({"success": False, "error": "Agent not found"})
 
