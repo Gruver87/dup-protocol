@@ -1546,6 +1546,50 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append(
                 "state_service native apply must bind amount_satoshi / value_satoshi (ADR 0021)"
             )
+        mk_rs = ROOT / "native" / "abs_native" / "src" / "mempool_kernel.rs"
+        if not mk_rs.is_file():
+            errors.append("mempool_kernel.rs missing (ADR 0021 phase-1)")
+        else:
+            mk_txt = mk_rs.read_text(encoding="utf-8", errors="replace")
+            for needle in (
+                "fn mempool_validate_post_sig",
+                "fn mempool_admit_evm_deploy",
+                "insufficient_balance",
+                "nonce_mismatch",
+                "validate_post_sig_inner",
+                "admit_evm_deploy_inner",
+            ):
+                if needle not in mk_txt:
+                    errors.append(f"mempool_kernel.rs missing {needle}")
+        native_py_adr = (ROOT / "crypto" / "native.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "def mempool_validate_post_sig" not in native_py_adr:
+            errors.append("crypto/native.py must export mempool_validate_post_sig (ADR 0021)")
+        if "def mempool_admit_evm_deploy" not in native_py_adr:
+            errors.append("crypto/native.py must export mempool_admit_evm_deploy (ADR 0021 phase-3)")
+        caps_py = (ROOT / "runtime" / "native_capabilities.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if 'MEMPOOL_KERNEL = "mempool_kernel"' not in caps_py:
+            errors.append("NativeFamily.MEMPOOL_KERNEL missing (ADR 0021 / ADR 0009)")
+        pipe_py = (ROOT / "core" / "components" / "tx_pipeline.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "_post_sig_kernel_check" not in pipe_py or "mempool_validate_post_sig" not in pipe_py:
+            errors.append("TxPipeline must wire mempool_validate_post_sig after sig (ADR 0021)")
+        if "mempool_admit_evm_deploy" not in pipe_py:
+            errors.append("TxPipeline must wire mempool_admit_evm_deploy (ADR 0021 phase-3)")
+        fixtures_dir = ROOT / "tests" / "fixtures" / "adr0021_phase1"
+        if not (fixtures_dir / "kernel_input_accept.json").is_file():
+            errors.append("ADR 0021 phase-1 golden fixtures missing")
+        if not (ROOT / "tests" / "unit" / "test_adr0021_phase1_fixtures.py").is_file():
+            errors.append("test_adr0021_phase1_fixtures.py missing")
+        lib_rs_txt = (ROOT / "native" / "abs_native" / "src" / "lib.rs").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "mempool_kernel" not in lib_rs_txt:
+            errors.append("lib.rs must register mempool_kernel module")
         if "_tx_affordable_sat" not in (
             ROOT / "execution" / "block_builder.py"
         ).read_text(encoding="utf-8"):
