@@ -2642,6 +2642,17 @@ class RESTHandler(BaseHTTPRequestHandler):
                 sync_engine_bound = se_status is not None
                 feat_errs = dict(getattr(self.__class__, "feature_init_errors", None) or {})
                 feature_degraded = bool(feat_errs)
+                mempool_store_demoted = bool(mp_stats.get("store_demoted"))
+                if (
+                    str(getattr(cfg, "deployment_mode", "") or "").lower() == "prod"
+                    and bool(getattr(cfg, "require_native_crypto", False))
+                    and mempool_store_demoted
+                ):
+                    feature_degraded = True
+                    feat_errs = dict(feat_errs)
+                    feat_errs["mempool_store"] = (
+                        f"demoted:{mp_stats.get('demote_reason') or 'unknown'}"
+                    )
                 self._json({
                     # Do not hard-code "running" while mesh is inconsistent, unprobed, or P2P is down.
                     "status": (
@@ -10112,7 +10123,11 @@ def _handle_deploy_tx(body: Dict, bc, mp, cfg, wallet=None, evm=None) -> str:
         raise ValueError("from address required (or auto_sign with wallet)")
 
     nonce = int(tx_body.get("nonce", bc.db.get_nonce(from_addr)))
-    from blockchain.mempool_wire import WireMoneyMissing, resolve_wire_amount_sat
+    from blockchain.mempool_wire import (
+        WireMoneyMismatch,
+        WireMoneyMissing,
+        resolve_wire_amount_sat,
+    )
 
     money = {
         "value": body.get("value", body.get("amount", value)),
@@ -10124,7 +10139,9 @@ def _handle_deploy_tx(body: Dict, bc, mp, cfg, wallet=None, evm=None) -> str:
             money, require_satoshi=_is_production_cfg(cfg)
         )
     except WireMoneyMissing as exc:
-        raise ValueError(str(exc)) from exc
+        raise ValueError("amount_satoshi_required") from exc
+    except WireMoneyMismatch as exc:
+        raise ValueError("value_satoshi_mismatch") from exc
     tx = Transaction(
         from_addr=from_addr,
         to_addr=zero_addr,
@@ -10191,7 +10208,11 @@ def _handle_call_tx(body: Dict, bc, mp, cfg, wallet=None) -> str:
         raise ValueError("from address required (or auto_sign with wallet)")
 
     nonce = int(tx_body.get("nonce", bc.db.get_nonce(from_addr)))
-    from blockchain.mempool_wire import WireMoneyMissing, resolve_wire_amount_sat
+    from blockchain.mempool_wire import (
+        WireMoneyMismatch,
+        WireMoneyMissing,
+        resolve_wire_amount_sat,
+    )
 
     money = {
         "value": body.get("value", body.get("amount", value)),
@@ -10203,7 +10224,9 @@ def _handle_call_tx(body: Dict, bc, mp, cfg, wallet=None) -> str:
             money, require_satoshi=_is_production_cfg(cfg)
         )
     except WireMoneyMissing as exc:
-        raise ValueError(str(exc)) from exc
+        raise ValueError("amount_satoshi_required") from exc
+    except WireMoneyMismatch as exc:
+        raise ValueError("value_satoshi_mismatch") from exc
     tx_body = {
         "from": from_addr,
         "to": to_addr,
@@ -10314,14 +10337,20 @@ def _handle_send_tx_with_wallet(tx_obj: Dict, bc, mp, cfg, wallet=None) -> str:
         to_addr = body.get("to", body.get("to_addr", ""))
         if not to_addr:
             raise ValueError("auto_sign requires 'to' address")
-        from blockchain.mempool_wire import WireMoneyMissing, resolve_wire_amount_sat
+        from blockchain.mempool_wire import (
+            WireMoneyMismatch,
+            WireMoneyMissing,
+            resolve_wire_amount_sat,
+        )
 
         try:
             _amount_sat, value = resolve_wire_amount_sat(
                 body, require_satoshi=_is_production_cfg(cfg)
             )
         except WireMoneyMissing as exc:
-            raise ValueError(str(exc)) from exc
+            raise ValueError("amount_satoshi_required") from exc
+        except WireMoneyMismatch as exc:
+            raise ValueError("value_satoshi_mismatch") from exc
         gas_raw = body.get("gas", body.get("gas_limit"))
         if gas_raw is None or str(gas_raw).strip() == "":
             raise ValueError("gas or gas_limit required for auto_sign")
@@ -10379,7 +10408,11 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
     from core.blockchain import Transaction
     from core.tx_identity import bind_identity_from_fields
     from blockchain.mempool import MempoolTransaction
-    from blockchain.mempool_wire import WireMoneyMissing, resolve_wire_amount_sat
+    from blockchain.mempool_wire import (
+        WireMoneyMismatch,
+        WireMoneyMissing,
+        resolve_wire_amount_sat,
+    )
 
     from_addr = tx_obj.get("from", tx_obj.get("from_addr", ""))
     to_addr = tx_obj.get("to", tx_obj.get("to_addr", ""))
@@ -10388,7 +10421,9 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
             tx_obj, require_satoshi=_is_production_cfg(cfg)
         )
     except WireMoneyMissing as exc:
-        raise ValueError(str(exc)) from exc
+        raise ValueError("amount_satoshi_required") from exc
+    except WireMoneyMismatch as exc:
+        raise ValueError("value_satoshi_mismatch") from exc
 
     import math
 

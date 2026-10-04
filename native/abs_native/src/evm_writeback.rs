@@ -310,11 +310,12 @@ fn wei_to_satoshi(value_wei: i64) -> i64 {
     (value_wei.max(0) as i128 / 1_000_000_000_000i128) as i64
 }
 
-fn set_balance_sat(row: &mut Map<String, Value>, sat: i64) {
+fn set_balance_sat(row: &mut Map<String, Value>, sat: i64) -> PyResult<()> {
     let sat = sat.max(0);
     row.insert("balance_satoshi".into(), Value::Number(Number::from(sat)));
-    let bal = crate::amount::from_satoshi_float_inner(sat);
+    let bal = crate::amount::from_satoshi_float_inner(sat)?;
     row.insert("balance".into(), serde_json::json!(bal));
+    Ok(())
 }
 
 /// Apply writeback ops to an in-memory accounts map (v1.3.61).
@@ -444,7 +445,7 @@ pub fn evm_apply_writeback_ops_py(accounts_json: String, ops_json: String) -> Py
                 row.insert("code".into(), Value::String(code));
                 row.insert("nonce".into(), Value::Number(Number::from(nonce)));
                 row.insert("storage".into(), Value::String(storage));
-                set_balance_sat(row, bal_sat);
+                set_balance_sat(row, bal_sat)?;
                 if !touched.contains(&addr) {
                     touched.push(addr);
                 }
@@ -480,12 +481,12 @@ pub fn evm_apply_writeback_ops_py(accounts_json: String, ops_json: String) -> Py
                 {
                     let row = ensure_account_obj(&mut accounts, &from);
                     let cur = account_satoshi(row);
-                    set_balance_sat(row, cur.saturating_sub(sat));
+                    set_balance_sat(row, cur.saturating_sub(sat))?;
                 }
                 {
                     let row = ensure_account_obj(&mut accounts, &to);
                     let cur = account_satoshi(row);
-                    set_balance_sat(row, cur.saturating_add(sat));
+                    set_balance_sat(row, cur.saturating_add(sat))?;
                 }
                 if !touched.contains(&from) {
                     touched.push(from);

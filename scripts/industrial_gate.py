@@ -1590,6 +1590,20 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         )
         if "mempool_kernel" not in lib_rs_txt:
             errors.append("lib.rs must register mempool_kernel module")
+        amt_rs = (ROOT / "native" / "abs_native" / "src" / "amount.rs").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "must be integer satoshi" not in amt_rs:
+            errors.append("amount.rs must refuse float satoshi fields (native hygiene)")
+        if "to_f64().unwrap_or(0.0)" in amt_rs:
+            errors.append("amount.rs must not paint satoshi→float failure as 0.0")
+        http_py_money = (ROOT / "api" / "http.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "WireMoneyMismatch" not in http_py_money:
+            errors.append("api/http.py must remap WireMoneyMismatch (ADR 0021)")
+        if "mempool_store_demoted" not in http_py_money:
+            errors.append("/status must degrade when mempool_store demoted in prod+require_native")
         if "_tx_affordable_sat" not in (
             ROOT / "execution" / "block_builder.py"
         ).read_text(encoding="utf-8"):
