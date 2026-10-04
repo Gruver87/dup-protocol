@@ -1403,6 +1403,26 @@ class RocksChainStore:
             "is_contract": bool(acct.get("code")),
         }
 
+    def _format_proposer_audit_row(self, audit: Dict) -> Dict:
+        from runtime.amount import money_abs, to_satoshi
+
+        burned = money_abs(audit.get("total_burned", 0.0), field="total_burned")
+        burned_sat = (
+            int(audit["total_burned_satoshi"])
+            if audit.get("total_burned_satoshi") is not None
+            else int(to_satoshi(burned))
+        )
+        return {
+            "height": audit.get("height", 0),
+            "block_hash": audit.get("block_hash", ""),
+            "proposer": audit.get("proposer", ""),
+            "tx_count": audit.get("tx_count", 0),
+            "total_burned": burned,
+            "total_burned_satoshi": burned_sat,
+            "timestamp": audit.get("block_ts", audit.get("timestamp", 0)),
+            "recorded_at": audit.get("recorded_at", 0),
+        }
+
     def get_proposer_audit_log(
         self,
         limit: int = 50,
@@ -1431,18 +1451,104 @@ class RocksChainStore:
             rows.append(audit)
         rows.sort(key=lambda r: int(r.get("height", 0)), reverse=True)
         page = rows[offset : offset + limit]
-        return [
-            {
-                "height": r.get("height", 0),
-                "block_hash": r.get("block_hash", ""),
-                "proposer": r.get("proposer", ""),
-                "tx_count": r.get("tx_count", 0),
-                "total_burned": r.get("total_burned", 0.0),
-                "timestamp": r.get("block_ts", r.get("timestamp", 0)),
-                "recorded_at": r.get("recorded_at", 0),
-            }
-            for r in page
+        return [self._format_proposer_audit_row(r) for r in page]
+
+    def get_proposer_stats(self, limit: int = 20) -> List[Dict]:
+        """Aggregate proposers from audit rows (scan path; pin lacks meta counters)."""
+        from runtime.amount import from_satoshi_float, money_abs, to_satoshi
+
+        limit = max(1, min(int(limit), 100))
+        agg: Dict[str, Dict] = {}
+        for _key, value in self._scan_prefix(kc.P_PROPOSER_AUDIT):
+            try:
+                audit = json.loads(value.decode("utf-8"))
+            except Exception as exc:
+                self._json_decode_failures += 1
+                logger.warning(
+                    "[RocksStore] corrupt proposer_audit stats row skipped: %s", exc
+                )
+                continue
+            if not isinstance(audit, dict):
+                continue
+            addr = SqliteDatabase._normalize_address(audit.get("proposer", ""))
+            row = agg.setdefault(
+                addr,
+                {
+                    "proposer": addr,
+                    "blocks_proposed": 0,
+                    "total_txs": 0,
+                    "total_burned_satoshi": 0,
+                    "last_height": None,
+                    "first_height": None,
+                },
+            )
+            h = int(audit.get("height", 0) or 0)
+            row["blocks_proposed"] += 1
+            row["total_txs"] += int(audit.get("tx_count", 0) or 0)
+            if audit.get("total_burned_satoshi") is not None:
+                row["total_burned_satoshi"] += int(audit["total_burned_satoshi"])
+            else:
+                row["total_burned_satoshi"] += int(
+                    to_satoshi(audit.get("total_burned", 0) or 0)
+                )
+            if row["last_height"] is None or h > int(row["last_height"]):
+                row["last_height"] = h
+            if row["first_height"] is None or h < int(row["first_height"]):
+                row["first_height"] = h
+        out: List[Dict] = []
+        for row in agg.values():
+            burned_sat = int(row["total_burned_satoshi"])
+            out.append(
+                {
+                    "proposer": row["proposer"],
+                    "blocks_proposed": int(row["blocks_proposed"]),
+                    "total_txs": int(row["total_txs"]),
+                    "total_burned": (
+                        from_satoshi_float(burned_sat)
+                        if burned_sat
+                        else money_abs(0, field="total_burned")
+                    ),
+                    "total_burned_satoshi": burned_sat,
+                    "last_height": row["last_height"],
+                    "first_height": row["first_height"],
+                }
+            )
+        out.sort(key=lambda r: int(r.get("blocks_proposed", 0) or 0), reverse=True)
+        return out[:limit]
+
+    def get_proposer_detail(self, address: str, recent_limit: int = 10) -> Dict:
+        from runtime.amount import from_satoshi_float, money_abs
+
+        addr = SqliteDatabase._normalize_address(address)
+        recent = self.get_proposer_audit_log(
+            limit=recent_limit, offset=0, proposer=addr
+        )
+        stats_rows = [
+            r for r in self.get_proposer_stats(limit=100) if r.get("proposer") == addr
         ]
+        base = stats_rows[0] if stats_rows else {
+            "blocks_proposed": 0,
+            "total_txs": 0,
+            "total_burned_satoshi": 0,
+            "first_height": None,
+            "last_height": None,
+        }
+        burned_sat = int(base.get("total_burned_satoshi") or 0)
+        return {
+            "proposer": addr,
+            "blocks_proposed": int(base.get("blocks_proposed") or 0),
+            "blocks_proposed_known": True,
+            "total_txs": int(base.get("total_txs") or 0),
+            "total_burned": (
+                from_satoshi_float(burned_sat)
+                if burned_sat
+                else money_abs(0, field="total_burned")
+            ),
+            "total_burned_satoshi": burned_sat,
+            "first_height": base.get("first_height"),
+            "last_height": base.get("last_height"),
+            "recent_blocks": recent,
+        }
 
     # ── bridge (cross-chain) ─────────────────────────────────────────────
 
@@ -1680,8 +1786,20 @@ class RocksChainStore:
     # ── burn ──────────────────────────────────────────────────────────────
 
     def _insert_burn_record(self, block_height: int, burned_amount: float) -> None:
-        total = self.get_total_burned() + float(burned_amount)
-        row = {"block_height": int(block_height), "burned_amount": float(burned_amount), "total_burned": total}
+        from runtime.amount import from_satoshi_float, money_abs, to_satoshi
+
+        burned = money_abs(burned_amount, field="burned")
+        burned_sat = int(to_satoshi(burned))
+        prev_total = self.get_total_burned()
+        total_sat = int(to_satoshi(prev_total)) + burned_sat
+        total = from_satoshi_float(total_sat)
+        row = {
+            "block_height": int(block_height),
+            "burned_amount": burned,
+            "burned_amount_satoshi": burned_sat,
+            "total_burned": total,
+            "total_burned_satoshi": total_sat,
+        }
         self._raw_put(kc.key_burn(int(block_height)), json.dumps(row).encode("utf-8"))
 
     def record_burn(self, block_height: int, burned_amount: float) -> None:
@@ -1689,6 +1807,8 @@ class RocksChainStore:
             self._insert_burn_record(block_height, burned_amount)
 
     def get_total_burned(self) -> float:
+        from runtime.amount import from_satoshi_float, money_abs
+
         rows = self._scan_prefix(kc.P_BURN)
         if not rows:
             return 0.0
@@ -1696,11 +1816,19 @@ class RocksChainStore:
         row = self._loads_json_or_none(last[1], context="burn_total")
         if row is None:
             return 0.0
-        return float(row.get("total_burned", 0.0) or 0.0)
+        if row.get("total_burned_satoshi") is not None:
+            return from_satoshi_float(int(row["total_burned_satoshi"]))
+        return money_abs(row.get("total_burned", 0.0), field="total_burned")
 
     def get_burn_stats(self) -> Dict:
+        from runtime.amount import to_satoshi
+
         total = self.get_total_burned()
-        return {"total_burned": total, "burn_address": ""}
+        return {
+            "total_burned": total,
+            "total_burned_satoshi": int(to_satoshi(total)),
+            "burn_address": "",
+        }
 
     # ── block commit ──────────────────────────────────────────────────────
 
@@ -2394,6 +2522,8 @@ class RocksChainStore:
         return out[: max(1, int(limit))]
 
     def get_chain_metrics(self, window: int = 32) -> Dict:
+        from runtime.amount import from_satoshi_float, to_satoshi
+
         tip = self.get_chain_tip()
         tx_rows = self._iter_transaction_rows()
         receipt_rows = self._scan_prefix(kc.P_TX_RECEIPT)
@@ -2423,13 +2553,19 @@ class RocksChainStore:
                 )
             )
         tps = (window_tx / max(window_elapsed, 1.0)) if window_elapsed > 0 else 0.0
+        burn_sats = 0
+        for b in blocks:
+            if b.get("total_burned_satoshi") is not None:
+                burn_sats += int(b["total_burned_satoshi"])
+            else:
+                burn_sats += int(to_satoshi(b.get("total_burned", 0) or 0))
         return {
             "height": tip,
             "tx_count": len(tx_rows),
             "receipt_count": len(receipt_rows),
             "proposer_audit_count": len(audit_rows),
             "receipts_enabled": str(getattr(self, "engine", "") or "").startswith("rocks"),
-            "proposer_audit_enabled": True,
+            "proposer_audit_enabled": str(getattr(self, "engine", "") or "").startswith("rocks"),
             "state_root_strict_p2p": True,
             "avg_block_time_sec": round(avg_block_time, 2),
             "target_block_time_sec": 15.0,
@@ -2437,8 +2573,7 @@ class RocksChainStore:
             "window_tx_count": int(window_tx),
             "window_elapsed_sec": round(window_elapsed, 2),
             "tps": round(tps, 6),
-            "burn_last_window": round(
-                sum(float(b.get("total_burned", 0) or 0) for b in blocks), 6
-            ),
+            "burn_last_window": round(from_satoshi_float(burn_sats), 6),
+            "burn_last_window_satoshi": burn_sats,
             "engine": self.engine,
         }

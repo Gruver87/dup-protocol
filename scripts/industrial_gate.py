@@ -576,6 +576,18 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("SQLite migration must add transactions.value_satoshi")
         if "burned_amount_satoshi" not in db_py_sat:
             errors.append("SQLite burn_stats must dual-write burned_amount_satoshi")
+        if "burn_last_window_satoshi" not in db_py_sat:
+            errors.append("SQLite get_chain_metrics must expose burn_last_window_satoshi")
+        if "SUM(total_burned_satoshi)" not in db_py_sat:
+            errors.append("SQLite proposer stats must SUM(total_burned_satoshi)")
+        if "burned_amount_satoshi" not in rocks_py_sat:
+            errors.append("rocks_store burn must dual-write burned_amount_satoshi")
+        if "burn_last_window_satoshi" not in rocks_py_sat:
+            errors.append("rocks_store get_chain_metrics must expose burn_last_window_satoshi")
+        if "def get_proposer_stats" not in rocks_py_sat:
+            errors.append("RocksChainStore must implement get_proposer_stats")
+        if "def get_proposer_detail" not in rocks_py_sat:
+            errors.append("RocksChainStore must implement get_proposer_detail")
         mempool_py = (ROOT / "blockchain" / "mempool.py").read_text(
             encoding="utf-8", errors="replace"
         )

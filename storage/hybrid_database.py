@@ -552,6 +552,12 @@ class HybridDatabase:
     def get_chain_metrics(self, window: int = 32) -> Dict:
         return self._core.get_chain_metrics(window)
 
+    def get_proposer_stats(self, limit: int = 20) -> List[Dict]:
+        return self._core.get_proposer_stats(limit)
+
+    def get_proposer_detail(self, address: str, recent_limit: int = 10) -> Dict:
+        return self._core.get_proposer_detail(address, recent_limit=recent_limit)
+
     # ── bridge (Rocks core — not aux.db) ─────────────────────────────────
 
     def save_bridge_lock(

@@ -1383,6 +1383,8 @@ class Database:
 
     def get_chain_metrics(self, window: int = 32) -> Dict:
         """Core L1 metrics: block time, throughput hints."""
+        from runtime.amount import from_satoshi_float, to_satoshi
+
         with self.lock:
             tip = self.get_chain_tip()
             tx_count = self.conn.execute(
@@ -1407,7 +1409,8 @@ class Database:
             except Exception as exc:
                 print(f"[DB] get_chain_metrics proposer_audit: {exc}")
             rows = self.conn.execute(
-                "SELECT height, timestamp, tx_count, total_burned FROM blocks "
+                "SELECT height, timestamp, tx_count, total_burned, total_burned_satoshi "
+                "FROM blocks "
                 "ORDER BY height DESC LIMIT ?",
                 (int(window),),
             ).fetchall()
@@ -1430,6 +1433,15 @@ class Database:
                     max(0, int(ordered[-1]["timestamp"]) - int(ordered[0]["timestamp"]))
                 )
             tps = (window_tx / max(window_elapsed, 1.0)) if window_elapsed > 0 else 0.0
+            burn_sats = 0
+            for r in rows:
+                if (
+                    "total_burned_satoshi" in r.keys()
+                    and r["total_burned_satoshi"] is not None
+                ):
+                    burn_sats += int(r["total_burned_satoshi"])
+                else:
+                    burn_sats += int(to_satoshi(r["total_burned"] or 0))
             return {
                 "height": tip,
                 "tx_count": int(tx_count),
@@ -1444,9 +1456,8 @@ class Database:
                 "window_tx_count": int(window_tx),
                 "window_elapsed_sec": round(window_elapsed, 2),
                 "tps": round(tps, 6),
-                "burn_last_window": round(
-                    sum(float(r["total_burned"] or 0) for r in rows), 6
-                ),
+                "burn_last_window": round(from_satoshi_float(burn_sats), 6),
+                "burn_last_window_satoshi": burn_sats,
                 "engine": self.engine,
             }
 
@@ -1473,18 +1484,25 @@ class Database:
                        ORDER BY height DESC LIMIT ? OFFSET ?""",
                     (limit, offset),
                 ).fetchall()
-            return [
-                {
+            out: List[Dict] = []
+            for r in rows:
+                row = {
                     "height": r["height"],
                     "block_hash": r["block_hash"],
                     "proposer": r["proposer"],
                     "tx_count": r["tx_count"],
                     "total_burned": r["total_burned"],
+                    "total_burned_satoshi": (
+                        r["total_burned_satoshi"]
+                        if "total_burned_satoshi" in r.keys()
+                        else None
+                    ),
                     "timestamp": r["block_ts"],
                     "recorded_at": r["recorded_at"],
                 }
-                for r in rows
-            ]
+                Database._overlay_sat(row, "total_burned", "total_burned_satoshi")
+                out.append(row)
+            return out
 
     def count_proposer_audit(
         self, proposer: str = ""
@@ -1502,6 +1520,8 @@ class Database:
 
     def get_proposer_stats(self, limit: int = 20) -> List[Dict]:
         """Top proposers by blocks proposed."""
+        from runtime.amount import from_satoshi_float, money_abs, to_satoshi
+
         limit = max(1, min(int(limit), 100))
         with self.lock:
             rows = self.conn.execute(
@@ -1509,6 +1529,7 @@ class Database:
                           COUNT(*) as blocks_proposed,
                           SUM(tx_count) as total_txs,
                           SUM(total_burned) as total_burned,
+                          SUM(total_burned_satoshi) as total_burned_satoshi,
                           MAX(height) as last_height,
                           MIN(height) as first_height
                    FROM block_proposer_audit
@@ -1517,15 +1538,37 @@ class Database:
                    LIMIT ?""",
                 (limit,),
             ).fetchall()
-            return [dict(r) for r in rows]
+            out: List[Dict] = []
+            for r in rows:
+                if r["total_burned_satoshi"] is not None and int(r["total_burned_satoshi"]) > 0:
+                    burned_sat = int(r["total_burned_satoshi"])
+                    burned_abs = from_satoshi_float(burned_sat)
+                else:
+                    burned_abs = money_abs(r["total_burned"] or 0, field="total_burned")
+                    burned_sat = int(to_satoshi(burned_abs))
+                out.append(
+                    {
+                        "proposer": r["proposer"],
+                        "blocks_proposed": int(r["blocks_proposed"] or 0),
+                        "total_txs": int(r["total_txs"] or 0),
+                        "total_burned": burned_abs,
+                        "total_burned_satoshi": burned_sat,
+                        "last_height": r["last_height"],
+                        "first_height": r["first_height"],
+                    }
+                )
+            return out
 
     def get_proposer_detail(self, address: str, recent_limit: int = 10) -> Dict:
+        from runtime.amount import from_satoshi_float, money_abs, to_satoshi
+
         addr = self._normalize_address(address)
         with self.lock:
             row = self.conn.execute(
                 """SELECT COUNT(*) as blocks_proposed,
                           SUM(tx_count) as total_txs,
                           SUM(total_burned) as total_burned,
+                          SUM(total_burned_satoshi) as total_burned_satoshi,
                           MAX(height) as last_height,
                           MIN(height) as first_height
                    FROM block_proposer_audit WHERE proposer=?""",
@@ -1534,11 +1577,21 @@ class Database:
             recent = self.get_proposer_audit_log(
                 limit=recent_limit, offset=0, proposer=addr
             )
+            if (
+                row["total_burned_satoshi"] is not None
+                and int(row["total_burned_satoshi"] or 0) > 0
+            ):
+                burned_sat = int(row["total_burned_satoshi"])
+                burned_abs = from_satoshi_float(burned_sat)
+            else:
+                burned_abs = money_abs(row["total_burned"] or 0, field="total_burned")
+                burned_sat = int(to_satoshi(burned_abs))
             return {
                 "proposer": addr,
                 "blocks_proposed": int(row["blocks_proposed"] or 0),
                 "total_txs": int(row["total_txs"] or 0),
-                "total_burned": float(row["total_burned"] or 0.0),
+                "total_burned": burned_abs,
+                "total_burned_satoshi": burned_sat,
                 "first_height": row["first_height"],
                 "last_height": row["last_height"],
                 "recent_blocks": recent,
