@@ -2036,16 +2036,26 @@ class Database:
             return self.get_nonce(address)
 
     def get_account(self, address: str) -> Optional[Dict]:
+        from runtime.amount import account_satoshi, from_satoshi_float
+
         with self.lock:
             row = self.conn.execute(
                 "SELECT * FROM accounts WHERE address=?", (address,)
             ).fetchone()
-            return dict(row) if row else None
+            if not row:
+                return None
+            out = dict(row)
+            sat = account_satoshi(out)
+            out["balance_satoshi"] = sat
+            out["balance"] = from_satoshi_float(sat)
+            return out
 
     def save_account(self, address: str, balance: float = 0.0,
                      nonce: int = 0, code: str = None, storage: str = None) -> None:
         from runtime.amount import dual_write_balance
 
+        if isinstance(balance, bool):
+            raise TypeError("bool is not an amount")
         payload: dict = {}
         dual_write_balance(payload, balance)
         with self.lock:

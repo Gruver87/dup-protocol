@@ -1875,6 +1875,7 @@ class RocksChainStore:
                 amt_sat = int(lock["amount_satoshi"])
             self.balance_delta_satoshi(lock["from_addr"], amt_sat)
             lock["status"] = "refunded"
+            lock["amount_satoshi"] = amt_sat
             self._raw_put(kc.key_bridge_lock(tx_hash), json.dumps(lock).encode("utf-8"))
         return {
             "refunded": True,

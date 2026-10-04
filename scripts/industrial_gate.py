@@ -4403,11 +4403,63 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
     except Exception as exc:
         errors.append(f"fail-loud main.py inspect failed: {exc}")
     try:
+        bc_py = (ROOT / "core" / "blockchain.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "amount_abs = int(amount)" not in bc_py:
+            errors.append("Blockchain._ensure_genesis must mint integer ABS amounts")
+        if "set_balance(addr, float(" in bc_py:
+            errors.append("Blockchain._ensure_genesis must not float() genesis balances")
+        db_py_bal = (ROOT / "storage" / "database.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "account_balance_abs" not in db_py_bal:
+            errors.append("Database.get_balance must display via account_balance_abs")
+        if 'float(row["balance"])' in db_py_bal:
+            errors.append("Database.get_balance must not return raw float(row['balance'])")
+        if "account_satoshi(out)" not in db_py_bal:
+            errors.append("Database.get_account must derive balance from satoshi authority")
+        if "bool is not an amount" not in db_py_bal:
+            errors.append("SQLite Database.set_balance/save_account must refuse bool amounts")
+        if "amount_satoshi" not in (
+            ROOT / "bridge" / "ports.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append("InboundEnvelope must carry amount_satoshi")
+        if "get_balance_satoshi" not in (
+            ROOT / "api" / "query_facade.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append("QueryFacade must expose get_balance_satoshi (Phase C1)")
+        p2p_py_stake = (ROOT / "network" / "p2p_node.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "stake_satoshi_required" not in p2p_py_stake:
+            errors.append("p2p validator_register must require stake_satoshi")
+        if "fee_gas_price_unset" not in p2p_py_stake:
+            errors.append("P2P must refuse unset gas_price invent (Wave O)")
+        adapter_py = (ROOT / "consensus" / "adapter.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if 'field="stake"' not in adapter_py:
+            errors.append("ConsensusAdapter stake resolve must use field=stake")
+        if "total_active_stake failed" not in adapter_py:
+            errors.append("ConsensusAdapter.get_total_stake must log registry failures")
+        if "def get_total_stake(self) -> int" not in adapter_py:
+            errors.append("ConsensusAdapter.get_total_stake must return int satoshi")
+        ss_py = (ROOT / "core" / "components" / "state_service.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "satoshi_store_required_credit" not in ss_py:
+            errors.append("StateService._credit_sat must refuse float fallback")
+    except Exception as exc:
+        errors.append(f"fail-loud money-authority inspect failed: {exc}")
+    try:
         http_py = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
         if "parse_rpc_value_abs" not in http_py:
             errors.append("JSON-RPC/REST money must use parse_rpc_value_abs (no IEEE wei divide)")
         if "wei / 10**18" in http_py:
             errors.append("HTTP _parse_tx_value must not IEEE-divide wei by 10**18")
+        if "def _http_abs" not in http_py:
+            errors.append("HTTP bridge/REST money must use _http_abs (satoshi-quantized ABS)")
         if "peer_probe_error" not in http_py:
             errors.append("GET /chain/state-root/status must expose peer_probe_error")
         if "peer_probe_error" not in http_py or "state consistency harness peer probe failed" not in http_py:

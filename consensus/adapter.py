@@ -288,7 +288,7 @@ class ConsensusAdapter:
 
     def slash_validator(self, address: str) -> None:
         self._on_validator_slashed(address, reason="manual", slot=0, penalty=0)
-        print(f"[Consensus] Validator slashed: {address[:12]}...")
+        logger.warning(f"[Consensus] Validator slashed: {address[:12]}...")
 
     def get_validators(self) -> List[Dict]:
         infos = list(self._registry_port.list_active())
@@ -315,14 +315,15 @@ class ConsensusAdapter:
             for v in self.engine.validators.values()
         ]
 
-    def get_total_stake(self) -> float:
+    def get_total_stake(self) -> int:
+        """Active stake in integer satoshi (Wave N; not truncated ABS float)."""
         try:
-            stake = float(self._registry_port.total_active_stake())
+            stake = int(self._registry_port.total_active_stake() or 0)
             if stake > 0:
                 return stake
-        except Exception:
-            pass
-        return self.engine.get_total_stake()
+        except Exception as exc:
+            logger.warning("total_active_stake failed; engine fallback: %s", exc)
+        return int(self.engine.get_total_stake())
 
     def select_proposer(self) -> Optional[str]:
         if not self.engine.validators:

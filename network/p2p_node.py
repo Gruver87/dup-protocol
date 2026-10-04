@@ -3145,7 +3145,26 @@ class P2PNode:
             self._strike_peer_sync(peer, "bad_validator_register")
             return
         address = str(parsed.get("address") or "")
-        stake = float(parsed.get("stake", 0) or 0)
+        # Canonical stake is satoshi (native validate fills stake_satoshi).
+        stake_sat_raw = parsed.get("stake_satoshi")
+        if stake_sat_raw is None:
+            logger.warning(
+                "[P2P] rejecting validator_register without stake_satoshi from %s",
+                (peer.peer_id or "?")[:12],
+            )
+            self._strike_peer_sync(peer, "stake_satoshi_required")
+            return
+        try:
+            stake_sat = int(stake_sat_raw)
+        except (TypeError, ValueError):
+            self._strike_peer_sync(peer, "bad_stake_satoshi")
+            return
+        if stake_sat <= 0:
+            self._strike_peer_sync(peer, "non_positive_stake_satoshi")
+            return
+        from runtime.amount import from_satoshi_float
+
+        stake = float(from_satoshi_float(stake_sat))
         if not address or not self._consensus:
             return
         vals = self.blockchain.db.get_validators(active_only=False) or []
@@ -3153,12 +3172,19 @@ class P2PNode:
         if address.lower() in known:
             return
         if hasattr(self._consensus, "add_validator"):
-            if self._consensus.add_validator(address, stake):
+            try:
+                ok = self._consensus.add_validator(
+                    address, stake, stake_satoshi=int(stake_sat)
+                )
+            except TypeError:
+                ok = self._consensus.add_validator(address, stake)
+            if ok:
                 print(f"[P2P] Registered peer validator {address[:12]}… from {peer.peer_id[:8]}")
                 await self._relay_validator_register(
                     {
                         "address": address,
                         "stake": stake,
+                        "stake_satoshi": stake_sat,
                         "node_id": str(parsed.get("node_id") or ""),
                     },
                     exclude_peer=peer.peer_id,
