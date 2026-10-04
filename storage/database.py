@@ -346,6 +346,36 @@ class Database:
         except Exception as e:
             print(f"[DB] Migration burn satoshi backfill warning: {e}")
 
+    def _backfill_bridge_amount_satoshi(self) -> None:
+        """Populate bridge lock/credit amount_satoshi from float amount (idempotent)."""
+        try:
+            from runtime.amount import to_satoshi
+
+            for table in ("bridge_locks", "bridge_credits"):
+                cols = {
+                    row[1]
+                    for row in self.conn.execute(f"PRAGMA table_info({table})").fetchall()
+                }
+                if "amount_satoshi" not in cols:
+                    continue
+                rows = self.conn.execute(
+                    f"SELECT rowid, amount FROM {table} WHERE amount_satoshi IS NULL"
+                ).fetchall()
+                for r in rows:
+                    sat = int(to_satoshi(r["amount"] or 0))
+                    self.conn.execute(
+                        f"UPDATE {table} SET amount_satoshi=? WHERE rowid=?",
+                        (sat, r["rowid"]),
+                    )
+                if rows:
+                    print(
+                        f"[DB] Migration: backfilled amount_satoshi for "
+                        f"{len(rows)} {table} row(s)"
+                    )
+            self.conn.commit()
+        except Exception as e:
+            print(f"[DB] bridge amount_satoshi backfill warning: {e}")
+
     def _backfill_feature_amount_satoshi(self) -> None:
         """Backfill sprout money satoshi columns from float ABS (idempotent)."""
         try:
