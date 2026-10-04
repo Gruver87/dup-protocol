@@ -712,6 +712,19 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append(
                 "SyncEngine._local_needs_genesis must fail-closed on store error"
             )
+        oracle_reg = (ROOT / "features" / "oracle_registry.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "parse_finite_number" not in oracle_reg:
+            errors.append("oracle_registry must refuse NaN/Inf/bool via parse_finite_number")
+        if "parse_finite_number" not in (
+            ROOT / "storage" / "database.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append("Database oracle save paths must use parse_finite_number")
+        if "balances_satoshi" not in (
+            ROOT / "api" / "fake_rpc.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append("FakeQueryFacade must expose balances_satoshi twin")
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"

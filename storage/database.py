@@ -14,6 +14,8 @@ import time
 from contextlib import contextmanager
 from typing import Optional, List, Dict, Any
 
+from runtime.amount import money_abs, parse_finite_number
+
 logger = logging.getLogger("Database")
 
 
@@ -2657,6 +2659,7 @@ class Database:
         submitted_at: int = 0,
     ) -> None:
         import time as _time
+        value = parse_finite_number(value, field="value")
         with self.lock:
             self.conn.execute(
                 """INSERT OR REPLACE INTO oracle_feeds
@@ -2666,7 +2669,7 @@ class Database:
                 (
                     feed_id,
                     symbol,
-                    float(value),
+                    value,
                     source,
                     reporter,
                     signature,
@@ -2702,7 +2705,7 @@ class Database:
                     report["report_id"],
                     report["symbol"],
                     report["reporter"],
-                    float(report["value"]),
+                    parse_finite_number(report["value"], field="value"),
                     report.get("signature", ""),
                     report.get("payload", "{}"),
                     int(report.get("submitted_at", 0)),

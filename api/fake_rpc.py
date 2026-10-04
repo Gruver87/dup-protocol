@@ -29,6 +29,7 @@ class FakeQueryFacade:
         }
         self.txs: Dict[str, Dict[str, Any]] = {}
         self.balances: Dict[str, float] = {}
+        self.balances_satoshi: Dict[str, int] = {}
         self.nonces: Dict[str, int] = {}
         self.accounts: Dict[str, Dict[str, Any]] = {}
         self.logs: List[Dict[str, Any]] = []
@@ -62,12 +63,18 @@ class FakeQueryFacade:
         return dict(self.txs[tx_hash]) if tx_hash in self.txs else None
 
     def get_balance(self, address: str, block_tag: str = "latest") -> float:
-        return float(self.balances.get(address, 0.0))
+        from runtime.amount import from_satoshi_float
+
+        _ = block_tag
+        return float(from_satoshi_float(self.get_balance_satoshi(address)))
 
     def get_balance_satoshi(self, address: str) -> int:
-        from runtime.amount import money_abs, to_satoshi
+        """Canonical RPC money unit — prefer satoshi twin when set."""
+        from runtime.amount import to_satoshi
 
-        return int(to_satoshi(money_abs(self.get_balance(address), field="balance")))
+        if address in self.balances_satoshi:
+            return max(0, int(self.balances_satoshi[address]))
+        return max(0, int(to_satoshi(self.balances.get(address, 0.0) or 0)))
 
     def get_nonce(self, address: str) -> int:
         return int(self.nonces.get(address, 0))
