@@ -7,7 +7,7 @@ This doc reflects honest status after local prod mesh runs and monitoring — no
 
 ## Executive summary
 
-**Absolute Blockchain Ultimate Hybrid** is a working R&D L1 / devnet stack with a functioning **3-node production-profile mesh** (chain `778888`), state synchronization, RocksDB hybrid persistence, Rust crypto on the hot path, automated CI/gates, and baseline ops tooling (health watch, DR rehearsal scripts, restart recovery).
+**DUP Protocol** (DUP Labs; formerly Absolute Blockchain Ultimate Hybrid) is a working R&D L1 / devnet stack with a functioning **3-node production-profile mesh** (chain `778888`), state synchronization, RocksDB hybrid persistence, Rust crypto on the hot path, automated CI/gates, and baseline ops tooling (health watch, DR rehearsal scripts, restart recovery).
 
 **Public mainnet-ready readiness is not proven.** Missing confirmed evidence for independent external security audit. **48h prod mesh soak PASS** (Jul float tip 19–21 2026; **tip-v2 `b_satoshi` Aug 5–7 2026**). **Cross-node EVM (mempool path) is proven** on local prod mesh (Jul 12 evening).
 

@@ -1,7 +1,9 @@
 # Mainnet Gap Analysis — Industrial Blockchain Readiness
 
-**Project:** Absolute Blockchain Ultimate Hybrid  
-**Updated:** 2026-08-07  
+**Product:** DUP Protocol · **Org:** DUP Labs  
+**Repos:** [`dup-protocol`](https://github.com/Gruver87/dup-protocol) (industrial pin) · R&D [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)  
+**Formerly:** Absolute Blockchain Ultimate Hybrid (same pin / evidence)  
+**Updated:** 2026-10-05 (header brand sync; body may still cite older soak windows)  
 **Positioning:** Production-hardened R&D stack → path to public mainnet  
 **Evidence ledger:** [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) — separates CI/automation from live ops proof
 
