@@ -1234,6 +1234,8 @@ class Database:
 
         self.conn.execute("DELETE FROM accounts")
         for addr, amount in alloc.items():
+            if isinstance(amount, bool):
+                raise TypeError("bool is not an amount")
             payload: dict = {}
             dual_write_balance(payload, amount)
             self.conn.execute(
@@ -3456,10 +3458,9 @@ class Database:
             for r in rows:
                 payload = self._loads_json(r["payload"] or "{}", context="nft_offer", default={})
                 row = {"offer_id": r["offer_id"], **(payload if isinstance(payload, dict) else {})}
-                if "price" not in row:
-                    row["price"] = r["price"]
-                if "price_satoshi" not in row and "price_satoshi" in r.keys():
-                    row["price_satoshi"] = r["price_satoshi"]
+                # Column twins win over stale payload float.
+                row["price"] = r["price"]
+                row["price_satoshi"] = r["price_satoshi"] if "price_satoshi" in r.keys() else None
                 Database._overlay_sat(row, "price", "price_satoshi")
                 out.append(row)
             return out
