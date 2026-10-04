@@ -663,9 +663,12 @@ class LightningNetwork:
             "pending_htlcs": pending_htlcs,
             "total_volume": total_paid,
             "persisted": bool(self.db),
+            "execution_bound": bool(self.db),
+            "l1_balance_bound": bool(self.db),
             "node_address": self.node_address,
             "htlc_enabled": True,
             "routing_enabled": False,
             "direct_channel_only": True,
             "multi_hop_implemented": False,
+            "r_and_d": True,
         }

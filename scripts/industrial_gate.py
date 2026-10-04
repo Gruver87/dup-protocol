@@ -1645,6 +1645,30 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("chain_backup must not soft-fallback copy2 after backup_to False")
         if not (ROOT / "tests" / "unit" / "test_persist_fail_closed.py").is_file():
             errors.append("test_persist_fail_closed.py missing")
+        amount_py_wb = (ROOT / "runtime" / "amount.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "def writeback_balance_abs" not in amount_py_wb:
+            errors.append("runtime.amount must define writeback_balance_abs for EVM writeback")
+        evm_ad_py = (ROOT / "execution" / "evm_adapter.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "writeback_balance_abs" not in evm_ad_py:
+            errors.append("evm_adapter must use writeback_balance_abs (not float balance paint)")
+        if "evm_native_writeback_required" not in evm_ad_py:
+            errors.append("evm_adapter must refuse native writeback fallback in prod/require_native")
+        if 'p2p_mempool_require_explicit_gas: bool = True' not in (
+            ROOT / "runtime" / "config.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append("config must define p2p_mempool_require_explicit_gas")
+        ln_stats = (ROOT / "features" / "lightning.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        pl_stats = (ROOT / "features" / "plasma.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if '"execution_bound"' not in ln_stats or '"execution_bound"' not in pl_stats:
+            errors.append("lightning/plasma get_stats must expose execution_bound")
         if "_tx_affordable_sat" not in (
             ROOT / "execution" / "block_builder.py"
         ).read_text(encoding="utf-8"):

@@ -495,9 +495,12 @@ class PlasmaChain:
                 "total_withdrawn": total_withdrawn,
                 "tvl": total_deposited - total_withdrawn,
                 "persisted": bool(self.db),
+                "execution_bound": bool(self.db),
+                "l1_balance_bound": bool(self.db),
                 "challenge_period_sec": self.CHALLENGE_PERIOD,
                 "merkle_proofs": True,
                 "signed_txs": True,
+                "r_and_d": True,
             }
 
     def _exit_monitor_loop(self):

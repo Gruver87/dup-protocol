@@ -10,6 +10,7 @@ EVM Adapter — подключает evm_interpreter.py к живому сост
 """
 
 import json
+import logging
 import sys
 import os
 import time
@@ -23,6 +24,9 @@ from evm_interpreter import EVM, EVMContext
 from crypto import native
 from storage.database import Database
 from runtime.config import Config
+from runtime.amount import writeback_balance_abs
+
+logger = logging.getLogger("evm_adapter")
 
 
 class EVMResult:
@@ -209,8 +213,12 @@ class EVMAdapter:
                         code_bytes = view.get("code_bytes") or b""
                         view["code_bytes"] = bytes(code_bytes)
                     return view
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "native get_account_view failed addr=%s: %s", addr, exc
+                )
+                if bool(getattr(self.config, "require_native_crypto", False)):
+                    raise
         account = self.db.get_account(addr) if hasattr(self.db, "get_account") else None
         return native.account_view_from_row(account)
 
@@ -490,7 +498,10 @@ class EVMAdapter:
                         "native_nested_pure": True,
                         "native_nested_bridge": True,
                     }
-            except Exception:
+            except Exception as exc:
+                logger.warning("native nested pure frame failed: %s", exc)
+                if bool(getattr(self.config, "require_native_crypto", False)):
+                    raise
                 result = None
 
         # v1.3.56: recursive CALL/CREATE/LOG via Rust runner + runtime host_bridge.
@@ -530,7 +541,10 @@ class EVMAdapter:
                         "logs": list(nested.get("logs") or evm.logs),
                         "native_nested_host": True,
                     }
-            except Exception:
+            except Exception as exc:
+                logger.warning("native nested host frame failed: %s", exc)
+                if bool(getattr(self.config, "require_native_crypto", False)):
+                    raise
                 result = None
 
         if result is None:
@@ -715,7 +729,7 @@ class EVMAdapter:
                                 storage_str = str(storage or "{}")
                             self.db.save_account(
                                 address=self._normalize_addr(str(addr)),
-                                balance=float(row.get("balance") or 0.0),
+                                balance=writeback_balance_abs(row),
                                 nonce=int(row.get("nonce") or 0),
                                 code=str(row.get("code") or "")
                                 if row.get("code") is not None
@@ -728,8 +742,27 @@ class EVMAdapter:
                         if logs:
                             self._persist_logs(addr, logs)
                 return
-            except Exception:
-                pass
+            except Exception as exc:
+                if "insufficient_writeback_value" in str(exc):
+                    raise
+                refuse_fallback = bool(
+                    getattr(self.config, "require_native_crypto", False)
+                )
+                mode = str(
+                    getattr(self.config, "deployment_mode", "") or ""
+                ).strip().lower()
+                if refuse_fallback or mode in ("prod", "production", "staging"):
+                    logger.error(
+                        "native writeback apply failed; Python fallback refused "
+                        "(require_native/prod): %s",
+                        exc,
+                    )
+                    raise RuntimeError(
+                        f"evm_native_writeback_required: {exc}"
+                    ) from exc
+                logger.warning(
+                    "native writeback apply failed; Python fallback: %s", exc
+                )
         # Fallback: per-op Python DB apply.
         for op in ops:
             kind = str(op.get("op") or "")
@@ -747,7 +780,7 @@ class EVMAdapter:
                     storage_str = str(storage or "{}")
                 self.db.save_account(
                     address=addr,
-                    balance=float(op.get("balance") or 0.0),
+                    balance=writeback_balance_abs(op),
                     nonce=int(op.get("nonce") or 0),
                     code=str(op.get("code") or ""),
                     storage=storage_str,

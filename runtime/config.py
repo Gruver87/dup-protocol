@@ -140,6 +140,7 @@ class Config:
     p2p_mempool_negative_fee_refuse: bool = True    # v1.3.186: refuse fee<0 before validate_transaction
     p2p_mempool_negative_gas_refuse: bool = True    # v1.3.187: refuse gas<0 before validate_transaction
     p2p_mempool_unparseable_gas_refuse: bool = True # v1.3.203: refuse unparseable gas before validate_transaction
+    p2p_mempool_require_explicit_gas: bool = True   # refuse missing/zero gas (no invent 21000)
     p2p_mempool_unparseable_value_refuse: bool = True # v1.3.204: refuse unparseable value before validate_transaction
     p2p_mempool_unparseable_nonce_refuse: bool = True # v1.3.205: refuse unparseable nonce before validate_transaction
     p2p_mempool_empty_from_refuse: bool = True      # v1.3.188: refuse empty from before validate_transaction
@@ -558,6 +559,10 @@ class Config:
         self.p2p_mempool_unparseable_gas_refuse = env_bool(
             "P2P_MEMPOOL_UNPARSEABLE_GAS_REFUSE",
             self.p2p_mempool_unparseable_gas_refuse,
+        )
+        self.p2p_mempool_require_explicit_gas = env_bool(
+            "P2P_MEMPOOL_REQUIRE_EXPLICIT_GAS",
+            self.p2p_mempool_require_explicit_gas,
         )
         self.p2p_mempool_unparseable_value_refuse = env_bool(
             "P2P_MEMPOOL_UNPARSEABLE_VALUE_REFUSE",
