@@ -268,16 +268,27 @@ class RustBridge:
         else:
             from runtime.amount import apply_store_delta_satoshi
 
-            if not apply_store_delta_satoshi(
-                self.db, from_addr, -amount_sats, allow_float_fallback=False
+            if not (
+                apply_store_delta_satoshi(
+                    self.db, from_addr, -amount_sats, allow_float_fallback=False
+                )
+                and (
+                    burn_sats <= 0
+                    or apply_store_delta_satoshi(
+                        self.db,
+                        self.config.burn_address,
+                        burn_sats,
+                        allow_float_fallback=False,
+                    )
+                )
             ):
                 return {"error": "satoshi_store_required"}
-            if burn_sats:
-                apply_store_delta_satoshi(
-                    self.db, self.config.burn_address, burn_sats, allow_float_fallback=False
-                )
             self.db.save_bridge_lock(
-                from_addr, to_chain, to_addr, net_amount, tx_hash,
+                from_addr,
+                to_chain,
+                to_addr,
+                net_amount,
+                tx_hash,
                 amount_satoshi=net_sats,
             )
 

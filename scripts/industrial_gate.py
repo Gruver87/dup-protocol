@@ -741,6 +741,16 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("Database lightning channels must parse_finite_number fee_rate")
         if 'field="performance_score"' not in db_finite:
             errors.append("Database AI agents must parse_finite_number performance_score")
+        bridge_py = (ROOT / "bridge" / "abs_bridge.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        lock_fn = bridge_py.split("def lock_and_bridge", 1)[-1].split(
+            "def ", 1
+        )[0]
+        if "burn_sats <= 0" not in lock_fn or "satoshi_store_required" not in lock_fn:
+            errors.append(
+                "bridge lock must require debit+burn satoshi deltas (fail-closed)"
+            )
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"
