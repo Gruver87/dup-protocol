@@ -514,6 +514,18 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         http_py = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
         if 'checks["p2p_running"]' not in http_py and "p2p_running" not in http_py:
             errors.append("/health/ready must check p2p_running in prod")
+        if "prod without a P2P object is not ready" not in http_py:
+            errors.append(
+                "/health/ready must fail-closed when p2p is None in prod (Phase D5)"
+            )
+        if "tip_skew" not in http_py or "tip_lagging" not in http_py:
+            errors.append(
+                "p2p_sync_status must use tip_skew/tip_lagging (not false inconsistent)"
+            )
+        if "get_cached_account_count" not in http_py:
+            errors.append(
+                "consistency harness must use get_cached_account_count (no invent/prefix-scan)"
+            )
         if 'after.get("state_consistent", False)' not in http_py:
             errors.append("fork recovery must default state_consistent=False (fail-closed)")
         if "never echo first allowlist entry" not in http_py:
@@ -3831,6 +3843,12 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         if "_new_block_tip_head_refuse_reason" not in p2p_py:
             errors.append(
                 "p2p must expose _new_block_tip_head_refuse_reason (v1.3.174)"
+            )
+        if "def _try_local_head" not in p2p_py:
+            errors.append("p2p_node must expose _try_local_head for tip-bind honesty")
+        if "local_tip_unreadable" not in p2p_py:
+            errors.append(
+                "p2p_node must refuse local_tip_unreadable instead of skipping tip binds"
             )
         if "p2p_new_block_tip_head_bind" not in (
             ROOT / "runtime" / "config.py"

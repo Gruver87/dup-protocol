@@ -1728,6 +1728,21 @@ class P2PNode:
         h = last.get("hash")
         return str(h) if h else None
 
+    def _try_local_head(self) -> tuple[Optional[str], str]:
+        """Local tip hash. ``(None, local_tip_unreadable)`` if lookup failed.
+
+        Empty string means lookup succeeded but tip is unresolved (soft-skip).
+        Bind paths must refuse ``local_tip_unreadable`` — not skip the check.
+        """
+        try:
+            raw = self.head()
+        except Exception as exc:
+            logger.warning("[P2P] head() failed: %s", exc)
+            return None, "local_tip_unreadable"
+        if raw is None:
+            return "", ""
+        return str(raw).strip(), ""
+
     @property
     def height(self) -> int:
         return self.blockchain.get_height()
@@ -4586,11 +4601,9 @@ class P2PNode:
             return ""
         if tip_h <= 0 or body_h < 0 or tip_h != body_h:
             return ""
-        local_tip = ""
-        try:
-            local_tip = str(self.head() or "").strip()
-        except Exception:
-            local_tip = ""
+        local_tip, unreadable = self._try_local_head()
+        if unreadable:
+            return unreadable
         if local_tip and local_tip.lower() != want.lower():
             return "new_block_tip_head_mismatch"
         return ""

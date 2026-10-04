@@ -558,6 +558,11 @@ class HybridDatabase:
     def get_proposer_detail(self, address: str, recent_limit: int = 10) -> Dict:
         return self._core.get_proposer_detail(address, recent_limit=recent_limit)
 
+    def get_cached_account_count(self) -> int | None:
+        if hasattr(self._core, "get_cached_account_count"):
+            return self._core.get_cached_account_count()
+        return None
+
     def get_cached_total_supply(self) -> float | None:
         if hasattr(self._core, "get_cached_total_supply"):
             return self._core.get_cached_total_supply()

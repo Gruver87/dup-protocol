@@ -1061,6 +1061,19 @@ class RocksChainStore:
             dual_write_balance(row, amount)
             self._save_account_row(row)
 
+    def _read_plain_meta_int(self, name: str) -> int | None:
+        raw = self._raw_get(kc.key_meta(name))
+        if raw is None:
+            return None
+        try:
+            return int(raw.decode("utf-8"))
+        except (TypeError, ValueError, UnicodeDecodeError):
+            return None
+
+    def get_cached_account_count(self) -> int | None:
+        """O(1) meta only. None if never counted — callers must not prefix-scan."""
+        return self._read_plain_meta_int("stats_account_count")
+
     def get_cached_total_supply(self) -> float | None:
         """O(1) meta only. None if missing — callers must not get_all_accounts()."""
         raw = self._raw_get(kc.key_meta("total_supply_abs"))

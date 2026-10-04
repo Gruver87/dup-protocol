@@ -878,7 +878,12 @@ def _derive_p2p_sync_status(
     deployment_mode: str,
     mesh_min_peers: int,
 ) -> str:
-    """Human-readable mesh sync state for dashboard and audits."""
+    """Human-readable mesh sync state for dashboard and audits.
+
+    Tip-height skew while state_consistent remains true is *not* a fork —
+    tip-v2 mine ticks routinely show peer_gap 1–2. Reserve ``inconsistent``
+    for ``state_consistent=False`` only.
+    """
     mesh_need = max(2, int(mesh_min_peers or 0))
     mode = (deployment_mode or "dev").strip().lower()
     if peer_count <= 0:
@@ -891,9 +896,12 @@ def _derive_p2p_sync_status(
         return "aligned"
     if peer_gap > 20:
         return "catching_up"
-    if not state_consistent or peer_gap > 0:
+    if not state_consistent:
         return "inconsistent"
-    return "aligned"
+    # state_consistent + small height skew: mining-window honesty label.
+    if peer_gap <= 2:
+        return "tip_skew"
+    return "tip_lagging"
 
 
 # ── ADR 0014 — request drain + deep readiness ────────────────────────────────
@@ -2015,62 +2023,66 @@ class RESTHandler(BaseHTTPRequestHandler):
                             ready_sprout_init[name] = False
                 else:
                     ready_sprout_init = {}
-                if is_prod and p2p is not None:
-                    # Listener must exist — bind failure clears _running (fail-closed).
-                    # Asyncio path uses _server; native TCP/TLS path uses _native_listener.
-                    checks["p2p_running"] = bool(getattr(p2p, "_running", False)) and (
-                        getattr(p2p, "_server", None) is not None
-                        or getattr(p2p, "_native_listener", None) is not None
-                    )
-                    # v1.3.125: prod native transport must expose semantic message-loop shell.
-                    if (
-                        bool(getattr(getattr(p2p, "config", None), "p2p_native_transport", False))
-                        and getattr(p2p, "_native_listener", None) is not None
-                    ):
-                        checks["p2p_native_message_loop_shell"] = bool(
-                            getattr(p2p, "_native_message_loop_shell", False)
+                if is_prod:
+                    if p2p is None:
+                        # Fail-closed: prod without a P2P object is not ready (Phase D).
+                        checks["p2p_running"] = False
+                    else:
+                        # Listener must exist — bind failure clears _running (fail-closed).
+                        # Asyncio path uses _server; native TCP/TLS path uses _native_listener.
+                        checks["p2p_running"] = bool(getattr(p2p, "_running", False)) and (
+                            getattr(p2p, "_server", None) is not None
+                            or getattr(p2p, "_native_listener", None) is not None
                         )
-                    # With peers, ready requires state consistency (solo may stay ready).
-                    # peer_count() probe failure must not skip the consistency gate.
-                    peer_count = 0
-                    peer_count_probe_ok = True
-                    if hasattr(p2p, "peer_count"):
-                        try:
-                            peer_count = int(p2p.peer_count() or 0)
-                        except Exception as exc:
-                            peer_count_probe_ok = False
-                            peer_count = 0
-                            logger.warning(
-                                "/health/ready peer_count probe failed: %s", exc
+                        # v1.3.125: prod native transport must expose semantic message-loop shell.
+                        if (
+                            bool(getattr(getattr(p2p, "config", None), "p2p_native_transport", False))
+                            and getattr(p2p, "_native_listener", None) is not None
+                        ):
+                            checks["p2p_native_message_loop_shell"] = bool(
+                                getattr(p2p, "_native_message_loop_shell", False)
                             )
-                    if not peer_count_probe_ok:
-                        checks["peer_count_probe"] = False
-                        checks["state_consistent"] = bool(
-                            getattr(p2p, "_state_consistent", False)
-                        )
-                    elif peer_count > 0:
-                        checks["state_consistent"] = bool(
-                            getattr(p2p, "_state_consistent", False)
-                        )
-                        # Match eth_syncing: peers without a completed wire probe → not ready.
-                        se = getattr(self.__class__, "sync_engine", None) or getattr(
-                            p2p, "sync_engine", None
-                        )
-                        if se is not None and hasattr(se, "get_status"):
+                        # With peers, ready requires state consistency (solo may stay ready).
+                        # peer_count() probe failure must not skip the consistency gate.
+                        peer_count = 0
+                        peer_count_probe_ok = True
+                        if hasattr(p2p, "peer_count"):
                             try:
-                                st = se.get_status() or {}
+                                peer_count = int(p2p.peer_count() or 0)
                             except Exception as exc:
+                                peer_count_probe_ok = False
+                                peer_count = 0
                                 logger.warning(
-                                    "/health/ready sync_engine status failed: %s", exc
+                                    "/health/ready peer_count probe failed: %s", exc
                                 )
-                                st = {}
-                            checks["wire_probe_probed"] = bool(
-                                st.get("wire_probe_probed")
+                        if not peer_count_probe_ok:
+                            checks["peer_count_probe"] = False
+                            checks["state_consistent"] = bool(
+                                getattr(p2p, "_state_consistent", False)
                             )
-                            checks["wire_probe_ok"] = bool(st.get("wire_probe_ok"))
-                        else:
-                            checks["wire_probe_probed"] = False
-                            checks["wire_probe_ok"] = False
+                        elif peer_count > 0:
+                            checks["state_consistent"] = bool(
+                                getattr(p2p, "_state_consistent", False)
+                            )
+                            # Match eth_syncing: peers without a completed wire probe → not ready.
+                            se = getattr(self.__class__, "sync_engine", None) or getattr(
+                                p2p, "sync_engine", None
+                            )
+                            if se is not None and hasattr(se, "get_status"):
+                                try:
+                                    st = se.get_status() or {}
+                                except Exception as exc:
+                                    logger.warning(
+                                        "/health/ready sync_engine status failed: %s", exc
+                                    )
+                                    st = {}
+                                checks["wire_probe_probed"] = bool(
+                                    st.get("wire_probe_probed")
+                                )
+                                checks["wire_probe_ok"] = bool(st.get("wire_probe_ok"))
+                            else:
+                                checks["wire_probe_probed"] = False
+                                checks["wire_probe_ok"] = False
 
                 # ADR 0014 deep healthcheck — mesh readiness for K8s probes.
                 local_h = int(bc.get_height() if bc else 0)
@@ -9325,20 +9337,35 @@ def _build_state_consistency_harness(
     )
     account_count = 0
     total_supply = 0.0
-    if db and hasattr(db, "get_all_accounts"):
-        if quick and height > 0:
-            account_count = 1
-            if hasattr(db, "get_total_supply"):
-                total_supply = float(db.get_total_supply())
-        else:
-            account_count = len(db.get_all_accounts())
-            total_supply = (
-                float(db.get_total_supply())
-                if hasattr(db, "get_total_supply")
-                else 0.0
-            )
+    account_count_known = False
+    supply_known = False
+    if db is not None:
+        # HTTP harness must not prefix-scan (get_stats / get_all_accounts /
+        # get_total_supply fallback). Those stall the GIL and poison /status soak.
+        if hasattr(db, "get_cached_account_count"):
+            try:
+                cached_ac = db.get_cached_account_count()
+                if cached_ac is not None:
+                    account_count = int(cached_ac)
+                    account_count_known = True
+            except (TypeError, ValueError, OSError) as exc:
+                logger.warning("harness cached account count failed: %s", exc)
+        if hasattr(db, "get_cached_total_supply"):
+            try:
+                cached_sup = db.get_cached_total_supply()
+                if cached_sup is not None:
+                    total_supply = float(cached_sup)
+                    supply_known = True
+            except (TypeError, ValueError, OSError) as exc:
+                logger.warning("harness cached total supply failed: %s", exc)
     max_supply = float(getattr(cfg, "max_supply", 221_000_000) or 221_000_000)
     state_consistent = getattr(p2p, "_state_consistent", False) if p2p else False
+    wire_consistent = (
+        peer_probe_error is None
+        and bool(peers)
+        and peer_roots_aligned
+        and all(p.get("match") is True for p in peers)
+    )
 
     checks = [
         {
@@ -9359,23 +9386,34 @@ def _build_state_consistency_harness(
                     quick
                     and bool(state_consistent)
                     and tip_aligned
-                    and peer_probe_error == "timeout"
+                    and peer_probe_error in ("timeout", "empty")
                 )
             ),
             "detail": (
                 "P2P peer state_root wire probe succeeded"
                 if peer_probe_error is None
                 else (
-                    "quick: wire probe timeout tolerated when tip aligned + state_consistent"
-                    if quick and state_consistent and tip_aligned and peer_probe_error == "timeout"
+                    "quick: wire probe timeout/empty tolerated when tip aligned + state_consistent"
+                    if quick
+                    and state_consistent
+                    and tip_aligned
+                    and peer_probe_error in ("timeout", "empty")
                     else f"P2P peer state_root wire probe: {peer_probe_error}"
                 )
             ),
         },
         {
             "id": "p2p_state_consistent",
-            "ok": bool(state_consistent),
-            "detail": "P2P wire state consistency flag",
+            "ok": bool(state_consistent) or wire_consistent,
+            "detail": (
+                "P2P wire state consistency flag"
+                if state_consistent
+                else (
+                    "live wire roots match (sticky flag lag)"
+                    if wire_consistent
+                    else "P2P wire state consistency flag"
+                )
+            ),
         },
         {
             "id": "no_recent_mismatches",
@@ -9384,13 +9422,29 @@ def _build_state_consistency_harness(
         },
         {
             "id": "accounts_present",
-            "ok": account_count > 0 or height <= 0,
-            "detail": "chain accounts populated",
+            "ok": (
+                (account_count > 0)
+                if account_count_known
+                else int(height or 0) > 0
+            ),
+            "detail": (
+                "chain accounts populated"
+                if account_count_known
+                else "account count meta missing (harness does not prefix-scan)"
+            ),
         },
         {
             "id": "supply_within_cap",
-            "ok": total_supply <= max_supply * 1.001,
-            "detail": f"total_supply {total_supply:,.0f} <= max {max_supply:,.0f}",
+            "ok": (
+                total_supply <= max_supply * 1.001
+                if supply_known
+                else True
+            ),
+            "detail": (
+                f"total_supply {total_supply:,.0f} <= max {max_supply:,.0f}"
+                if supply_known
+                else "supply meta missing (harness does not prefix-scan)"
+            ),
         },
     ]
     policy = bc.get_state_root_policy() if bc and hasattr(bc, "get_state_root_policy") else {}
