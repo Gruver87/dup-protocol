@@ -1,4 +1,5 @@
 {
+    "WARNING": "CUTOVER EXAMPLE ONLY — do not copy onto live mesh. Live prod keeps bridge_enabled=false. industrial_gate warns on this file.",
     "node_id": "mainnet-v1-node-1",
     "network_name": "Absolute Mainnet",
     "chain_id": 778888,
