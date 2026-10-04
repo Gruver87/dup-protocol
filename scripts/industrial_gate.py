@@ -1800,6 +1800,36 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         )
         if "bridge_pending_writeback_failed" not in evm_ad_gate:
             errors.append("evm_adapter must fail-closed on pending writeback parse")
+        slash_py = (ROOT / "consensus" / "slashing.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "Dict[int, Dict[str, str]]" not in slash_py:
+            errors.append("slashing proposals must be height→validator→hash (idempotent)")
+        if "Same-hash proposal retry" not in slash_py and "prior == digest" not in slash_py:
+            errors.append("slashing record_proposal must accept same-hash retries")
+        bc_py = (ROOT / "core" / "blockchain.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "allow_slashed=bool(preserve_peer_hash)" not in bc_py:
+            errors.append("catch-up must allow_slashed for preserve_peer_hash import")
+        if "ABS_ALLOW_DEV_ADMIN_JWT" not in http_gate:
+            errors.append("non-prod admin JWT mint must require ABS_ALLOW_DEV_ADMIN_JWT")
+        sphincs_py = (ROOT / "crypto" / "sphincs_plus.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "verify backend not available" not in sphincs_py:
+            errors.append("SPHINCS+ verify must raise NotImplementedError (not return False)")
+        # Code must not invent verify=False / blake2b qc: addresses (comments OK).
+        code_lines = [
+            ln
+            for ln in sphincs_py.splitlines()
+            if not ln.lstrip().startswith("#") and '"""' not in ln
+        ]
+        code_blob = "\n".join(code_lines)
+        if "blake2b" in code_blob or "return False" in code_blob:
+            errors.append("SPHINCS+ must not invent qc: addresses or fake verify=False")
+        if '"qc:"' in code_blob or "'qc:'" in code_blob:
+            errors.append("SPHINCS+ must not invent qc: addresses without real backend")
         validators_py = (ROOT / "middleware" / "validators.py").read_text(
             encoding="utf-8", errors="replace"
         )

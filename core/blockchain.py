@@ -826,7 +826,9 @@ class Blockchain:
                 print(f"[Blockchain] Reject block #{block.height}: {validation.get('error')}")
                 return False
 
-            proposer_check = self._verify_block_proposer(block)
+            proposer_check = self._verify_block_proposer(
+                block, allow_slashed=bool(preserve_peer_hash)
+            )
             if not proposer_check["valid"]:
                 print(f"[Blockchain] Reject block #{block.height}: {proposer_check.get('error')}")
                 return False
@@ -1131,15 +1133,22 @@ class Blockchain:
     def _verify_block_tx_signatures(self, block: Block) -> Dict:
         return self.tx_pipeline.verify_signatures(block).as_dict()
 
-    def _verify_block_proposer(self, block: Block) -> Dict:
-        """Slashing + authorized proposer checks before block execution."""
+    def _verify_block_proposer(
+        self, block: Block, *, allow_slashed: bool = False
+    ) -> Dict:
+        """Slashing + authorized proposer checks before block execution.
+
+        ``allow_slashed`` is set for P2P catch-up (``preserve_peer_hash``):
+        a local slash penalty must not partition the node off the canonical
+        chain of the (only) miner.
+        """
         proposer = block.miner or ""
         if not proposer or proposer == "genesis":
             return {"valid": True}
 
         slashing = self._resolve_slashing_core()
         if slashing:
-            if proposer in slashing.slashed:
+            if proposer in slashing.slashed and not allow_slashed:
                 return {"valid": False, "error": "proposer_slashed"}
 
         if not getattr(self.config, "enforce_proposer", True):

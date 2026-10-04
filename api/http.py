@@ -3353,6 +3353,17 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if role not in ("user", "admin"):
                     self._error(400, "role must be user or admin")
                     return
+                # Fail-closed: admin JWT mint in non-prod requires explicit operator arm.
+                # Prevents open staging/dev admin mint (audit Phase B).
+                if role == "admin":
+                    allow = str(os.environ.get("ABS_ALLOW_DEV_ADMIN_JWT", "") or "").strip().lower()
+                    if allow not in ("1", "true", "yes", "on"):
+                        self._error(
+                            403,
+                            "admin JWT mint refused outside prod unless "
+                            "ABS_ALLOW_DEV_ADMIN_JWT=1 (lab/operator only)",
+                        )
+                        return
                 if _JWT_AVAILABLE and jwt_auth and addr:
                     token = jwt_auth.generate_token(addr, role=role)
                     self._json({
@@ -8171,9 +8182,16 @@ class RESTHandler(BaseHTTPRequestHandler):
                         pub_bytes = bytes.fromhex(public_key.replace("0x", ""))
                     except ValueError:
                         self._error(400, "signature and public_key must be hex"); return
-                    ok = sph.verify(message.encode() if isinstance(message,str) else message,
-                                    sig_bytes, pub_bytes)
-                    self._json({"valid": bool(ok), "algorithm": "SPHINCS+"})
+                    try:
+                        ok = sph.verify(
+                            message.encode() if isinstance(message, str) else message,
+                            sig_bytes,
+                            pub_bytes,
+                        )
+                    except NotImplementedError as e:
+                        self._error(501, str(e))
+                        return
+                    self._json({"valid": ok is True, "algorithm": "SPHINCS+"})
                 else:
                     self._error(501, "verify not available")
 

@@ -92,6 +92,7 @@ def _start_prod_server(tmp_path, monkeypatch):
 
 def _start_dev_admin_server(tmp_path, monkeypatch):
     monkeypatch.setenv("JWT_SECRET", "test-jwt-secret-dev-admin-min-32b!!")
+    monkeypatch.setenv("ABS_ALLOW_DEV_ADMIN_JWT", "1")
     fd, path = tempfile.mkstemp(suffix=".db", dir=tmp_path)
     os.close(fd)
     cfg = Config()
@@ -159,6 +160,24 @@ def test_dev_admin_sync_reconcile_requires_jwt(tmp_path, monkeypatch):
         )
         assert st == 403
         assert "insufficient" in body.get("error", "")
+    finally:
+        server.shutdown()
+        db.close()
+        os.remove(path)
+
+
+def test_dev_admin_jwt_mint_refused_without_allow_env(tmp_path, monkeypatch):
+    monkeypatch.delenv("ABS_ALLOW_DEV_ADMIN_JWT", raising=False)
+    base, server, db, path = _start_dev_admin_server(tmp_path, monkeypatch)
+    # Helper arms allow=1 — clear it for this refuse case.
+    monkeypatch.delenv("ABS_ALLOW_DEV_ADMIN_JWT", raising=False)
+    try:
+        st, body = _get(f"{base}/auth/token?address=verifier-admin&role=admin")
+        assert st == 403
+        assert "ABS_ALLOW_DEV_ADMIN_JWT" in body.get("error", "")
+        st, user_body = _get(f"{base}/auth/token?address=verifier-user&role=user")
+        assert st == 200
+        assert user_body.get("role") == "user"
     finally:
         server.shutdown()
         db.close()
