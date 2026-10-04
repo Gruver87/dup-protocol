@@ -127,9 +127,9 @@ test("Attestation signature verified", valid)
 log("\n[TEST 14] Wallet export/import")
 temp_file = "temp_wallet_v46.json"
 try:
-    wallet.export(temp_file)
+    wallet.export(temp_file, allow_plaintext=True)
     time.sleep(0.1)
-    imported = Wallet.import_wallet(temp_file)
+    imported = Wallet.import_wallet(temp_file, allow_plaintext=True)
     test("Wallet export/import works", imported.address == wallet.address)
 except Exception as e:
     test("Wallet export/import works", False)

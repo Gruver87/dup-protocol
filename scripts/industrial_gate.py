@@ -1727,6 +1727,13 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("crypto.signing must refuse invent gas_limit=21000 / gas_price=1")
         if '"gas_limit": 21000' in sign_py:
             errors.append("crypto.signing must not hardcode gas_limit=21000")
+        wallet_py = (ROOT / "crypto" / "wallet.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "plaintext wallet export refused" not in wallet_py:
+            errors.append("Wallet.export must refuse bare plaintext without allow_plaintext")
+        if "plaintext wallet import refused" not in wallet_py:
+            errors.append("Wallet.import_wallet must refuse bare plaintext without allow_plaintext")
         validators_py = (ROOT / "middleware" / "validators.py").read_text(
             encoding="utf-8", errors="replace"
         )

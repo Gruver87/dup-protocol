@@ -1157,7 +1157,7 @@ class LocalMeshTopology:
         await self.ensure_admin_jwt(name)
         handle = self.node(name)
         st = self.status(name)
-        wallet = Wallet.import_wallet(str(self.shared_wallet))
+        wallet = Wallet.import_wallet(str(self.shared_wallet), allow_plaintext=True)
         chain_id = int(st.get("chain_id") or MAINNET_V1_CHAIN_ID)
         addr_info = self.http.get_json(f"{handle.http_url}/address/{wallet.address}")
         nonce = int(addr_info.get("nonce", 0) or 0)

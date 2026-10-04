@@ -83,9 +83,9 @@ test("Duplicate nonce rejected", not success)
 log("\n[TEST 8] Wallet export/import")
 temp_file = "temp_wallet_v49.json"
 try:
-    alice.export(temp_file)
+    alice.export(temp_file, allow_plaintext=True)
     time.sleep(0.1)
-    imported = Wallet.import_wallet(temp_file)
+    imported = Wallet.import_wallet(temp_file, allow_plaintext=True)
     test("Wallet export/import works", imported.address == alice.address)
 except Exception as e:
     test("Wallet export/import works", False)

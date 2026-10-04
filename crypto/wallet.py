@@ -283,16 +283,18 @@ class Wallet:
         """Export wallet to file.
 
         - ``password`` set → scrypt + AES-256-GCM keystore (never plaintext).
-        - ``password`` omitted → plaintext JSON (legacy/dev). Prefer password.
-          ``allow_plaintext=True`` is accepted for explicit callers; omitted
-          password alone still writes plaintext for backward compatibility.
+        - ``password`` omitted → plaintext JSON only when ``allow_plaintext=True``
+          (ceremony offline dir / explicit lab). Accidental bare ``export(path)``
+          is refused — diligence HIGH from 2026-10-03 critical-path scan.
         """
         if password is not None:
             self._atomic_write_json(filepath, self._encrypted_keystore_blob(password))
             return
-        # Legacy plaintext path (ops smoke / older labs). Password is never ignored:
-        # a non-None password always takes the encrypted branch above.
-        _ = allow_plaintext  # explicit opt-in documented for new callers
+        if not allow_plaintext:
+            raise ValueError(
+                "plaintext wallet export refused — pass password=... for keystore "
+                "or allow_plaintext=True for explicit legacy/ceremony write"
+            )
         self._atomic_write_json(
             filepath,
             {
@@ -336,7 +338,8 @@ class Wallet:
         """Import wallet from encrypted keystore or legacy plaintext file.
 
         Password is never ignored: encrypted files require it; plaintext files
-        refuse a non-None password (call without password for legacy JSON).
+        refuse a non-None password. Plaintext JSON requires
+        ``allow_plaintext=True`` (ceremony / mesh ops wallets).
         """
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -383,7 +386,11 @@ class Wallet:
                 "password provided but file is plaintext JSON; "
                 "refuse to ignore password — use encrypted export or omit password"
             )
-        _ = allow_plaintext
+        if not allow_plaintext:
+            raise ValueError(
+                "plaintext wallet import refused — pass allow_plaintext=True "
+                "for explicit ceremony/ops JSON, or use encrypted keystore + password"
+            )
         try:
             private_key = bytes.fromhex(str(data["private_key"]).replace("0x", ""))
         except (TypeError, ValueError) as exc:

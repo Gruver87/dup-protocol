@@ -479,7 +479,9 @@ class NodeOrchestrator:
                 if _WALLET_AVAILABLE:
                     _follower_node = not config.mining_enabled and _chain_h_boot > 1
                     if _wdata.get("private_key") and not _follower_node:
-                        self.wallet = Wallet.import_wallet(_wallet_path)
+                        self.wallet = Wallet.import_wallet(
+                            _wallet_path, allow_plaintext=True
+                        )
                         config.signing_address = self.wallet.address
                         if not config.miner_address:
                             config.miner_address = self.wallet.address
@@ -565,11 +567,15 @@ class NodeOrchestrator:
                                 "dev_signer skipped (state integrity)"
                             )
                         elif os.path.exists(_dev_signer_path) and config.mining_enabled:
-                            self.wallet = Wallet.import_wallet(_dev_signer_path)
+                            self.wallet = Wallet.import_wallet(
+                                _dev_signer_path, allow_plaintext=True
+                            )
                         elif _chain_h <= 1 and config.mining_enabled:
                             self.wallet = Wallet.create_new()
                             os.makedirs(_data_dir, exist_ok=True)
-                            self.wallet.export(_dev_signer_path)
+                            self.wallet.export(
+                                _dev_signer_path, allow_plaintext=True
+                            )
                             # Avoid mutating genesis state_root when alloc already applied
                             # (P2P peers would diverge). Fund via /devnet/faucet instead.
                             if not self.db.get_meta("genesis_alloc_applied"):
@@ -632,7 +638,7 @@ class NodeOrchestrator:
                     print(f"[Node] ECDSA wallet generated. Address: {config.miner_address}")
                     try:
                         os.makedirs(_data_dir, exist_ok=True)
-                        self.wallet.export(_wallet_path)
+                        self.wallet.export(_wallet_path, allow_plaintext=True)
                         print(f"[Node] Wallet saved: {_wallet_path}")
                     except Exception as _save_err:
                         print(f"[Node] Wallet save warning: {_save_err}")

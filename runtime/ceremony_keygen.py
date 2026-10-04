@@ -81,7 +81,7 @@ def generate_validator_set(
         node_id = str(row.get("node_id", "") or f"validator-{index}")
         wallet = Wallet.create_new()
         wallet_path = wallets_dir / f"validator-{index}.wallet.json"
-        wallet.export(str(wallet_path))
+        wallet.export(str(wallet_path), allow_plaintext=True)
         validators_out.append(
             {
                 "index": index,

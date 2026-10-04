@@ -1447,7 +1447,7 @@ def _send_propagation_tx_signed(
     """POST /tx/send with a locally signed tx (prod profile; no auto_sign)."""
     from crypto.wallet import Wallet
 
-    wallet = Wallet.import_wallet(wallet_path)
+    wallet = Wallet.import_wallet(wallet_path, allow_plaintext=True)
     chain_id = int(s1.get("chain_id", MAINNET_V1_CHAIN_ID))
     addr_info = _api(f"{url1}/address/{wallet.address}")
     nonce = int(addr_info.get("nonce", 0) or 0)

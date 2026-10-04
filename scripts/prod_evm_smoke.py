@@ -51,7 +51,7 @@ def _rpc_api_key() -> str:
 def _wallet_address(wallet_path: str) -> str:
     from crypto.wallet import Wallet
 
-    return Wallet.import_wallet(wallet_path).address
+    return Wallet.import_wallet(wallet_path, allow_plaintext=True).address
 
 
 def _ensure_deployer_balance(http_url: str, deployer: str, min_balance: float = 5.0) -> None:
@@ -77,7 +77,7 @@ def _deploy_via_mempool(http_url: str, wallet_path: str, gas: int = 500_000) -> 
     from crypto.wallet import Wallet
     from runtime.mainnet_constants import MAINNET_V1_CHAIN_ID
 
-    wallet = Wallet.import_wallet(wallet_path)
+    wallet = Wallet.import_wallet(wallet_path, allow_plaintext=True)
     deployer = wallet.address
     status = _api(f"{http_url}/status")
     chain_id = int(status.get("chain_id", MAINNET_V1_CHAIN_ID))
