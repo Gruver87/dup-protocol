@@ -95,6 +95,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Item | Evidence |
 |------|----------|
+| **Exp→pin honesty merge (code)** | **CLOSED** 2026-10-05 tip `adc8547` — layered fail-closed ports (ZK range refuse, committed state_root, height-bounded eth_getLogs, tip_skew/ready honesty, harness cache, tip-head/tip-root refuse, genesis fail-closed, MEV/AI/oracle/Lightning finite refuse, Rocks obs counts, bridge debit+burn). Proof: unit tests + `python scripts/industrial_gate.py` OK. **Not** a new 48h soak / **not** mesh probe re-run on this tip. |
 | **48h soak (float tip)** | **PASS** 2026-07-19→21 — `logs/soak_48h_v1.2.84_rerun3.log`, `soak_report_48h.json` |
 | **48h soak (tip-v2)** | **PASS** 2026-08-05→07 — `logs/industrial_tipv2_soak_48h_rerun.log`, `soak_report_tipv2_48h_rerun.json` (`passed=true`, 0 FAIL, 0 mesh_warn); package `docs/evidence/runs/375d14f/` |
 | **Public testnet seed (local Docker)** | **PASS** Jul 12 — chain 77777 on :19080, `public_testnet_gate --live` |
@@ -104,6 +105,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Gap | Why it is **not** proven yet | What would prove it |
 |-----|------------------------------|---------------------|
+| **Fresh 48h soak on honesty tip** | Historical tip-v2 pack is Aug 2026; honesty merge `adc8547` has units+gate only | Operator re-run soak with `hard_fails=0` pack on current HEAD |
 | **External audit** | README and `external_audit_tracker.py` checklist incomplete | Third-party audit report + tracker items closed |
 | **Bridge mainnet cutover** | Prod mesh runs with `bridge_enabled: false` by design | Audited L1 contracts + relayer SLOs per `docs/BRIDGE_L1_MAINNET.md`; decision recorded via `bridge_decision_off` step |
 | **Ceremony + secret rotation (operator cutover)** | Scripts proven; production hash/manifest pin is operator-owned | Operator runs pin + `-Force` rotation before cutover — see `docs/MAINNET_CUTOVER.md` |
