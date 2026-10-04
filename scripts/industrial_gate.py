@@ -554,6 +554,15 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("NFT get_stats must not invent enabled=True")
         if '"enabled": False' not in nft_ports_py:
             errors.append("NFT get_stats fallback must default enabled=false")
+        rocks_py_sat = (ROOT / "storage" / "rocks_store.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "tx_money_satoshi" not in rocks_py_sat:
+            errors.append("rocks_store txs/receipts must dual-write via tx_money_satoshi")
+        if 'tx.get("value", tx.get("amount", 0.0))' in rocks_py_sat:
+            errors.append("rocks_store must not invent tx value=0.0 on insert")
+        if '"receipts_enabled": True' in rocks_py_sat:
+            errors.append("rocks metrics receipts_enabled must reflect observed backend")
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"

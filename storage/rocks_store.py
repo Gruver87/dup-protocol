@@ -522,7 +522,13 @@ class RocksChainStore:
         return None
 
     def _insert_proposer_audit(self, block: Dict) -> None:
+        from runtime.amount import from_satoshi_float, to_satoshi
+
         height = int(block.get("height", block.get("number", 0)) or 0)
+        if block.get("total_burned_satoshi") is not None:
+            burned_sat = int(block["total_burned_satoshi"])
+        else:
+            burned_sat = int(to_satoshi(block.get("total_burned", 0) or 0))
         audit = {
             "height": height,
             "block_hash": block.get("hash", block.get("block_hash", "")) or "",
@@ -530,7 +536,8 @@ class RocksChainStore:
                 block.get("miner", block.get("proposer", "genesis")) or "genesis"
             ),
             "tx_count": int(block.get("tx_count", len(block.get("transactions", []))) or 0),
-            "total_burned": float(block.get("total_burned", 0.0) or 0.0),
+            "total_burned": from_satoshi_float(burned_sat),
+            "total_burned_satoshi": burned_sat,
             "block_ts": int(block.get("timestamp", int(time.time())) or 0),
             "recorded_at": int(time.time()),
         }
@@ -1028,30 +1035,37 @@ class RocksChainStore:
     # ── transactions ──────────────────────────────────────────────────────
 
     def _insert_transaction(self, tx: Dict) -> None:
+        from runtime.amount import tx_money_abs, tx_money_satoshi
+
         tx_hash = tx.get("hash", tx.get("tx_hash", "")) or ""
         if not tx_hash:
             return
+        money = tx_money_abs(tx)
+        sat = tx_money_satoshi(tx)
+        gas = observed_optional_int(tx, "gas", "gas_limit")
+        gas_used = observed_optional_int(tx, "gas_used")
         row = {
             "hash": tx_hash,
             "block_height": int(tx.get("block_height", 0) or 0),
             "from_addr": SqliteDatabase._normalize_address(tx.get("from_addr", tx.get("from", ""))),
             "to_addr": SqliteDatabase._normalize_address(tx.get("to_addr", tx.get("to", ""))),
-            "value": tx.get("value", tx.get("amount", 0.0)),
-            "fee": tx.get("fee", 0.0),
-            "burned": tx.get("burned", 0.0),
+            "value": money["value"],
+            "fee": money["fee"],
+            "burned": money["burned"],
+            "value_satoshi": sat["value_satoshi"],
+            "fee_satoshi": sat["fee_satoshi"],
+            "burned_satoshi": sat["burned_satoshi"],
             "nonce": tx.get("nonce", 0),
             "tx_data": tx.get("data", tx.get("tx_data", "")),
             # Omit / None / unknown → fail-closed 0 (never invent success).
             "status": SqliteDatabase._normalize_tx_status(tx.get("status")),
             "timestamp": int(tx.get("timestamp", time.time()) or 0),
         }
-        gas = observed_optional_int(tx, "gas", "gas_limit")
-        gas_used = observed_optional_int(tx, "gas_used")
         if gas is not None:
             row["gas"] = gas
         if gas_used is not None:
             row["gas_used"] = gas_used
-        # v1.3.148: typed ATXV value when native pack_tx_row is available.
+        # v1.3.148: typed LTXV value when native pack_tx_row is available.
         payload = self._pack_tx_blob(row)
         self._raw_put(kc.key_tx(tx_hash), payload)
         if row["block_height"]:
@@ -1135,25 +1149,32 @@ class RocksChainStore:
         return rows
 
     def _insert_tx_receipt(self, tx: Dict, block_hash: str, block_height: int) -> None:
+        from runtime.amount import tx_money_abs, tx_money_satoshi
+
         tx_hash = tx.get("hash", tx.get("tx_hash", "")) or ""
         if not tx_hash:
             return
+        money = tx_money_abs(tx)
+        sat = tx_money_satoshi(tx)
         receipt = {
             "tx_hash": tx_hash,
             "block_height": int(block_height),
             "block_hash": block_hash,
             "from_addr": SqliteDatabase._normalize_address(tx.get("from_addr", tx.get("from", ""))),
             "to_addr": SqliteDatabase._normalize_address(tx.get("to_addr", tx.get("to", ""))),
-            "value": tx.get("value", tx.get("amount", 0.0)),
-            "fee": tx.get("fee", 0.0),
-            "burned": tx.get("burned", 0.0),
+            "value": money["value"],
+            "fee": money["fee"],
+            "burned": money["burned"],
+            "value_satoshi": sat["value_satoshi"],
+            "fee_satoshi": sat["fee_satoshi"],
+            "burned_satoshi": sat["burned_satoshi"],
             "status": SqliteDatabase._normalize_tx_status(tx.get("status")),
             "created_at": int(time.time()),
         }
         gas_used = observed_optional_int(tx, "gas_used")
         if gas_used is not None:
             receipt["gas_used"] = gas_used
-        # v1.3.151: typed ATXR value when native pack_receipt_row is available.
+        # v1.3.151: typed LTXR value when native pack_receipt_row is available.
         self._raw_put(
             kc.P_TX_RECEIPT + kc.key_tx(tx_hash)[1:],
             self._pack_receipt_blob(receipt),
@@ -1221,16 +1242,23 @@ class RocksChainStore:
         return self._loads_receipt_blob_or_none(raw, context=f"receipt {tx_hash[:16]}")
 
     def _format_receipt_row(self, row: Dict) -> Dict:
+        from runtime.amount import tx_money_abs, tx_money_satoshi
+
+        money = tx_money_abs(row)
+        sat = tx_money_satoshi(row)
         return {
             "tx_hash": row.get("tx_hash", ""),
             "block_height": row.get("block_height", 0),
             "block_hash": row.get("block_hash", ""),
             "from": row.get("from_addr", row.get("from", "")),
             "to": row.get("to_addr", row.get("to", "")),
-            "value": row.get("value", 0.0),
-            "fee": row.get("fee", 0.0),
-            "burned": row.get("burned", 0.0),
-            "gas_used": row.get("gas_used", 0),
+            "value": money["value"],
+            "fee": money["fee"],
+            "burned": money["burned"],
+            "value_satoshi": sat["value_satoshi"],
+            "fee_satoshi": sat["fee_satoshi"],
+            "burned_satoshi": sat["burned_satoshi"],
+            "gas_used": observed_optional_int(row, "gas_used"),
             "status": SqliteDatabase._normalize_tx_status(row.get("status")),
             "timestamp": row.get("created_at", row.get("timestamp", 0)),
         }
@@ -1269,14 +1297,21 @@ class RocksChainStore:
                 direction = "sent"
             elif to_addr == viewer:
                 direction = "received"
+        from runtime.amount import tx_money_abs, tx_money_satoshi
+
+        money = tx_money_abs(row)
+        sat = tx_money_satoshi(row)
         return {
             "hash": row.get("hash", ""),
             "block_height": row.get("block_height", 0),
             "from": from_addr,
             "to": to_addr,
-            "value": float(row.get("value", 0.0)),
-            "fee": float(row.get("fee", 0.0)),
-            "burned": float(row.get("burned", 0.0)),
+            "value": money["value"],
+            "fee": money["fee"],
+            "burned": money["burned"],
+            "value_satoshi": sat["value_satoshi"],
+            "fee_satoshi": sat["fee_satoshi"],
+            "burned_satoshi": sat["burned_satoshi"],
             "gas_used": observed_optional_int(row, "gas_used"),
             "status": SqliteDatabase._normalize_tx_status(row.get("status")),
             "timestamp": int(row.get("timestamp", 0)),
@@ -2393,7 +2428,7 @@ class RocksChainStore:
             "tx_count": len(tx_rows),
             "receipt_count": len(receipt_rows),
             "proposer_audit_count": len(audit_rows),
-            "receipts_enabled": True,
+            "receipts_enabled": str(getattr(self, "engine", "") or "").startswith("rocks"),
             "proposer_audit_enabled": True,
             "state_root_strict_p2p": True,
             "avg_block_time_sec": round(avg_block_time, 2),
