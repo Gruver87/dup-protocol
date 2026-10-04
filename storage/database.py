@@ -234,6 +234,7 @@ class Database:
         self._backfill_proposer_audit_v49()
         self._backfill_balance_satoshi_v80()
         self._backfill_validator_stake_satoshi()
+        self._backfill_bridge_amount_satoshi()
         self._backfill_feature_amount_satoshi()
         self._backfill_burn_satoshi()
         self._backfill_tx_money_satoshi()
