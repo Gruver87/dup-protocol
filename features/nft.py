@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-NFT Marketplace — встроен в Absolute Blockchain.
-Перенесён из nft_core.py и расширен поддержкой БД и EventBus.
+NFT Marketplace — ADR 0016 app-profile sprout (Profile C / staging).
 
+Honesty: prod ``feature_nft=false`` on 778888. Not consensus-wired. Not ERC-721 claim.
 Money prefers integer ``price_satoshi``; non-integral float-only prices refused.
 Paid settle raises on failure so ``atomic()`` rolls back (no bool after partial debit).
 """
@@ -18,6 +18,11 @@ from dataclasses import dataclass, field
 from crypto import native
 
 logger = logging.getLogger(__name__)
+
+HONESTY = (
+    "nft marketplace sprout: app-profile / staging — "
+    "not consensus / not prod 778888 feature_nft / not ERC-721 claim"
+)
 
 
 def resolve_price_satoshi(
@@ -574,9 +579,12 @@ class NFTMarketplace:
                     else "no balance backend"
                 ),
                 "on_chain_standard": False,
-                "enabled": True,
+                "consensus_wired": False,
+                # enabled follows balance backend — never paint live marketplace without it.
+                "enabled": bool(balance_bound),
                 "tier": "app-profile",
                 "adr": "0016",
+                "honesty": HONESTY,
             }
 
     # ── Offers ────────────────────────────────────────────────────────────────

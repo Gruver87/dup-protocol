@@ -151,6 +151,44 @@ def _nft_mutation_authorized(cfg: Any, body: Dict[str, Any], actor: str) -> Opti
     return None
 
 
+def _ai_sprout_enabled(cfg: Any, instance: Any, *, feature_attr: str) -> tuple[bool, bool]:
+    """Return ``(enabled, loaded)`` for AI sprouts (ADR 0016).
+
+    Prod mesh keeps feature flags false — loaded instance alone must not paint enabled.
+    """
+    loaded = instance is not None
+    cfg_on = bool(getattr(cfg, feature_attr, False))
+    prod_block = bool(getattr(cfg, "is_production", False)) and not cfg_on
+    return bool(cfg_on and loaded and not prod_block), loaded
+
+
+def _nft_sprout_enabled(cfg: Any, instance: Any) -> tuple[bool, bool]:
+    """Return ``(enabled, loaded)`` for NFT marketplace sprout (ADR 0016)."""
+    return _ai_sprout_enabled(cfg, instance, feature_attr="feature_nft")
+
+
+def _nft_disabled_payload(*, loaded: bool = False) -> Dict[str, Any]:
+    """Fail-closed NFT GET envelope when sprout is off / unbound."""
+    try:
+        from features.nft import HONESTY as nft_honesty
+    except Exception:
+        nft_honesty = "nft marketplace sprout — not consensus / prod feature_nft=false"
+    return {
+        "enabled": False,
+        "loaded": bool(loaded),
+        "execution_bound": False,
+        "persisted": False,
+        "on_chain_standard": False,
+        "offers_escrow": False,
+        "auction_escrow": False,
+        "escrow_note": "nft sprout off / no balance backend",
+        "tier": "app-profile",
+        "adr": "0016",
+        "consensus_wired": False,
+        "honesty": nft_honesty,
+    }
+
+
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Thread-per-request server with a hard concurrent-request cap (audit section 14)."""
 
@@ -3657,31 +3695,67 @@ class RESTHandler(BaseHTTPRequestHandler):
             # ── NFT listings/auctions (from extended_api_server) ─────────────
             elif path == "/nft/listings":
                 nft = self.__class__.nft
-                if nft and hasattr(nft, "get_listings"):
+                enabled, loaded = _nft_sprout_enabled(cfg, nft)
+                if not enabled:
+                    payload = _nft_disabled_payload(loaded=loaded)
+                    payload.update({"listings": [], "count": 0})
+                    self._json(payload)
+                elif hasattr(nft, "get_listings"):
                     try:
-                        self._json({"listings": nft.get_listings()})
+                        listings = nft.get_listings()
+                        stats = nft.get_stats() if hasattr(nft, "get_stats") else {}
+                        self._json({
+                            "listings": listings,
+                            "count": len(listings),
+                            "enabled": bool(stats.get("enabled", True)),
+                            "loaded": True,
+                            "execution_bound": bool(stats.get("execution_bound")),
+                            "offers_escrow": bool(stats.get("offers_escrow")),
+                            "auction_escrow": bool(stats.get("auction_escrow")),
+                            "honesty": stats.get("honesty") or _nft_disabled_payload()["honesty"],
+                        })
                     except Exception as e:
-                        self._json({"listings": [], "error": str(e)})
+                        self._json({"listings": [], "count": 0, "enabled": False, "error": str(e)})
+                elif hasattr(nft, "get_on_sale"):
+                    listings = nft.get_on_sale()
+                    stats = nft.get_stats() if hasattr(nft, "get_stats") else {}
+                    self._json({
+                        "listings": listings,
+                        "count": len(listings),
+                        "enabled": bool(stats.get("enabled", True)),
+                        "loaded": True,
+                    })
                 else:
-                    # Basic: return all tokens for sale
-                    if nft and hasattr(nft, "tokens"):
-                        tokens = [t.__dict__ if hasattr(t, "__dict__") else t
-                                  for t in list(nft.tokens.values())[:50]]
-                        self._json({"listings": tokens, "count": len(tokens)})
-                    else:
-                        self._json({"listings": [], "enabled": False})
+                    self._json({"listings": [], "enabled": False, "loaded": True, "count": 0})
 
             elif path == "/nft/auctions":
                 nft = self.__class__.nft
-                if nft and hasattr(nft, "auctions"):
+                enabled, loaded = _nft_sprout_enabled(cfg, nft)
+                if not enabled:
+                    payload = _nft_disabled_payload(loaded=loaded)
+                    payload.update({"auctions": {}, "count": 0})
+                    self._json(payload)
+                elif hasattr(nft, "auctions"):
                     try:
                         auctions = {k: (v.__dict__ if hasattr(v, "__dict__") else v)
                                     for k, v in nft.auctions.items()}
-                        self._json({"auctions": auctions, "count": len(auctions)})
+                        stats = nft.get_stats() if hasattr(nft, "get_stats") else {}
+                        base = _nft_disabled_payload(loaded=True)
+                        base.update({
+                            "auctions": auctions,
+                            "count": len(auctions),
+                            "enabled": True,
+                            "loaded": True,
+                            "execution_bound": bool(stats.get("execution_bound", False)),
+                            "consensus_wired": False,
+                            "auction_escrow": bool(stats.get("auction_escrow", False)),
+                            "honesty": stats.get("honesty") or base["honesty"],
+                        })
+                        self._json(base)
                     except Exception as e:
-                        self._json({"auctions": {}, "error": str(e)})
+                        self._json({"auctions": {}, "enabled": False, "error": str(e)})
                 else:
-                    self._json({"auctions": {}, "enabled": False})
+                    self._json({"auctions": {}, "enabled": False, "loaded": loaded})
 
             # ── Ethereum-style keygen (keccak256 address) ─────────────────────
             elif path == "/crypto/eth-address":
@@ -3933,34 +4007,88 @@ class RESTHandler(BaseHTTPRequestHandler):
             # ── NFT Offers & Auctions (extended) ─────────────────────────────
             elif path == "/nft/offers":
                 nft = self.__class__.nft
+                enabled, loaded = _nft_sprout_enabled(cfg, nft)
                 token_id = qs.get("token_id", [""])[0] or None
-                offers = nft.get_offers(token_id) if nft and hasattr(nft, "get_offers") else []
-                self._json({"offers": offers})
+                if not enabled:
+                    payload = _nft_disabled_payload(loaded=loaded)
+                    payload["offers"] = []
+                    self._json(payload)
+                else:
+                    offers = nft.get_offers(token_id) if hasattr(nft, "get_offers") else []
+                    stats = nft.get_stats() if hasattr(nft, "get_stats") else {}
+                    base = _nft_disabled_payload(loaded=True)
+                    base.update({
+                        "offers": offers,
+                        "enabled": True,
+                        "loaded": True,
+                        "execution_bound": bool(stats.get("execution_bound", False)),
+                        "consensus_wired": False,
+                        "offers_escrow": bool(stats.get("offers_escrow", False)),
+                        "honesty": stats.get("honesty") or base["honesty"],
+                    })
+                    self._json(base)
 
             elif path == "/nft/sales":
                 nft = self.__class__.nft
+                enabled, loaded = _nft_sprout_enabled(cfg, nft)
                 token_id = qs.get("token_id", [""])[0] or None
                 limit = int(qs.get("limit", ["50"])[0])
-                sales = nft.get_sales_history(token_id, limit) if nft and hasattr(nft, "get_sales_history") else []
-                self._json({"sales": sales})
+                if not enabled:
+                    payload = _nft_disabled_payload(loaded=loaded)
+                    payload["sales"] = []
+                    self._json(payload)
+                else:
+                    sales = (
+                        nft.get_sales_history(token_id, limit)
+                        if hasattr(nft, "get_sales_history")
+                        else []
+                    )
+                    stats = nft.get_stats() if hasattr(nft, "get_stats") else {}
+                    base = _nft_disabled_payload(loaded=True)
+                    base.update({
+                        "sales": sales,
+                        "enabled": True,
+                        "loaded": True,
+                        "execution_bound": bool(stats.get("execution_bound", False)),
+                        "consensus_wired": False,
+                        "honesty": stats.get("honesty") or base["honesty"],
+                    })
+                    self._json(base)
 
             elif path == "/nft/marketplace":
                 nft = self.__class__.nft
-                stats = nft.get_stats() if nft else {}
-                auctions = nft.get_auctions() if nft and hasattr(nft, "get_auctions") else []
-                offers = list(getattr(nft, "offers", {}).values())[:20] if nft else []
-                self._json({"stats": stats, "active_auctions": len([a for a in auctions if a.get("status")=="active"]),
-                            "active_offers": len(offers), "total_auctions": len(auctions)})
+                enabled, loaded = _nft_sprout_enabled(cfg, nft)
+                if not enabled:
+                    disabled = _nft_disabled_payload(loaded=loaded)
+                    self._json({
+                        "stats": disabled,
+                        "active_auctions": 0,
+                        "active_offers": 0,
+                        "total_auctions": 0,
+                        "enabled": False,
+                        "loaded": loaded,
+                        "honesty": disabled["honesty"],
+                    })
+                    return
+                stats = nft.get_stats() if hasattr(nft, "get_stats") else {}
+                auctions = nft.get_auctions() if hasattr(nft, "get_auctions") else []
+                offers = list(getattr(nft, "offers", {}).values())[:20]
+                self._json({
+                    "stats": stats,
+                    "active_auctions": len(
+                        [a for a in auctions if a.get("status") == "active"]
+                    ),
+                    "active_offers": len(offers),
+                    "total_auctions": len(auctions),
+                    "enabled": bool(stats.get("enabled")),
+                    "loaded": True,
+                })
 
             elif path == "/nft/stats":
                 nft = self.__class__.nft
-                if not nft:
-                    self._json({
-                        "enabled": False,
-                        "execution_bound": False,
-                        "persisted": False,
-                        "on_chain_standard": False,
-                    })
+                enabled, loaded = _nft_sprout_enabled(cfg, nft)
+                if not enabled:
+                    self._json(_nft_disabled_payload(loaded=loaded))
                     return
                 self._json(nft.get_stats())
 
