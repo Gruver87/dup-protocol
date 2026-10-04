@@ -566,6 +566,18 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
                 errors.append("format_eth_log must not default missing blockNumber to height 0")
             if '"address": row.get("contract_address", "")' in eth_fmt_py:
                 errors.append("format_eth_log must not default address to empty string")
+            if "def block_sha3_uncles" not in eth_fmt_py:
+                errors.append("eth_format must expose block_sha3_uncles (keccak rlp empty list)")
+            if '"sha3Uncles": "0x" + "0" * 64' in eth_fmt_py:
+                errors.append("eth_format must not stub sha3Uncles as zero")
+            if "keccak256_digest(b\"\\xc0\")" not in eth_fmt_py:
+                errors.append("empty sha3Uncles must be keccak256 of RLP empty list (0xc0)")
+            if "def receipt_cumulative_gas_used" not in eth_fmt_py:
+                errors.append("eth_format must compute cumulativeGasUsed from block tx order")
+            if '"cumulativeGasUsed": hex(gas_used)' in eth_fmt_py:
+                errors.append("receipt cumulativeGasUsed must not copy gasUsed")
+            if '"transactionIndex": hex(int(tx_index)),' in eth_fmt_py:
+                errors.append("receipt transactionIndex must be null when unobserved")
         if '"bridge_relayer_live": bool(cfg.bridge_enabled)' in http_py:
             errors.append("bridge_relayer_live must not equal bridge_enabled alone")
         if '"bridge_rust_binary_healthy"' not in http_py:

@@ -129,7 +129,10 @@ def test_format_block_no_invented_eth_stubs():
     assert out["transactionsRoot"] != ("0x" + "0" * 64)
     assert out["receiptsRoot"] is not None
     assert out["nonce"] is None
-    assert out["sha3Uncles"] is None
+    from crypto import native
+
+    assert out["sha3Uncles"] == ("0x" + native.keccak256_digest(b"\xc0").hex())
+    assert out["uncles"] == []
     assert out["logsBloom"] == ("0x" + "0" * 512)  # empty observed bloom
     assert out["gasLimit"] == hex(8_000_000)
     assert out["gasUsed"] == hex(0)
@@ -165,6 +168,14 @@ def test_format_eth_log_no_invented_indexes():
     rec = format_receipt({"value": 1})
     assert rec["blockNumber"] is None
     assert rec["status"] is None
+    assert rec["transactionIndex"] is None
+    assert rec["blockHash"] is None
+    assert rec["cumulativeGasUsed"] is None
+    assert rec["type"] is None
+    assert rec["effectiveGasPrice"] is None
+    with_gas = format_receipt({"hash": "0x" + "ab" * 32, "gas_used": 21000})
+    assert with_gas["cumulativeGasUsed"] == hex(21000)
+    assert with_gas["gasUsed"] == hex(21000)
 
 
 def test_multisig_amount_satoshi_and_execution_failed():
