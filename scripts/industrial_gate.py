@@ -1727,6 +1727,20 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("crypto.signing must refuse invent gas_limit=21000 / gas_price=1")
         if '"gas_limit": 21000' in sign_py:
             errors.append("crypto.signing must not hardcode gas_limit=21000")
+        validators_py = (ROOT / "middleware" / "validators.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "amount_float = float(amount)" in validators_py:
+            errors.append("middleware.validators must not validate amounts via float()")
+        if "to_satoshi" not in validators_py:
+            errors.append("middleware.validators must validate amounts via to_satoshi")
+        nft_ports_gate = (ROOT / "features" / "nft_ports.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "price_satoshi" not in nft_ports_gate:
+            errors.append("nft_ports must forward price_satoshi (ADR 0021)")
+        if "float(price)" in nft_ports_gate and "price_satoshi" not in nft_ports_gate:
+            errors.append("nft_ports must not coerce list price via float() alone")
         wasm_py = (ROOT / "features" / "wasm_vm.py").read_text(
             encoding="utf-8", errors="replace"
         )

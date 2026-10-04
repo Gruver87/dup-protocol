@@ -429,8 +429,9 @@ class TestMiddleware:
         assert valid is True
 
     def test_validate_amount_zero(self):
+        # min_amount default 0 → zero is valid (contract/calldata txs may be 0-value).
         valid, err = validate_amount(0)
-        assert valid is False
+        assert valid is True
 
     def test_validate_amount_negative(self):
         valid, err = validate_amount(-10)
