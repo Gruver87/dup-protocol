@@ -545,23 +545,42 @@ def format_block(blk: Optional[Dict], full_tx: bool = False, *, query=None, bc=N
     }
 
 
-def format_tx(tx: Optional[Dict]) -> Optional[Dict]:
+def format_tx(tx: Optional[Dict], *, query=None, bc=None) -> Optional[Dict]:
     if not tx:
         return None
-    number = observed_block_number(tx)
+    lookup_hash = str(tx.get("hash") or tx.get("tx_hash") or "")
+    height = observed_uint(tx, "block_height", "blockNumber")
+    blk = _block_at_height(height, query=query, bc=bc) if height is not None else None
+    try:
+        stored_index = int(tx.get("tx_index", tx.get("index", 0)) or 0)
+        have_stored_index = (
+            tx.get("tx_index") is not None or tx.get("index") is not None
+        )
+    except (TypeError, ValueError):
+        stored_index = 0
+        have_stored_index = False
+    listing_index = _tx_index_in_listing(lookup_hash, blk)
+    if listing_index is not None:
+        tx_index: Optional[int] = listing_index
+    elif have_stored_index:
+        tx_index = stored_index
+    else:
+        tx_index = None
+    number = observed_block_number(tx, blk)
     return {
         "hash": observed_tx_hash(tx),
         "blockNumber": hex(number) if number is not None else None,
-        "blockHash": observed_block_hash(tx=tx),
+        "blockHash": observed_block_hash(tx, blk),
+        "transactionIndex": hex(int(tx_index)) if tx_index is not None else None,
         "from": observed_tx_address(tx, "from_addr", "from"),
         "to": observed_tx_address(tx, "to_addr", "to", allow_zero=True),
         "value": observed_value_hex(tx),
-        "gas": _observed_uint_hex(tx, "gas", "gas_limit"),
-        "gasPrice": _observed_uint_hex(tx, "gas_price", "gasPrice"),
-        "gasUsed": _observed_uint_hex(tx, "gas_used", "gasUsed"),
-        "nonce": _observed_uint_hex(tx, "nonce"),
+        "gas": observed_uint_hex(tx, "gas", "gas_limit"),
+        "gasPrice": observed_uint_hex(tx, "gas_price", "gasPrice"),
+        "gasUsed": observed_uint_hex(tx, "gas_used", "gasUsed"),
+        "nonce": observed_uint_hex(tx, "nonce"),
         "input": observed_tx_input(tx),
-        "type": _observed_uint_hex(tx, "type"),
+        "type": observed_uint_hex(tx, "type"),
         "burned": burned_satoshi(tx, "burned"),
     }
 

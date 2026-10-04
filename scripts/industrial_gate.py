@@ -1775,6 +1775,8 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("eth_format must not invent gasLimit as Ethereum 30M")
         if 'tx.get("data", tx.get("tx_data", "0x"))' in eth_fmt_py:
             errors.append("format_tx must not default missing input to 0x")
+        if "transactionIndex" not in eth_fmt_py or "query=None, bc=None" not in eth_fmt_py:
+            errors.append("format_tx must observe transactionIndex via query/bc (null if unobserved)")
         if "def observed_tx_hash" not in eth_fmt_py:
             errors.append("eth_format must expose observed_tx_hash (null if unobserved)")
         if "def observed_tx_address" not in eth_fmt_py:
