@@ -615,6 +615,20 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("mempool fee gate must refuse with min_satoshi (not float ABS)")
         if '"amount_satoshi"' not in mempool_py or '"fee_satoshi"' not in mempool_py:
             errors.append("mempool get_sorted_transactions must export amount/fee_satoshi")
+        wallet_py = (ROOT / "crypto" / "wallet.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "int(gas_limit) != 21000" in wallet_py:
+            errors.append("wallet canonical hash must not omit gas_limit=21000")
+        if "Always bind gas into the digest when present" not in wallet_py:
+            errors.append("wallet must bind present gas_limit into signing digest")
+        p2p_py = (ROOT / "network" / "p2p_node.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "p2p_mempool_require_explicit_gas" not in p2p_py:
+            errors.append("p2p must document/refuse invent gas (explicit gas required)")
+        if 'int(data.get("gas", 0) or 0) or 21_000' in p2p_py:
+            errors.append("p2p must not invent gas=21000 on mempool ingest")
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"

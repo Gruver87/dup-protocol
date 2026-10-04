@@ -3728,7 +3728,9 @@ class P2PNode:
                 return None
             nonce = 0
         # v1.3.203: Inf/junk gas must refuse, not raise into the ingest path.
-        # Honesty: never invent gas=21000 — missing/unparseable/zero refuse.
+        # Honesty: never invent gas=21000 — missing/unparseable/zero always refuse.
+        # p2p_mempool_require_explicit_gas / p2p_mempool_unparseable_gas_refuse:
+        # invent-on-False paths removed; flags remain for metrics/status honesty.
         raw_gas = data.get("gas", data.get("gas_limit", None))
         if raw_gas is None or raw_gas == "":
             self._last_tx_wire_reject = "gas_missing"

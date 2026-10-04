@@ -128,7 +128,7 @@ class Wallet:
 
     @staticmethod
     def _canonical_tx_for_hash(tx: dict) -> dict:
-        """Canonical signing payload; includes data/gas only when non-default."""
+        """Canonical signing payload; includes data/gas when present."""
         payload = {
             "from": tx["from"],
             "to": tx["to"],
@@ -139,8 +139,12 @@ class Wallet:
         data = tx.get("data", "") or ""
         if data:
             payload["data"] = data
-        gas_limit = tx.get("gas_limit") or tx.get("gas")
-        if gas_limit is not None and int(gas_limit) != 21000:
+        # Always bind gas into the digest when present — do not treat 21000 as
+        # "invisible default" (signing ambiguity / invent-by-omission).
+        gas_limit = tx.get("gas_limit")
+        if gas_limit is None:
+            gas_limit = tx.get("gas")
+        if gas_limit is not None and str(gas_limit).strip() != "":
             payload["gas_limit"] = int(gas_limit)
         return payload
 
