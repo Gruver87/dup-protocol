@@ -1700,6 +1700,29 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("evm_adapter must not convert ABS float to wei via *1e18")
         if "satoshi_store_required_selfdestruct" not in evm_ad_py:
             errors.append("evm_adapter SELFDESTRUCT must refuse float store")
+        est_idx = evm_ad_py.find("def estimate_gas")
+        est_fn = evm_ad_py[est_idx : est_idx + 500] if est_idx >= 0 else ""
+        if "return None" not in est_fn:
+            errors.append(
+                "evm_adapter.estimate_gas must return None on failed dry-run (not invent gas_limit)"
+            )
+        if "gas_used * 1.2" in est_fn or "float(" in est_fn:
+            errors.append(
+                "evm_adapter.estimate_gas must use integer buffer (no float * 1.2)"
+            )
+        wasm_py = (ROOT / "features" / "wasm_vm.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "allow_float_fallback=False" not in wasm_py:
+            errors.append("wasm_vm deploy fee must refuse float money fallback")
+        if "satoshi_store_required_dev_signer_fund" not in (
+            ROOT / "main.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append("dev_signer fund must require balance_delta_satoshi")
+        if "allow_float_fallback=False" not in (
+            ROOT / "runtime" / "devnet_validators.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append("devnet_validators fund must refuse float money fallback")
         eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
             encoding="utf-8", errors="replace"
         )

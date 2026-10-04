@@ -1172,13 +1172,15 @@ class EVMAdapter:
 
     # ── Оценка газа ──────────────────────────────────────────────────────────
 
-    def estimate_gas(self, contract_addr: str, calldata_hex: str = "") -> int:
-        """Оценивает количество газа для вызова. Запускает dry-run."""
+    def estimate_gas(self, contract_addr: str, calldata_hex: str = "") -> int | None:
+        """Dry-run gas estimate. Failed call → None (RPC maps to JSON null; never invent floor)."""
         result = self.static_call(contract_addr, calldata_hex,
                                   gas_limit=self.config.evm_gas_limit)
-        if result.success:
-            return int(result.gas_used * 1.2)  # +20% буфер
-        return self.config.evm_gas_limit
+        if not result.success:
+            return None
+        used = int(result.gas_used or 0)
+        # Integer +20% buffer (no float).
+        return (used * 6 + 4) // 5
 
     # ── Справочная информация ────────────────────────────────────────────────
 

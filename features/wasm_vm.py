@@ -114,16 +114,24 @@ class WASMVirtualMachine:
         })
 
     def _charge_deploy_fee(self, owner: str) -> bool:
-        if (
-            not self.db
-            or not hasattr(self.db, "get_balance")
-            or not hasattr(self.db, "update_balance")
-        ):
+        if not self.db or not owner:
             return False
-        if self.db.get_balance(owner) < self.DEPLOY_FEE:
+        from runtime.amount import apply_store_delta_satoshi, to_satoshi
+
+        fee_sat = int(to_satoshi(self.DEPLOY_FEE))
+        if hasattr(self.db, "get_balance_satoshi"):
+            if int(self.db.get_balance_satoshi(owner) or 0) < fee_sat:
+                return False
+        elif hasattr(self.db, "get_balance"):
+            if self.db.get_balance(owner) < self.DEPLOY_FEE:
+                return False
+        else:
             return False
-        self.db.update_balance(owner, -self.DEPLOY_FEE)
-        return True
+        return bool(
+            apply_store_delta_satoshi(
+                self.db, owner, -fee_sat, allow_float_fallback=False
+            )
+        )
 
     def deploy(self, code: str, owner: str, name: str = None,
                init_params: Dict = None) -> Optional[str]:

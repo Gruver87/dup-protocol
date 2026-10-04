@@ -573,7 +573,16 @@ class NodeOrchestrator:
                             # Avoid mutating genesis state_root when alloc already applied
                             # (P2P peers would diverge). Fund via /devnet/faucet instead.
                             if not self.db.get_meta("genesis_alloc_applied"):
-                                self.db.update_balance(self.wallet.address, 10_000.0)
+                                from runtime.amount import to_satoshi
+
+                                fund_sat = int(to_satoshi(10_000))
+                                if not hasattr(self.db, "balance_delta_satoshi"):
+                                    raise RuntimeError(
+                                        "satoshi_store_required_dev_signer_fund"
+                                    )
+                                self.db.balance_delta_satoshi(
+                                    self.wallet.address, fund_sat
+                                )
                                 print(
                                     f"[Node] Dev signer created + funded (10k ABS): "
                                     f"{self.wallet.address}"
@@ -592,7 +601,16 @@ class NodeOrchestrator:
                                 and not self.db.get_meta("genesis_alloc_applied")
                                 and self.db.get_balance(self.wallet.address) < 1.0
                             ):
-                                self.db.update_balance(self.wallet.address, 10_000.0)
+                                from runtime.amount import to_satoshi
+
+                                fund_sat = int(to_satoshi(10_000))
+                                if not hasattr(self.db, "balance_delta_satoshi"):
+                                    raise RuntimeError(
+                                        "satoshi_store_required_dev_signer_fund"
+                                    )
+                                self.db.balance_delta_satoshi(
+                                    self.wallet.address, fund_sat
+                                )
                             print(
                                 f"[Node] Dev signing wallet ready: {self.wallet.address} "
                                 f"(miner unchanged: {config.miner_address})"

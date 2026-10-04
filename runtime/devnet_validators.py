@@ -93,9 +93,17 @@ def apply_manifest(node, manifest_path: str) -> int:
         existing.add(addr.lower())
         added += 1
         if node.blockchain.get_height() <= 1 and int(row.get("index", 0) or 0) >= 2:
-            bal = node.db.get_balance(addr)
-            if bal < stake:
-                node.db.update_balance(addr, stake)
+            from runtime.amount import apply_store_delta_satoshi, to_satoshi
+
+            stake_sat = int(to_satoshi(stake))
+            if hasattr(node.db, "get_balance_satoshi"):
+                bal_sat = int(node.db.get_balance_satoshi(addr) or 0)
+            else:
+                bal_sat = int(to_satoshi(node.db.get_balance(addr) or 0))
+            if bal_sat < stake_sat:
+                apply_store_delta_satoshi(
+                    node.db, addr, stake_sat, allow_float_fallback=False
+                )
     if added:
         print(f"[Node] Devnet5 manifest: registered {added} validators")
     return added
