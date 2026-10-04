@@ -743,7 +743,7 @@ class NodeOrchestrator:
         # 8. NFT marketplace (app-profile sprout; off on prod mesh — ADR 0016)
         from features.nft_ports import NftMarketplaceAdapter, NullNftMarketplacePort
 
-        if getattr(config, "feature_nft", True):
+        if getattr(config, "feature_nft", False):
             self.nft = NFTMarketplace(db=self.db, bus=self.bus)
             self.nft_port = NftMarketplaceAdapter(self.nft)
             stats = self.nft.get_stats()
@@ -758,11 +758,11 @@ class NodeOrchestrator:
             print("[Node] NFT Marketplace: disabled")
 
         # 9. ZK Proof System (R&D; disabled by prod profile)
-        self.zk = ZKProofSystem() if getattr(config, "feature_zk", True) else None
+        self.zk = ZKProofSystem() if getattr(config, "feature_zk", False) else None
         print("[Node] ZK Proof System: ready" if self.zk else "[Node] ZK Proof System: disabled")
         if hasattr(self.blockchain, "attach_zk_system"):
             self.blockchain.attach_zk_system(
-                self.zk, enabled=bool(getattr(config, "feature_zk", True))
+                self.zk, enabled=bool(getattr(config, "feature_zk", False))
             )
 
         # 10. Мост (ADR 0010 — BridgePort after ZK so inbound validator can use gateway)
@@ -783,7 +783,7 @@ class NodeOrchestrator:
             print("[Node] WARN: bridge_mode=fake is test-only FakeEvmBridge")
 
         # 11. Dynamic Sharding
-        if _SHARDING_AVAILABLE and getattr(config, "feature_sharding", True):
+        if _SHARDING_AVAILABLE and getattr(config, "feature_sharding", False):
             self.sharding = ShardingManager(
                 num_shards=getattr(config, "num_shards", 4),
                 db=self.db,
@@ -807,7 +807,7 @@ class NodeOrchestrator:
         # 12. Real World Oracles (crypto prices, weather) + on-chain feed registry
         self.oracle_registry = None
         self.oracles = None
-        if _ORACLE_REGISTRY_AVAILABLE and getattr(config, "feature_oracles", True):
+        if _ORACLE_REGISTRY_AVAILABLE and getattr(config, "feature_oracles", False):
             try:
                 self.oracle_registry = OracleFeedRegistry(self.db)
                 print("[Node] Oracle registry: SQLite feeds enabled")
@@ -815,7 +815,7 @@ class NodeOrchestrator:
                 self.oracle_registry = None
                 self.feature_init_errors["oracles"] = str(e)
                 print(f"[Node] Oracle registry: unavailable ({e})")
-        if _ORACLE_MANAGER_AVAILABLE and getattr(config, "feature_oracles", True):
+        if _ORACLE_MANAGER_AVAILABLE and getattr(config, "feature_oracles", False):
             try:
                 self.oracles = OracleManager()
                 print("[Node] Oracles: price feeds active (BTC/ETH/ABS)")
@@ -835,7 +835,7 @@ class NodeOrchestrator:
             self.multisig = None
 
         # 14. Smart Accounts (Account Abstraction — in-memory unless executor wired)
-        if _SMART_ACCOUNTS_AVAILABLE and getattr(config, "feature_smart_accounts", True):
+        if _SMART_ACCOUNTS_AVAILABLE and getattr(config, "feature_smart_accounts", False):
             try:
                 self.smart_accounts = SmartAccountManager()
                 print(
@@ -847,11 +847,11 @@ class NodeOrchestrator:
                 print(f"[Node] Smart Accounts: unavailable ({e})")
         else:
             self.smart_accounts = None
-            if not getattr(config, "feature_smart_accounts", True):
+            if not getattr(config, "feature_smart_accounts", False):
                 print("[Node] Smart Accounts: disabled")
 
         # 15. Post-Quantum Crypto
-        if _POSTQUANTUM_AVAILABLE and getattr(config, "feature_pq", True):
+        if _POSTQUANTUM_AVAILABLE and getattr(config, "feature_pq", False):
             print("[Node] Post-Quantum Crypto: SPHINCS+ interface available (backend required)")
 
         # 16. WebSocket server (real-time browser events on :8546)
@@ -864,7 +864,7 @@ class NodeOrchestrator:
         )
 
         # 17. MiniVM Contract Manager + Assembler (R&D — not chain-canonical)
-        if _MINIVM_CONTRACTS_AVAILABLE and getattr(config, "feature_minivm", True):
+        if _MINIVM_CONTRACTS_AVAILABLE and getattr(config, "feature_minivm", False):
             self.contract_manager = ContractManager(db=self.db)
             self.assembler = Assembler()
             print(
@@ -874,7 +874,7 @@ class NodeOrchestrator:
         else:
             self.contract_manager = None
             self.assembler = None
-            if not getattr(config, "feature_minivm", True):
+            if not getattr(config, "feature_minivm", False):
                 print("[Node] MiniVM: disabled")
 
         # 18. Deterministic hash-ranked proposer selection (not commit/reveal RANDAO)
@@ -891,7 +891,7 @@ class NodeOrchestrator:
             )
         else:
             self.validator_selection = None
-            if not getattr(config, "feature_validator_selection", True):
+            if not getattr(config, "feature_validator_selection", False):
                 print("[Node] ValidatorSelection: disabled")
 
         # 19. Chain Storage (JSON file backup layer)
@@ -902,7 +902,7 @@ class NodeOrchestrator:
             self.chain_storage = None
 
         # 20. Post-Quantum Manager (educational / R&D — not NIST production backends)
-        if _PQ_MANAGER_AVAILABLE and getattr(config, "feature_pq", True):
+        if _PQ_MANAGER_AVAILABLE and getattr(config, "feature_pq", False):
             try:
                 self.pq_manager = PostQuantumManager()
                 print(
@@ -923,7 +923,7 @@ class NodeOrchestrator:
             self.tx_validator = None
 
         # 22. AI Validator Engine (simulation_only; off in prod via FEATURE_AI_VALIDATOR)
-        if _AI_VALIDATOR_AVAILABLE and getattr(config, "feature_ai_validator", True):
+        if _AI_VALIDATOR_AVAILABLE and getattr(config, "feature_ai_validator", False):
             self.ai_validator = AIValidatorEngine()
             print(
                 "[Node] AIValidatorEngine: enabled "
@@ -944,7 +944,7 @@ class NodeOrchestrator:
             self.reorg_predictor = None
 
         # 24. MEV analysis module (disabled by prod profile)
-        if _MEV_ANALYZER_AVAILABLE and getattr(config, "feature_mev", True):
+        if _MEV_ANALYZER_AVAILABLE and getattr(config, "feature_mev", False):
             self.mev_simulator = MEVAnalyzer(db=self.db)
             print("[Node] MEVAnalyzer: enabled (sandwich/arbitrage/frontrun analysis)")
         else:
@@ -1036,7 +1036,7 @@ class NodeOrchestrator:
             self._attestation_validator = _vaddr
 
         # 28. Lightning Network (payment channels)
-        if _LIGHTNING_AVAILABLE and getattr(config, "feature_lightning", True):
+        if _LIGHTNING_AVAILABLE and getattr(config, "feature_lightning", False):
             try:
                 self.lightning = LightningNetwork(
                     node_address=config.miner_address or "genesis",
@@ -1050,19 +1050,20 @@ class NodeOrchestrator:
         else:
             self.lightning = None
 
-        # 29. Crypto Will (blockchain inheritance system)
-        if _CRYPTO_WILL_AVAILABLE:
+        # 29. Crypto Will (blockchain inheritance — feature_crypto_will, default OFF)
+        if _CRYPTO_WILL_AVAILABLE and getattr(config, "feature_crypto_will", False):
             try:
                 self.crypto_will = CryptoWillManager(blockchain=self.blockchain, db=self.db)
                 print("[Node] CryptoWill: inheritance system ready")
             except Exception as e:
                 self.crypto_will = None
+                self.feature_init_errors["crypto_will"] = str(e)
                 print(f"[Node] CryptoWill: unavailable ({e})")
         else:
             self.crypto_will = None
 
         # 30. Plasma Chain (L2 sidechain)
-        if _PLASMA_AVAILABLE and getattr(config, "feature_plasma", True):
+        if _PLASMA_AVAILABLE and getattr(config, "feature_plasma", False):
             try:
                 self.plasma = PlasmaChain(
                     chain_id="plasma_abs",
@@ -1078,7 +1079,7 @@ class NodeOrchestrator:
             self.plasma = None
 
         # 31. WASM VM (WebAssembly-style contracts)
-        if _WASM_VM_AVAILABLE and getattr(config, "feature_wasm", True):
+        if _WASM_VM_AVAILABLE and getattr(config, "feature_wasm", False):
             try:
                 self.wasm_vm = WASMVirtualMachine(db=self.db)
                 from features.wasm_engine import WASMEngine
@@ -1097,7 +1098,7 @@ class NodeOrchestrator:
             self.wasm_vm = None
 
         # 32. AI Agent Manager (trading agents; disabled by prod profile)
-        if _AI_MANAGER_AVAILABLE and getattr(config, "feature_ai_agents", True):
+        if _AI_MANAGER_AVAILABLE and getattr(config, "feature_ai_agents", False):
             try:
                 self.ai_manager = AIAgentManager(db=self.db)
                 print("[Node] AI Agent Manager: registry ready (no model/executor bound)")

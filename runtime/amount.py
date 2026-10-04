@@ -4,13 +4,16 @@
 Canonical money unit for new storage writes is integer satoshi
 (1 ABS = 1_000_000). Float ABS remains on the wire / legacy columns for
 compatibility; dual-write keeps ``balance`` (float) derived from satoshi.
+
+Ported from dup-protocol-experimental money-honesty layer (2026-10-04).
 """
 from __future__ import annotations
 
 import logging
+import math
 import os
 from decimal import Decimal, ROUND_DOWN, InvalidOperation
-from typing import Any, Dict, Mapping, MutableMapping, Optional, Union
+from typing import Any, Dict, Mapping, MutableMapping, Optional, Tuple, Union
 
 # 1 ABS = 1_000_000 satoshi (same as USDC-style micro units)
 ABS_DECIMALS = 6
@@ -55,6 +58,9 @@ def to_satoshi(amount_abs: NumberLike) -> int:
             if isinstance(amount_abs, Decimal):
                 return int(native.amount_to_satoshi(format(amount_abs, "f")))
             return int(native.amount_to_satoshi(str(amount_abs)))
+    except (ValueError, TypeError, InvalidOperation):
+        # Invalid input is not a native-missing fallback — caller must refuse.
+        raise
     except Exception as exc:
         _native_fallback("amount_to_satoshi", exc)
     try:
@@ -65,6 +71,186 @@ def to_satoshi(amount_abs: NumberLike) -> int:
         Decimal("1"), rounding=ROUND_DOWN
     )
     return int(scaled)
+
+
+def parse_abs_int(raw: Any, *, field: str = "amount", allow_negative: bool = False) -> int:
+    """Parse a whole ABS amount at an input boundary (HTTP / StoragePort).
+
+    JSON ``1`` is int; ``1.0`` is a whole float (accepted); ``1.5`` is refused.
+    Hex wei is not ABS — callers that need wei must convert before this helper.
+    """
+    if isinstance(raw, bool):
+        raise ValueError(f"{field} must be an integer ABS amount")
+    if raw is None or raw == "":
+        n = 0
+    elif isinstance(raw, int):
+        n = raw
+    elif isinstance(raw, float):
+        if not raw.is_integer():
+            raise ValueError(f"{field} must be a whole ABS amount, got {raw!r}")
+        n = int(raw)
+    elif isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            n = 0
+        elif s.lower().startswith("0x"):
+            raise ValueError(f"{field} must be integer ABS, not hex wei")
+        else:
+            try:
+                d = Decimal(s)
+            except (InvalidOperation, ValueError, TypeError) as exc:
+                raise ValueError(f"invalid {field}: {raw!r}") from exc
+            if d != d.to_integral_value():
+                raise ValueError(f"{field} must be a whole ABS amount, got {raw!r}")
+            n = int(d)
+    elif isinstance(raw, Decimal):
+        if raw != raw.to_integral_value():
+            raise ValueError(f"{field} must be a whole ABS amount, got {raw!r}")
+        n = int(raw)
+    else:
+        raise ValueError(f"{field} must be an integer ABS amount")
+    if n < 0 and not allow_negative:
+        raise ValueError(f"{field} must be >= 0")
+    return n
+
+
+# ETH-style RPC: 1 ABS = 10**18 wei = 10**6 satoshi → 10**12 wei per satoshi.
+WEI_PER_ABS = 10**18
+WEI_PER_SATOSHI = WEI_PER_ABS // SATOSHI_MULTIPLIER
+# Preserve historical JSON-RPC heuristic: hex >= 1e15 is wei, smaller hex is integer ABS.
+WEI_STYLE_THRESHOLD = 10**15
+
+
+def abs_to_wei(amount_abs: NumberLike) -> int:
+    """ABS → ETH-style wei via Decimal (1 ABS = 10**18 wei).
+
+    Gas price defaults are sub-satoshi (``1e-7`` ABS = ``1e11`` wei). Do not
+    route that field through ``to_satoshi`` — it floors to 0.
+    """
+    if isinstance(amount_abs, bool):
+        raise TypeError("bool is not an amount")
+    try:
+        d = Decimal(str(amount_abs))
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        raise ValueError(f"invalid amount: {amount_abs!r}") from exc
+    if not d.is_finite():
+        raise ValueError("amount must be finite")
+    if d < 0:
+        raise ValueError("amount must be >= 0")
+    return int((d * Decimal(WEI_PER_ABS)).to_integral_value(rounding=ROUND_DOWN))
+
+
+def parse_rpc_value_abs(raw: Any, *, field: str = "value") -> float:
+    """Parse JSON-RPC / REST money to a satoshi-quantized ABS float.
+
+    Hex ``>= 10**15`` is ETH-style wei (``1e18`` wei = 1 ABS). Smaller hex and
+    decimal values are ABS. Return type stays float so ``Transaction.value``
+    hash encoding is unchanged; IEEE dust is floored via satoshi.
+    """
+    if isinstance(raw, bool):
+        raise ValueError(f"{field} must be an amount, not bool")
+    if raw is None or raw == "":
+        return 0.0
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return 0.0
+        if s.lower().startswith("0x"):
+            try:
+                wei = int(s, 16)
+            except ValueError as exc:
+                raise ValueError(f"invalid {field} hex: {raw!r}") from exc
+            if wei < 0:
+                raise ValueError(f"{field} must be >= 0")
+            if wei >= WEI_STYLE_THRESHOLD:
+                return from_satoshi_float(wei // WEI_PER_SATOSHI)
+            return from_satoshi_float(to_satoshi(wei))
+        return from_satoshi_float(to_satoshi(s))
+    return from_satoshi_float(to_satoshi(raw))
+
+
+def parse_p2p_wire_abs(raw: Any, *, field: str = "value") -> float:
+    """P2P mempool amount: satoshi-quantized ABS float.
+
+    Hex wei is REST/JSON-RPC only — ``float("0x…")`` historically refused
+    the wire as unparseable. Keep that refuse so hex cannot smuggle ABS.
+    ``bool`` is not an amount (``float(True) == 1.0`` would mint 1 ABS).
+    """
+    if isinstance(raw, str) and raw.strip().lower().startswith("0x"):
+        raise ValueError(f"{field} must not be hex wei on P2P wire")
+    return parse_rpc_value_abs(raw, field=field)
+
+
+def parse_finite_number(raw: Any, *, field: str = "value") -> float:
+    """Non-money numeric (oracle prices). Refuses bool and non-finite."""
+    if isinstance(raw, bool):
+        raise ValueError(f"{field} must be a number, not bool")
+    try:
+        v = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid {field}: {raw!r}") from exc
+    if not math.isfinite(v):
+        raise ValueError(f"{field} must be finite")
+    return v
+
+
+def money_abs(raw: Any, *, field: str = "amount") -> float:
+    """Storage / bridge / stake amount: satoshi-quantized ABS float.
+
+    ``bool`` is TypeError (same contract as StoragePort.set_balance).
+    """
+    if isinstance(raw, bool):
+        raise TypeError("bool is not an amount")
+    return parse_rpc_value_abs(raw, field=field)
+
+
+def tx_money_abs(row: Optional[Mapping[str, Any]]) -> Dict[str, float]:
+    """Satoshi-quantize tx ``value`` / ``fee`` / ``burned`` for persist and display."""
+    sat = tx_money_satoshi(row)
+    return {
+        "value": from_satoshi_float(sat["value_satoshi"]),
+        "fee": from_satoshi_float(sat["fee_satoshi"]),
+        "burned": from_satoshi_float(sat["burned_satoshi"]),
+    }
+
+
+def tx_money_satoshi(row: Optional[Mapping[str, Any]]) -> Dict[str, int]:
+    """Canonical integer satoshi for tx ledger fields (prefer explicit *_satoshi)."""
+    src = dict(row) if row else {}
+
+    def _one(sat_keys: tuple, abs_keys: tuple) -> int:
+        for k in sat_keys:
+            if src.get(k) is not None:
+                try:
+                    return max(0, int(src[k]))
+                except (TypeError, ValueError):
+                    pass
+        raw = 0.0
+        for k in abs_keys:
+            if k in src and src.get(k) is not None:
+                raw = src.get(k)
+                break
+        return max(0, int(to_satoshi(raw)))
+
+    return {
+        "value_satoshi": _one(
+            ("value_satoshi", "amount_satoshi"),
+            ("value", "amount"),
+        ),
+        "fee_satoshi": _one(("fee_satoshi",), ("fee",)),
+        "burned_satoshi": _one(("burned_satoshi",), ("burned",)),
+    }
+
+
+def writeback_balance_abs(row: Optional[Mapping[str, Any]]) -> float:
+    """EVM writeback balance: satoshi wins, else ``money_abs(balance)``.
+
+    ``bool`` is TypeError (``float(True) == 1.0`` must not mint 1 ABS).
+    """
+    src = dict(row) if row else {}
+    if src.get("balance_satoshi") is not None:
+        return from_satoshi_float(max(0, int(src["balance_satoshi"])))
+    return money_abs(src.get("balance"), field="balance")
 
 
 def from_satoshi(satoshi: int) -> Decimal:
@@ -82,6 +268,39 @@ def from_satoshi_float(satoshi: int) -> float:
     except Exception as exc:
         _native_fallback("amount_from_satoshi_float", exc)
     return float(from_satoshi(satoshi))
+
+
+def apply_store_delta_satoshi(
+    store: Any,
+    address: str,
+    delta_sat: int,
+    *,
+    allow_float_fallback: bool = False,
+) -> bool:
+    """Apply integer satoshi delta on a storage/db handle.
+
+    Prefer ``balance_delta_satoshi``. Float ``update_balance`` / ``balance_delta``
+    only when ``allow_float_fallback=True`` (legacy / incomplete fakes / unit
+    harnesses). Default is fail-closed ``False`` — callers that need float
+    fallback must opt in explicitly.
+    """
+    if store is None or not address:
+        return False
+    delta = int(delta_sat)
+    if delta == 0:
+        return True
+    if hasattr(store, "balance_delta_satoshi"):
+        store.balance_delta_satoshi(address, delta)
+        return True
+    if not allow_float_fallback:
+        return False
+    if hasattr(store, "balance_delta"):
+        store.balance_delta(address, from_satoshi_float(delta))
+        return True
+    if hasattr(store, "update_balance"):
+        store.update_balance(address, from_satoshi_float(delta))
+        return True
+    return False
 
 
 def account_satoshi(row: Optional[Mapping[str, Any]]) -> int:
@@ -129,11 +348,22 @@ def apply_delta_satoshi(current_sat: int, delta_abs: NumberLike) -> int:
     return max(0, int(current_sat) + to_satoshi(delta_abs))
 
 
-def try_debit_satoshi(current_sat: int, debit_abs: NumberLike) -> int:
-    """Debit ABS amount from satoshi; raise on underflow (v1.3.68 — no silent clamp)."""
-    if isinstance(debit_abs, bool):
-        raise TypeError("bool is not a valid amount")
-    debit = to_satoshi(debit_abs)
+def try_debit_satoshi(
+    current_sat: int,
+    debit_abs: NumberLike = 0,
+    *,
+    debit_satoshi: Optional[int] = None,
+) -> int:
+    """Debit from satoshi balance; raise on underflow (v1.3.68 — no silent clamp).
+
+    Prefer ``debit_satoshi`` int authority; else convert display ``debit_abs``.
+    """
+    if debit_satoshi is not None:
+        debit = int(debit_satoshi)
+    else:
+        if isinstance(debit_abs, bool):
+            raise TypeError("bool is not a valid amount")
+        debit = to_satoshi(debit_abs)
     if debit < 0:
         raise ValueError("debit must be non-negative")
     cur = int(current_sat)
@@ -142,18 +372,72 @@ def try_debit_satoshi(current_sat: int, debit_abs: NumberLike) -> int:
     return cur - debit
 
 
+def resolve_amount_satoshi(
+    amount_abs: Optional[NumberLike] = None,
+    amount_satoshi: Optional[int] = None,
+    *,
+    field: str = "amount",
+) -> Tuple[int, float]:
+    """Prefer ``amount_satoshi``; refuse mismatch with ABS float when both set.
+
+    Returns ``(amount_satoshi, amount_abs_display)``.
+    When only satoshi is provided, ``amount_abs`` may be ``None``.
+    """
+    if amount_satoshi is not None:
+        sat = int(amount_satoshi)
+        if sat < 0:
+            raise ValueError("value_negative")
+        if amount_abs is not None and amount_abs != "":
+            abs_sat = int(to_satoshi(money_abs(amount_abs, field=field)))
+            if abs_sat != sat:
+                raise ValueError("amount_satoshi_mismatch")
+        return sat, float(from_satoshi_float(sat))
+    if amount_abs is None or amount_abs == "":
+        raise ValueError(f"{field}_required")
+    sat = int(to_satoshi(money_abs(amount_abs, field=field)))
+    return sat, float(from_satoshi_float(sat))
+
+
+def resolve_tx_value_satoshi(tx: Any) -> int:
+    """Prefer ``tx.amount_satoshi``; else convert display ``tx.value`` via to_satoshi."""
+    sat = getattr(tx, "amount_satoshi", None)
+    if sat is not None:
+        try:
+            out = int(sat)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("amount_satoshi_invalid") from exc
+        if out < 0:
+            raise ValueError("value_negative")
+        return out
+    return int(to_satoshi(getattr(tx, "value", 0)))
+
+
 def plan_transfer_fees_sat(
     gas: int,
     gas_price_wei: NumberLike,
     burn_rate: NumberLike,
     value: NumberLike = 0,
     gas_used: Optional[int] = None,
+    *,
+    value_satoshi: Optional[int] = None,
 ) -> Dict[str, int]:
-    """Split L1 transfer fee into satoshi ints (Wave C tip+apply hot path)."""
+    """Split L1 transfer fee into satoshi ints (Wave C tip+apply hot path).
+
+    When ``value_satoshi`` is set it is the money authority (not ``to_satoshi(value)``).
+    """
+    def _value_sat() -> int:
+        if value_satoshi is not None:
+            vs = int(value_satoshi)
+            if vs < 0:
+                raise ValueError("value_negative")
+            return vs
+        return int(to_satoshi(value))
+
     try:
         from crypto import native
 
         if native.native_available() and hasattr(native, "plan_transfer_fees_satoshi"):
+            # Native fee split still takes ABS display value; value_sat may override.
             fee_s, burned_s, miner_s, total_s = native.plan_transfer_fees_satoshi(
                 int(gas),
                 str(gas_price_wei),
@@ -161,13 +445,14 @@ def plan_transfer_fees_sat(
                 str(value),
                 int(gas_used) if gas_used is not None else None,
             )
-            value_s = to_satoshi(value)
+            value_s = _value_sat()
+            fee_i = int(fee_s)
             return {
-                "fee_sat": int(fee_s),
+                "fee_sat": fee_i,
                 "burned_sat": int(burned_s),
                 "miner_fee_sat": int(miner_s),
                 "value_sat": value_s,
-                "total_cost_sat": int(total_s),
+                "total_cost_sat": int(value_s + fee_i),
             }
     except Exception as exc:
         _native_fallback("plan_transfer_fees_satoshi", exc)
@@ -185,7 +470,7 @@ def plan_transfer_fees_sat(
         rate = Decimal("1")
     burned_sat = int((Decimal(fee_sat) * rate).to_integral_value(rounding=ROUND_DOWN))
     miner_fee_sat = fee_sat - burned_sat
-    value_sat = to_satoshi(value)
+    value_sat = _value_sat()
     return {
         "fee_sat": fee_sat,
         "burned_sat": burned_sat,
@@ -232,30 +517,3 @@ def can_afford_transfer(sender_sat: int, total_cost_abs: NumberLike) -> bool:
 def apply_satoshi_delta(current_sat: int, delta_sat: int) -> int:
     """Apply integer satoshi delta; never negative."""
     return max(0, int(current_sat) + int(delta_sat))
-
-
-# ETH-style RPC: 1 ABS = 10**18 wei = 10**6 satoshi → 10**12 wei per satoshi.
-WEI_PER_ABS = 10**18
-WEI_PER_SATOSHI = WEI_PER_ABS // SATOSHI_MULTIPLIER
-
-
-def abs_to_wei(amount_abs: NumberLike) -> int:
-    """ABS → ETH-style wei via Decimal (1 ABS = 10**18 wei)."""
-    if isinstance(amount_abs, bool):
-        raise TypeError("bool is not an amount")
-    try:
-        d = Decimal(str(amount_abs))
-    except (InvalidOperation, ValueError, TypeError) as exc:
-        raise ValueError(f"invalid amount: {amount_abs!r}") from exc
-    if not d.is_finite():
-        raise ValueError("amount must be finite")
-    if d < 0:
-        raise ValueError("amount must be >= 0")
-    return int((d * Decimal(WEI_PER_ABS)).to_integral_value(rounding=ROUND_DOWN))
-
-
-def money_abs(raw: Any, *, field: str = "amount") -> float:
-    """Storage / stake amount: satoshi-quantized ABS float."""
-    if isinstance(raw, bool):
-        raise TypeError("bool is not an amount")
-    return from_satoshi_float(to_satoshi(raw))

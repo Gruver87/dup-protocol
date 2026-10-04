@@ -4,8 +4,9 @@
 from __future__ import annotations
 
 import hashlib
-import math
 from typing import Any, Optional
+
+from runtime.amount import money_abs, to_satoshi
 
 from bridge.ports import (
     InboundEnvelope,
@@ -37,7 +38,19 @@ class InboundMessageValidator:
         chain = str(envelope.from_chain or "").strip().lower()
         to_addr = str(envelope.to_addr or "").strip()
         tx_hash = str(envelope.event_tx_hash or "").strip()
-        amount = float(envelope.amount)
+        try:
+            if envelope.amount_satoshi is not None:
+                sats = int(envelope.amount_satoshi)
+                if sats <= 0:
+                    return ValidationResult(ok=False, reason="invalid_amount_satoshi")
+                amount = money_abs(envelope.amount, field="amount") if envelope.amount else 0.0
+                if envelope.amount and int(to_satoshi(amount)) != sats:
+                    return ValidationResult(ok=False, reason="amount_satoshi_mismatch")
+            else:
+                amount = money_abs(envelope.amount, field="amount")
+                sats = int(to_satoshi(amount))
+        except (TypeError, ValueError):
+            return ValidationResult(ok=False, reason="invalid_amount")
 
         if not tx_hash or tx_hash in ("0", "0x0", "0x" + "0" * 64):
             return ValidationResult(ok=False, reason="empty_event_tx_hash")
@@ -45,7 +58,7 @@ class InboundMessageValidator:
             return ValidationResult(ok=False, reason="missing_recipient")
         if not chain:
             return ValidationResult(ok=False, reason="missing_from_chain")
-        if not math.isfinite(amount) or amount <= 0:
+        if sats <= 0:
             return ValidationResult(ok=False, reason="invalid_amount")
 
         replay_key = compute_replay_key(chain, tx_hash, int(envelope.log_index or 0))
@@ -79,7 +92,14 @@ class InboundMessageValidator:
                         ok=False, reason="receipt_hash_mismatch", replay_key=replay_key
                     )
             if min_conf > 0:
-                conf = int(self.l1_rpc.get_confirmations(chain, tx_hash) or 0)
+                try:
+                    conf = int(self.l1_rpc.get_confirmations(chain, tx_hash))
+                except Exception as exc:
+                    return ValidationResult(
+                        ok=False,
+                        reason=f"confirmations_unknown:{exc}",
+                        replay_key=replay_key,
+                    )
                 if conf < min_conf:
                     return ValidationResult(
                         ok=False,
@@ -116,7 +136,13 @@ class PassthroughInboundValidator:
         tx_hash = str(envelope.event_tx_hash or "").strip()
         if not tx_hash:
             return ValidationResult(ok=False, reason="empty_event_tx_hash")
-        if float(envelope.amount) <= 0:
+        try:
+            if envelope.amount_satoshi is not None:
+                if int(envelope.amount_satoshi) <= 0:
+                    return ValidationResult(ok=False, reason="invalid_amount_satoshi")
+            elif money_abs(envelope.amount, field="amount") <= 0:
+                return ValidationResult(ok=False, reason="invalid_amount")
+        except (TypeError, ValueError):
             return ValidationResult(ok=False, reason="invalid_amount")
         if not str(envelope.to_addr or "").strip():
             return ValidationResult(ok=False, reason="missing_recipient")

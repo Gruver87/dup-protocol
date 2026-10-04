@@ -126,6 +126,8 @@ class AIAgent:
         }
 
     def to_db(self) -> Dict:
+        from runtime.amount import to_satoshi
+
         return {
             "agent_id": self.agent_id,
             "name": self.name,
@@ -136,6 +138,7 @@ class AIAgent:
             "last_action": self.last_action,
             "performance_score": self.performance_score,
             "total_profit": self.total_profit,
+            "total_profit_satoshi": int(to_satoshi(self.total_profit)),
             "actions_count": self.actions_count,
             "strategy": self.strategy,
             "memory": self.memory,
@@ -227,14 +230,31 @@ class AIAgentManager:
             return {"error": "Agent not found"}
         return agent.analyze_market(price_history)
 
-    def trade(self, agent_id: str, trade_type: str,
-              amount: float, price: float) -> Dict:
+    def trade(
+        self,
+        agent_id: str,
+        trade_type: str,
+        amount: float,
+        price: float,
+        *,
+        amount_satoshi: int | None = None,
+        price_satoshi: int | None = None,
+    ) -> Dict:
+        from runtime.amount import resolve_amount_satoshi
+
         agent = self.agents.get(agent_id)
         if not agent:
             return {"success": False, "error": "Agent not found"}
         if agent.status != "active":
             return {"success": False, "error": "Agent is not active"}
-        if amount <= 0 or price <= 0:
+        try:
+            amt_sat, amount = resolve_amount_satoshi(amount, amount_satoshi)
+            px_sat, price = resolve_amount_satoshi(
+                price, price_satoshi, field="price"
+            )
+        except (TypeError, ValueError) as exc:
+            return {"success": False, "error": str(exc) or "amount_satoshi_invalid"}
+        if amt_sat <= 0 or px_sat <= 0:
             return {"success": False, "error": "Invalid trade parameters"}
         if not self.trade_executor:
             return {"success": False, "error": "Trade execution backend not configured"}
@@ -243,7 +263,9 @@ class AIAgentManager:
             "owner": agent.owner,
             "type": trade_type,
             "amount": amount,
+            "amount_satoshi": int(amt_sat),
             "price": price,
+            "price_satoshi": int(px_sat),
         })
         if not isinstance(execution, dict) or not execution.get("success"):
             error = execution.get("error", "Trade execution failed") if isinstance(execution, dict) else "Trade execution failed"
@@ -251,6 +273,10 @@ class AIAgentManager:
         result = agent.record_executed_trade(trade_type, amount, price, execution)
         if result.get("success"):
             self._persist(agent)
+            if isinstance(result, dict):
+                result = dict(result)
+                result["amount_satoshi"] = int(amt_sat)
+                result["price_satoshi"] = int(px_sat)
         return result
 
     def deactivate(self, agent_id: str) -> bool:

@@ -966,12 +966,20 @@ class RocksChainStore:
 
     # ── validators ────────────────────────────────────────────────────────
 
-    def save_validator(self, address: str, stake: float) -> None:
+    def save_validator(
+        self, address: str, stake: float, *, stake_satoshi: int | None = None
+    ) -> None:
+        from runtime.amount import resolve_amount_satoshi
+
         with self._write_lock:
             addr = SqliteDatabase._normalize_address(address)
+            stake_sat, stake_abs = resolve_amount_satoshi(
+                stake, stake_satoshi, field="stake"
+            )
             row = {
                 "address": addr,
-                "stake": float(stake),
+                "stake": stake_abs,
+                "stake_satoshi": stake_sat,
                 "active": 1,
                 "slashed": 0,
                 "joined_at": int(time.time()),
@@ -979,6 +987,8 @@ class RocksChainStore:
             self._raw_put(kc.key_validator(addr), json.dumps(row).encode("utf-8"))
 
     def get_validators(self, active_only: bool = True) -> List[Dict]:
+        from runtime.amount import to_satoshi
+
         rows = self._scan_prefix(kc.prefix_validators())
         out: List[Dict] = []
         for _key, value in rows:
@@ -995,6 +1005,10 @@ class RocksChainStore:
                 continue
             if active_only and not int(row.get("active", 1)):
                 continue
+            if row.get("stake_satoshi") is None:
+                row["stake_satoshi"] = int(to_satoshi(row.get("stake") or 0))
+            else:
+                row["stake_satoshi"] = int(row["stake_satoshi"])
             out.append(row)
         return out
 
@@ -1407,13 +1421,19 @@ class RocksChainStore:
         to_addr: str,
         amount: float,
         tx_hash: str,
+        *,
+        amount_satoshi: int | None = None,
     ) -> None:
+        from runtime.amount import resolve_amount_satoshi
+
+        amt_sat, amt = resolve_amount_satoshi(amount, amount_satoshi)
         row = {
             "tx_hash": tx_hash,
             "from_addr": from_addr,
             "to_chain": to_chain,
             "to_addr": to_addr,
-            "amount": float(amount),
+            "amount": amt,
+            "amount_satoshi": amt_sat,
             "status": "pending",
             "created_at": int(time.time()),
         }
@@ -1432,11 +1452,13 @@ class RocksChainStore:
             self._raw_put(kc.key_bridge_lock(tx_hash), json.dumps(row).encode("utf-8"))
 
     def get_bridge_locks(self, limit: int = 50) -> List[Dict]:
+        from runtime.amount import money_abs, to_satoshi
+
         limit = max(1, min(int(limit), 5000))
         rows: List[Dict] = []
         for _key, value in self._scan_prefix(kc.prefix_bridge_locks()):
             try:
-                rows.append(json.loads(value.decode("utf-8")))
+                row = json.loads(value.decode("utf-8"))
             except Exception as exc:
                 self._json_decode_failures += 1
                 logger.warning(
@@ -1446,6 +1468,12 @@ class RocksChainStore:
                     exc,
                 )
                 continue
+            row["amount"] = money_abs(row.get("amount", 0), field="amount")
+            if row.get("amount_satoshi") is None:
+                row["amount_satoshi"] = int(to_satoshi(row["amount"]))
+            else:
+                row["amount_satoshi"] = int(row["amount_satoshi"])
+            rows.append(row)
         rows.sort(key=lambda r: int(r.get("created_at", 0) or 0), reverse=True)
         return rows[:limit]
 
@@ -1459,15 +1487,21 @@ class RocksChainStore:
         amount: float,
         from_chain: str,
         log_index: int = 0,
+        *,
+        amount_satoshi: int | None = None,
     ) -> str:
+        from runtime.amount import resolve_amount_satoshi
+
         key = self.bridge_credit_key(from_chain, event_tx_hash, log_index)
         if self.has_bridge_credit(key):
             return key
+        amt_sat, amt = resolve_amount_satoshi(amount, amount_satoshi)
         row = {
             "credit_key": key,
             "l1_tx_hash": event_tx_hash,
             "recipient": recipient,
-            "amount": float(amount),
+            "amount": amt,
+            "amount_satoshi": amt_sat,
             "from_chain": from_chain,
             "log_index": int(log_index),
             "credited_at": int(time.time()),
@@ -1484,8 +1518,13 @@ class RocksChainStore:
         amount: float,
         log_index: int = 0,
         abs_tx_hash: str = "",
+        *,
+        amount_satoshi: int | None = None,
     ) -> Dict:
         """Insert-if-absent replay claim then credit recipient in one Rocks batch."""
+        from runtime.amount import resolve_amount_satoshi
+
+        amt_sat, amt = resolve_amount_satoshi(amount, amount_satoshi)
         key = self.bridge_credit_key(from_chain, event_tx_hash, log_index)
         with self.atomic():
             if self.has_bridge_credit(key):
@@ -1494,13 +1533,14 @@ class RocksChainStore:
                 "credit_key": key,
                 "l1_tx_hash": event_tx_hash,
                 "recipient": recipient,
-                "amount": float(amount),
+                "amount": amt,
+                "amount_satoshi": amt_sat,
                 "from_chain": from_chain,
                 "log_index": int(log_index),
                 "credited_at": int(time.time()),
             }
             self._raw_put(kc.key_bridge_credit(key), json.dumps(row).encode("utf-8"))
-            self.balance_delta(recipient, float(amount))
+            self.balance_delta_satoshi(recipient, amt_sat)
             lock_hash = (abs_tx_hash or event_tx_hash or "").strip()
             if lock_hash:
                 raw = self._raw_get(kc.key_bridge_lock(lock_hash))
@@ -1526,25 +1566,42 @@ class RocksChainStore:
         to_addr: str,
         net_amount: float,
         tx_hash: str,
+        *,
+        amount_satoshi: int | None = None,
+        burn_satoshi: int | None = None,
+        net_amount_satoshi: int | None = None,
     ) -> None:
         """Debit sender (fail on underflow), burn fee share, persist lock — one Rocks batch."""
-        from runtime.amount import dual_write_balance, from_satoshi_float, try_debit_satoshi
+        from runtime.amount import (
+            dual_write_balance,
+            from_satoshi_float,
+            resolve_amount_satoshi,
+            try_debit_satoshi,
+        )
 
+        amt_sat, _amt = resolve_amount_satoshi(amount, amount_satoshi)
+        burn_sat, _burn = resolve_amount_satoshi(
+            burn_amount, burn_satoshi, field="burn_amount"
+        )
+        net_sat, net_abs = resolve_amount_satoshi(
+            net_amount, net_amount_satoshi, field="net_amount"
+        )
         with self.atomic():
             row = self._load_account(from_addr)
             cur = int(row.get("balance_satoshi", 0) or 0)
-            new_sat = try_debit_satoshi(cur, float(amount))
+            new_sat = try_debit_satoshi(cur, debit_satoshi=amt_sat)
             dual_write_balance(row, from_satoshi_float(new_sat))
             row["balance_satoshi"] = new_sat
             self._save_account_row(row)
-            if burn_amount and burn_address:
-                self.balance_delta(burn_address, float(burn_amount))
+            if burn_sat > 0 and burn_address:
+                self.balance_delta_satoshi(burn_address, burn_sat)
             lock_row = {
                 "tx_hash": tx_hash,
                 "from_addr": from_addr,
                 "to_chain": to_chain,
                 "to_addr": to_addr,
-                "amount": float(net_amount),
+                "amount": net_abs,
+                "amount_satoshi": net_sat,
                 "status": "pending",
                 "created_at": int(time.time()),
             }
@@ -1552,6 +1609,8 @@ class RocksChainStore:
 
     def refund_pending_bridge_lock(self, tx_hash: str) -> Dict:
         """Credit back pending lock amount and mark refunded atomically."""
+        from runtime.amount import money_abs, to_satoshi
+
         with self.atomic():
             raw = self._raw_get(kc.key_bridge_lock(tx_hash))
             if not raw:
@@ -1559,13 +1618,19 @@ class RocksChainStore:
             lock = self._loads_json_or_none(raw, context=f"bridge_lock {tx_hash[:16]}")
             if lock is None or lock.get("status") != "pending":
                 return {"refunded": False, "error": "Lock not found or already processed"}
-            self.balance_delta(lock["from_addr"], float(lock["amount"]))
+            amt_abs = money_abs(lock["amount"])
+            if lock.get("amount_satoshi") is None:
+                amt_sat = int(to_satoshi(amt_abs))
+            else:
+                amt_sat = int(lock["amount_satoshi"])
+            self.balance_delta_satoshi(lock["from_addr"], amt_sat)
             lock["status"] = "refunded"
             self._raw_put(kc.key_bridge_lock(tx_hash), json.dumps(lock).encode("utf-8"))
         return {
             "refunded": True,
             "tx_hash": tx_hash,
-            "amount": float(lock["amount"]),
+            "amount": amt_abs,
+            "amount_satoshi": amt_sat,
         }
 
     # ── burn ──────────────────────────────────────────────────────────────
@@ -2084,12 +2149,25 @@ class RocksChainStore:
                 meta = {}
         row["metadata"] = meta if isinstance(meta, dict) else {}
         row["for_sale"] = bool(row.get("for_sale"))
+        from runtime.amount import money_abs, to_satoshi
+
+        abs_price = money_abs(row.get("price", 0), field="price")
+        row["price"] = abs_price
+        if row.get("price_satoshi") is None:
+            row["price_satoshi"] = int(to_satoshi(abs_price))
+        else:
+            row["price_satoshi"] = int(row["price_satoshi"])
         return row
 
     def save_nft_token(self, token: Dict) -> None:
+        from runtime.amount import resolve_amount_satoshi
+
         tid = str(token.get("token_id", "") or "")
         if not tid:
             return
+        price_sat, price = resolve_amount_satoshi(
+            token.get("price", 0), token.get("price_satoshi"), field="price"
+        )
         row = {
             "token_id": tid,
             "name": token.get("name", ""),
@@ -2097,7 +2175,8 @@ class RocksChainStore:
             "image_url": token.get("image_url", ""),
             "owner": token.get("owner", ""),
             "creator": token.get("creator", ""),
-            "price": float(token.get("price", 0) or 0),
+            "price": price,
+            "price_satoshi": int(price_sat),
             "for_sale": bool(token.get("for_sale")),
             "created_at": int(token.get("created_at", 0) or 0),
             "metadata": token.get("metadata") or {},
@@ -2118,15 +2197,32 @@ class RocksChainStore:
         return out
 
     def _decode_nft_offer(self, raw: bytes) -> Optional[Dict]:
-        return self._loads_json_or_none(raw, context="nft_offer")
+        from runtime.amount import money_abs, to_satoshi
+
+        row = self._loads_json_or_none(raw, context="nft_offer")
+        if row is None:
+            return None
+        price = money_abs(row.get("price", 0), field="price")
+        row["price"] = price
+        if row.get("price_satoshi") is None:
+            row["price_satoshi"] = int(to_satoshi(price))
+        else:
+            row["price_satoshi"] = int(row["price_satoshi"])
+        return row
 
     def save_nft_offer(self, offer: Dict) -> None:
+        from runtime.amount import resolve_amount_satoshi
+
         oid = str(offer.get("offer_id", "") or "")
         if not oid:
             return
         row = dict(offer)
         row["offer_id"] = oid
-        row["price"] = float(row.get("price", 0) or 0)
+        price_sat, price = resolve_amount_satoshi(
+            row.get("price", 0), row.get("price_satoshi"), field="price"
+        )
+        row["price"] = price
+        row["price_satoshi"] = int(price_sat)
         row["expires_at"] = int(row.get("expires_at", 0) or 0)
         row["created_at"] = int(row.get("created_at", 0) or 0)
         self._raw_put(
@@ -2145,9 +2241,25 @@ class RocksChainStore:
         return out
 
     def _decode_nft_auction(self, raw: bytes) -> Optional[Dict]:
-        return self._loads_json_or_none(raw, context="nft_auction")
+        from runtime.amount import money_abs, to_satoshi
+
+        row = self._loads_json_or_none(raw, context="nft_auction")
+        if row is None:
+            return None
+        for field in ("start_price", "reserve_price", "current_bid"):
+            if field in row and row[field] is not None:
+                abs_v = money_abs(row[field], field=field)
+                row[field] = abs_v
+                sat_key = f"{field}_satoshi"
+                if row.get(sat_key) is None:
+                    row[sat_key] = int(to_satoshi(abs_v))
+                else:
+                    row[sat_key] = int(row[sat_key])
+        return row
 
     def save_nft_auction(self, auction: Dict) -> None:
+        from runtime.amount import resolve_amount_satoshi
+
         aid = str(auction.get("auction_id", "") or "")
         if not aid:
             return
@@ -2155,6 +2267,14 @@ class RocksChainStore:
         row["auction_id"] = aid
         row["ends_at"] = int(row.get("ends_at", 0) or 0)
         row["created_at"] = int(row.get("created_at", 0) or 0)
+        for field in ("start_price", "reserve_price", "current_bid"):
+            if field in row and row[field] is not None:
+                sat_key = f"{field}_satoshi"
+                sat_v, abs_v = resolve_amount_satoshi(
+                    row[field], row.get(sat_key), field=field
+                )
+                row[field] = abs_v
+                row[sat_key] = int(sat_v)
         self._raw_put(
             kc.key_nft_auction(aid),
             json.dumps(row, ensure_ascii=False).encode("utf-8"),
@@ -2171,30 +2291,45 @@ class RocksChainStore:
         return out
 
     def _decode_nft_sale(self, raw: bytes) -> Optional[Dict]:
+        from runtime.amount import money_abs, to_satoshi
+
         row = self._loads_json_or_none(raw, context="nft_sale")
         if row is None:
             return None
+        price = money_abs(row.get("price", 0), field="price")
+        price_sat = (
+            int(row["price_satoshi"])
+            if row.get("price_satoshi") is not None
+            else int(to_satoshi(price))
+        )
         return {
             "token_id": row.get("token_id", ""),
             "from": row.get("from", row.get("from_addr", "")),
             "to": row.get("to", row.get("to_addr", "")),
-            "price": float(row.get("price", 0) or 0),
+            "price": price,
+            "price_satoshi": price_sat,
             "type": row.get("type", row.get("sale_type", "buy")),
             "timestamp": int(row.get("timestamp", row.get("created_at", 0)) or 0),
         }
 
     def save_nft_sale(self, sale: Dict) -> None:
+        from runtime.amount import resolve_amount_satoshi
+
         created_at = int(sale.get("timestamp", sale.get("created_at", 0)) or time.time())
         seq = int(sale.get("id", 0) or 0)
         if seq <= 0:
             seq = int(self.get_meta("nft_sale_seq", 0) or 0) + 1
             self.set_meta("nft_sale_seq", seq)
+        price_sat, price = resolve_amount_satoshi(
+            sale.get("price", 0), sale.get("price_satoshi"), field="price"
+        )
         row = {
             "id": seq,
             "token_id": sale.get("token_id", ""),
             "from": sale.get("from", sale.get("from_addr", "")),
             "to": sale.get("to", sale.get("to_addr", "")),
-            "price": float(sale.get("price", 0) or 0),
+            "price": price,
+            "price_satoshi": int(price_sat),
             "type": sale.get("type", sale.get("sale_type", "buy")),
             "timestamp": created_at,
             "created_at": created_at,

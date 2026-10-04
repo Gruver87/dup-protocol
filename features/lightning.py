@@ -61,13 +61,18 @@ class LightningChannel:
         }
 
     def to_db(self) -> Dict:
+        from runtime.amount import to_satoshi
+
         return {
             "channel_id": self.channel_id,
             "node1": self.node1,
             "node2": self.node2,
             "capacity": self.capacity,
+            "capacity_satoshi": int(to_satoshi(self.capacity)),
             "balance1": self.balance1,
+            "balance1_satoshi": int(to_satoshi(self.balance1)),
             "balance2": self.balance2,
+            "balance2_satoshi": int(to_satoshi(self.balance2)),
             "status": self.status,
             "created_at": self.created_at,
             "fee_rate": self.fee_rate,
@@ -113,11 +118,14 @@ class LightningHTLC:
         }
 
     def to_db(self) -> Dict:
+        from runtime.amount import to_satoshi
+
         return {
             "htlc_id": self.htlc_id,
             "channel_id": self.channel_id,
             "payment_hash": self.payment_hash,
             "amount": self.amount,
+            "amount_satoshi": int(to_satoshi(self.amount)),
             "expiry": self.expiry,
             "sender": self.sender,
             "receiver": self.receiver,
@@ -165,13 +173,17 @@ class LightningPayment:
         }
 
     def to_db(self) -> Dict:
+        from runtime.amount import to_satoshi
+
         return {
             "payment_id": self.payment_id,
             "channel_id": self.channel_id,
             "from_node": self.from_node,
             "to_node": self.to_node,
             "amount": self.amount,
+            "amount_satoshi": int(to_satoshi(self.amount)),
             "fee": self.fee,
+            "fee_satoshi": int(to_satoshi(self.fee)),
             "status": self.status,
             "payment_hash": self.payment_hash,
             "timestamp": self.timestamp,
@@ -278,14 +290,35 @@ class LightningNetwork:
         peer_address: str,
         capacity: float,
         node_balance: Optional[float] = None,
+        *,
+        capacity_satoshi: int | None = None,
     ) -> Optional[str]:
+        from runtime.amount import (
+            apply_store_delta_satoshi,
+            resolve_amount_satoshi,
+            to_satoshi,
+        )
+
+        try:
+            cap_sat, capacity = resolve_amount_satoshi(
+                capacity, capacity_satoshi, field="capacity"
+            )
+        except (TypeError, ValueError):
+            return None
         if capacity < self.MIN_CHANNEL or capacity > self.MAX_CHANNEL:
             return None
         if not self.db or not hasattr(self.db, "get_balance"):
             return None
-        if self.db.get_balance(self.node_address) < capacity:
+        if hasattr(self.db, "get_balance_satoshi"):
+            bal_sat = int(self.db.get_balance_satoshi(self.node_address))
+        else:
+            bal_sat = int(to_satoshi(self.db.get_balance(self.node_address)))
+        if bal_sat < cap_sat:
             return None
-        self.db.update_balance(self.node_address, -capacity)
+        if not apply_store_delta_satoshi(
+            self.db, self.node_address, -cap_sat, allow_float_fallback=False
+        ):
+            return None
         channel_id = native.sha256_hex(
             f"{self.node_address}{peer_address}{capacity}{time.time()}".encode()
         )[:16]
@@ -331,13 +364,27 @@ class LightningNetwork:
         return verify_state(payload, sig, node_pubkey)
 
     def close_channel(self, channel_id: str) -> bool:
+        from runtime.amount import apply_store_delta_satoshi, to_satoshi
+
         ch = self.channels.get(channel_id)
         if not ch or ch.status != "open":
             return False
         if not self.db:
             return False
-        self.db.update_balance(ch.node1, ch.balance1)
-        self.db.update_balance(ch.node2, ch.balance2)
+        try:
+            b1 = int(to_satoshi(ch.balance1))
+            b2 = int(to_satoshi(ch.balance2))
+        except (TypeError, ValueError):
+            return False
+        if not (
+            apply_store_delta_satoshi(
+                self.db, ch.node1, b1, allow_float_fallback=False
+            )
+            and apply_store_delta_satoshi(
+                self.db, ch.node2, b2, allow_float_fallback=False
+            )
+        ):
+            return False
         ch.status = "closed"
         ch.state_version += 1
         self._persist_channel(ch)
@@ -348,30 +395,59 @@ class LightningNetwork:
         """Force-close using latest signed state (cooperative close fallback)."""
         return self.close_channel(channel_id)
 
-    def send_payment(self, channel_id: str, to_node: str, amount: float) -> Optional[str]:
-        if amount <= 0:
-            return None
+    def send_payment(
+        self,
+        channel_id: str,
+        to_node: str,
+        amount: float,
+        *,
+        amount_satoshi: int | None = None,
+    ) -> Optional[str]:
+        from runtime.amount import (
+            SATOSHI_MULTIPLIER,
+            from_satoshi_float,
+            resolve_amount_satoshi,
+            to_satoshi,
+        )
+
         ch = self.channels.get(channel_id)
         if not ch or ch.status != "open":
             return None
-        fee = amount * ch.fee_rate
+        try:
+            amt_sat, amount = resolve_amount_satoshi(amount, amount_satoshi)
+            fee_sat = (amt_sat * int(to_satoshi(ch.fee_rate))) // int(SATOSHI_MULTIPLIER)
+            b1 = int(to_satoshi(ch.balance1))
+            b2 = int(to_satoshi(ch.balance2))
+        except (TypeError, ValueError):
+            return None
+        if amt_sat <= 0:
+            return None
         if self.node_address == ch.node1:
-            if to_node != ch.node2 or ch.balance1 < amount + fee:
+            if to_node != ch.node2 or b1 < amt_sat + fee_sat:
                 return None
-            ch.balance1 -= amount + fee
-            ch.balance2 += amount
+            b1 -= amt_sat + fee_sat
+            b2 += amt_sat
         elif self.node_address == ch.node2:
-            if to_node != ch.node1 or ch.balance2 < amount + fee:
+            if to_node != ch.node1 or b2 < amt_sat + fee_sat:
                 return None
-            ch.balance1 += amount
-            ch.balance2 -= amount + fee
+            b1 += amt_sat
+            b2 -= amt_sat + fee_sat
         else:
             return None
+        ch.balance1 = from_satoshi_float(b1)
+        ch.balance2 = from_satoshi_float(b2)
         ch.state_version += 1
         pid = native.sha256_hex(
             f"{channel_id}{self.node_address}{to_node}{amount}{time.time()}".encode()
         )[:16]
-        payment = LightningPayment(pid, channel_id, self.node_address, to_node, amount, fee)
+        payment = LightningPayment(
+            pid,
+            channel_id,
+            self.node_address,
+            to_node,
+            from_satoshi_float(amt_sat),
+            from_satoshi_float(fee_sat),
+        )
         self.payments[pid] = payment
         self._persist_channel(ch)
         self._persist_payment(payment)
@@ -385,22 +461,41 @@ class LightningNetwork:
         amount: float,
         preimage_hash: str,
         expiry: int = None,
+        *,
+        amount_satoshi: int | None = None,
     ) -> Optional[str]:
+        from runtime.amount import (
+            SATOSHI_MULTIPLIER,
+            from_satoshi_float,
+            resolve_amount_satoshi,
+            to_satoshi,
+        )
+
         ch = self.channels.get(channel_id)
-        if not ch or ch.status != "open" or amount <= 0:
+        if not ch or ch.status != "open":
+            return None
+        try:
+            amt_sat, amount = resolve_amount_satoshi(amount, amount_satoshi)
+            fee_sat = (amt_sat * int(to_satoshi(ch.fee_rate))) // int(SATOSHI_MULTIPLIER)
+            b1 = int(to_satoshi(ch.balance1))
+            b2 = int(to_satoshi(ch.balance2))
+        except (TypeError, ValueError):
+            return None
+        if amt_sat <= 0:
             return None
         expiry = int(expiry or (int(time.time()) + self.DEFAULT_HTLC_EXPIRY_SEC))
-        fee = amount * ch.fee_rate
         if self.node_address == ch.node1:
-            if receiver != ch.node2 or ch.balance1 < amount + fee:
+            if receiver != ch.node2 or b1 < amt_sat + fee_sat:
                 return None
-            ch.balance1 -= amount + fee
+            b1 -= amt_sat + fee_sat
         elif self.node_address == ch.node2:
-            if receiver != ch.node1 or ch.balance2 < amount + fee:
+            if receiver != ch.node1 or b2 < amt_sat + fee_sat:
                 return None
-            ch.balance2 -= amount + fee
+            b2 -= amt_sat + fee_sat
         else:
             return None
+        ch.balance1 = from_satoshi_float(b1)
+        ch.balance2 = from_satoshi_float(b2)
         htlc_id = native.sha256_hex(
             f"{channel_id}{preimage_hash}{amount}{time.time()}".encode()
         )[:16]
@@ -459,18 +554,39 @@ class LightningNetwork:
         self._persist_state(ch)
         return True
 
-    def find_route(self, destination: str, amount: float) -> List[str]:
+    def find_route(
+        self,
+        destination: str,
+        amount: float,
+        *,
+        amount_satoshi: int | None = None,
+    ) -> List[str]:
         """BFS route over open channels (channel_id path)."""
-        if amount <= 0:
+        from runtime.amount import resolve_amount_satoshi, to_satoshi
+
+        try:
+            need_sat, amount = resolve_amount_satoshi(amount, amount_satoshi)
+        except (TypeError, ValueError):
+            return []
+        if need_sat <= 0:
             return []
         graph: Dict[str, List[Tuple[str, str, float]]] = {}
         for ch in self.channels.values():
             if ch.status != "open":
                 continue
-            if ch.node1 == self.node_address and ch.balance1 >= amount:
-                graph.setdefault(ch.node1, []).append((ch.node2, ch.channel_id, ch.balance1))
-            if ch.node2 == self.node_address and ch.balance2 >= amount:
-                graph.setdefault(ch.node2, []).append((ch.node1, ch.channel_id, ch.balance2))
+            try:
+                b1 = int(to_satoshi(ch.balance1))
+                b2 = int(to_satoshi(ch.balance2))
+            except (TypeError, ValueError):
+                continue
+            if ch.node1 == self.node_address and b1 >= need_sat:
+                graph.setdefault(ch.node1, []).append(
+                    (ch.node2, ch.channel_id, ch.balance1)
+                )
+            if ch.node2 == self.node_address and b2 >= need_sat:
+                graph.setdefault(ch.node2, []).append(
+                    (ch.node1, ch.channel_id, ch.balance2)
+                )
         start = self.node_address
         if start not in graph:
             return []
@@ -487,9 +603,22 @@ class LightningNetwork:
                 queue.append((nxt, path + [cid]))
         return []
 
-    def route_payment(self, destination: str, amount: float, preimage: str) -> Optional[str]:
+    def route_payment(
+        self,
+        destination: str,
+        amount: float,
+        preimage: str,
+        *,
+        amount_satoshi: int | None = None,
+    ) -> Optional[str]:
         """Direct-channel payment only. Multi-hop remote messaging is not implemented."""
-        path = self.find_route(destination, amount)
+        from runtime.amount import resolve_amount_satoshi
+
+        try:
+            amt_sat, amount = resolve_amount_satoshi(amount, amount_satoshi)
+        except (TypeError, ValueError):
+            return None
+        path = self.find_route(destination, amount, amount_satoshi=amt_sat)
         if len(path) != 1:
             return None
         ph = payment_hash(preimage)
@@ -498,7 +627,9 @@ class LightningNetwork:
         receiver = ch.node2 if self.node_address == ch.node1 else ch.node1
         if receiver != destination:
             return None
-        return self.add_htlc(cid, receiver, amount, ph)
+        return self.add_htlc(
+            cid, receiver, amount, ph, amount_satoshi=amt_sat
+        )
 
     def get_channel_info(self, channel_id: str) -> Optional[Dict]:
         ch = self.channels.get(channel_id)

@@ -203,23 +203,25 @@ class Config:
     evm_gas_limit: int = 8_000_000
     evm_create2_eip1014: bool = False   # prod: Ethereum CREATE2 (0xff++addr++salt++hash)
     evm_require_deploy_salt: bool = False  # prod: reject non-deterministic EVM deploy addresses
-    feature_nft: bool = True
-    feature_zk: bool = True
-    feature_minivm: bool = True
-    feature_sharding: bool = True
+    # ADR 0016: optional modules OFF by default; prod JSON/env must opt in (and prod blocks them).
+    feature_nft: bool = False
+    feature_zk: bool = False
+    feature_minivm: bool = False
+    feature_sharding: bool = False
     num_shards: int = 4
     assigned_shard_id: int = -1          # distributed: 0..N-1; -1 = legacy routing coordinator
     shard_mode: str = "routing"          # routing | distributed
-    feature_oracles: bool = True
-    feature_wasm: bool = True
-    feature_plasma: bool = True
-    feature_lightning: bool = True
-    feature_pq: bool = True
-    feature_mev: bool = True
-    feature_ai_agents: bool = True
-    feature_ai_validator: bool = True
-    feature_smart_accounts: bool = True
-    feature_validator_selection: bool = True
+    feature_oracles: bool = False
+    feature_wasm: bool = False
+    feature_plasma: bool = False
+    feature_lightning: bool = False
+    feature_crypto_will: bool = False
+    feature_pq: bool = False
+    feature_mev: bool = False
+    feature_ai_agents: bool = False
+    feature_ai_validator: bool = False
+    feature_smart_accounts: bool = False
+    feature_validator_selection: bool = False
     # Not implemented here. validate() refuses True in every mode.
     # R&D: Gruver87/dup-protocol-experimental. Default transport remains TCP+TLS.
     feature_libp2p: bool = False
@@ -813,6 +815,9 @@ class Config:
         self.feature_wasm = env_bool("FEATURE_WASM", self.feature_wasm)
         self.feature_plasma = env_bool("FEATURE_PLASMA", self.feature_plasma)
         self.feature_lightning = env_bool("FEATURE_LIGHTNING", self.feature_lightning)
+        self.feature_crypto_will = env_bool(
+            "FEATURE_CRYPTO_WILL", self.feature_crypto_will
+        )
         self.feature_pq = env_bool("FEATURE_PQ", self.feature_pq)
         self.feature_mev = env_bool("FEATURE_MEV", self.feature_mev)
         self.feature_ai_agents = env_bool("FEATURE_AI_AGENTS", self.feature_ai_agents)
@@ -904,6 +909,7 @@ class Config:
             self.feature_wasm = env_bool("FEATURE_WASM", False)
             self.feature_plasma = env_bool("FEATURE_PLASMA", False)
             self.feature_lightning = env_bool("FEATURE_LIGHTNING", False)
+            self.feature_crypto_will = env_bool("FEATURE_CRYPTO_WILL", False)
             self.feature_pq = env_bool("FEATURE_PQ", False)
             self.feature_nft = env_bool("FEATURE_NFT", False)
             self.feature_mev = env_bool("FEATURE_MEV", False)
@@ -1064,6 +1070,7 @@ class Config:
                 "FEATURE_WASM": self.feature_wasm,
                 "FEATURE_PLASMA": self.feature_plasma,
                 "FEATURE_LIGHTNING": self.feature_lightning,
+                "FEATURE_CRYPTO_WILL": self.feature_crypto_will,
                 "FEATURE_PQ": self.feature_pq,
                 "FEATURE_NFT": self.feature_nft,
                 "FEATURE_MEV": self.feature_mev,

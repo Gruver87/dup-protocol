@@ -2,6 +2,7 @@
 import os
 import sys
 import tempfile
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, ROOT)
@@ -92,6 +93,7 @@ def test_nft_auction_finalize_fails_if_token_missing():
     assert nft.place_bid(auction_id, buyer, 60.0)["success"] is True
 
     del nft.tokens[tid]
+    nft.auctions[auction_id]["ends_at"] = int(time.time()) - 1
     finalized = nft.finalize_auction(auction_id)
 
     assert finalized == {"success": False, "error": "Auction token not found"}

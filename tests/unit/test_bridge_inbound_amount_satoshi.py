@@ -65,9 +65,47 @@ def test_inbound_envelope_dev_float_derives_satoshi():
     assert env.amount == pytest.approx(2.5)
 
 
-def test_canonical_serializer_float_uses_to_satoshi():
-    from blockchain.canonical_serializer import CanonicalSerializer
+def test_http_amount_abs_prod_refuses_float_only():
+    from api.http import _http_amount_abs
+
+    cfg = SimpleNamespace(deployment_mode="prod")
+    with pytest.raises(ValueError, match="amount_satoshi required"):
+        _http_amount_abs({"amount": 1.0}, cfg)
+
+
+def test_http_amount_abs_prefers_satoshi():
+    from api.http import _http_amount_abs
+
+    cfg = SimpleNamespace(deployment_mode="dev")
+    amt, sat = _http_amount_abs(
+        {"amount": 99.0, "amount_satoshi": 2_500_000}, cfg
+    )
+    assert sat == 2_500_000
+    assert amt == pytest.approx(2.5)
+
+
+def test_save_bridge_lock_writes_amount_satoshi(tmp_path):
+    from storage.database import Database
     from runtime.amount import to_satoshi
 
-    out = CanonicalSerializer._canonicalize(0.1)
-    assert out == int(to_satoshi(0.1))
+    db = Database(str(tmp_path / "bridge.db"))
+    db.initialize()
+    db.save_bridge_lock("0xfrom", "ethereum", "0xto", 5.0, "0xlock1")
+    locks = db.get_bridge_locks()
+    assert len(locks) == 1
+    assert locks[0]["amount"] == 5.0
+    assert locks[0]["amount_satoshi"] == int(to_satoshi(5.0))
+
+
+def test_rust_bridge_estimate_fee_integer_bps():
+    from bridge.abs_bridge import RustBridge
+
+    class _FeeHost:
+        BRIDGE_FEE_BPS = RustBridge.BRIDGE_FEE_BPS
+
+    est = RustBridge.estimate_fee(_FeeHost(), "ethereum", 10.0)
+    assert est["amount_satoshi"] == 10_000_000
+    assert est["fee_satoshi"] == 100_000
+    assert est["net_amount_satoshi"] == 9_900_000
+    assert isinstance(est["fee_satoshi"], int)
+

@@ -10,6 +10,7 @@ Evidence / Lockdown ports. Legacy method names remain as thin shims for API/P2P.
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import time
@@ -19,7 +20,8 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from runtime.amount import money_abs, to_satoshi
+logger = logging.getLogger("abs.consensus")
+
 from consensus_engine import ConsensusEngine
 from finality_engine import FinalityEngine
 from kernel.event_bus import EventBus
@@ -226,10 +228,15 @@ class ConsensusAdapter:
                 f"slash persist failed for {address}: {persist_err}"
             ) from persist_err
 
-    def _register_validator_all(self, address: str, stake: float) -> None:
+    def _register_validator_all(
+        self, address: str, stake: float, *, stake_satoshi: int | None = None
+    ) -> None:
         # DB keeps quantized ABS float; live engines use integer satoshi.
-        stake_abs = money_abs(stake, field="stake")
-        stake_sat = int(to_satoshi(stake_abs))
+        from runtime.amount import resolve_amount_satoshi
+
+        stake_sat, stake_abs = resolve_amount_satoshi(
+            stake, stake_satoshi, field="stake"
+        )
         self.engine.add_validator(address, stake_abs)
         if self.slashing_engine:
             self.slashing_engine.add_validator(address, stake_sat)
@@ -240,7 +247,8 @@ class ConsensusAdapter:
         count = 0
         try:
             count = len(self._registry_port.list_active())
-        except Exception:
+        except Exception as exc:
+            logger.warning("list_active for finality validator count failed: %s", exc)
             count = 0
         if count <= 0 and self.db and hasattr(self.db, "get_validators"):
             count = len(self.db.get_validators(active_only=True) or [])
@@ -259,12 +267,17 @@ class ConsensusAdapter:
 
     # ── ValidatorRegistryPort-backed management ────────────────────────────
 
-    def add_validator(self, address: str, stake: float) -> bool:
-        stake_abs = money_abs(stake, field="stake")
-        stake_sat = int(to_satoshi(stake_abs))
+    def add_validator(
+        self, address: str, stake: float, *, stake_satoshi: int | None = None
+    ) -> bool:
+        from runtime.amount import resolve_amount_satoshi
+
+        stake_sat, stake_abs = resolve_amount_satoshi(
+            stake, stake_satoshi, field="stake"
+        )
         ok = self.engine.add_validator(address, stake_abs)
         if ok:
-            self.db.save_validator(address, stake_abs)
+            self.db.save_validator(address, stake_abs, stake_satoshi=stake_sat)
             if self.slashing_engine:
                 self.slashing_engine.add_validator(address, stake_sat)
             if self.validator_registry:

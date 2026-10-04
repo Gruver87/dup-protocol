@@ -435,8 +435,10 @@ class HybridDatabase:
             )
         )
 
-    def save_validator(self, address: str, stake: float) -> None:
-        self._core.save_validator(address, stake)
+    def save_validator(
+        self, address: str, stake: float, *, stake_satoshi: int | None = None
+    ) -> None:
+        self._core.save_validator(address, stake, stake_satoshi=stake_satoshi)
 
     def get_validators(self, active_only: bool = True) -> List[Dict]:
         return self._core.get_validators(active_only)
@@ -559,8 +561,12 @@ class HybridDatabase:
         to_addr: str,
         amount: float,
         tx_hash: str,
+        *,
+        amount_satoshi: int | None = None,
     ) -> None:
-        self._core.save_bridge_lock(from_addr, to_chain, to_addr, amount, tx_hash)
+        self._core.save_bridge_lock(
+            from_addr, to_chain, to_addr, amount, tx_hash, amount_satoshi=amount_satoshi
+        )
 
     def confirm_bridge_lock(self, tx_hash: str) -> None:
         self._core.confirm_bridge_lock(tx_hash)
@@ -582,9 +588,16 @@ class HybridDatabase:
         amount: float,
         from_chain: str,
         log_index: int = 0,
+        *,
+        amount_satoshi: int | None = None,
     ) -> str:
         return self._core.save_bridge_credit(
-            event_tx_hash, recipient, amount, from_chain, log_index=log_index
+            event_tx_hash,
+            recipient,
+            amount,
+            from_chain,
+            log_index=log_index,
+            amount_satoshi=amount_satoshi,
         )
 
     def claim_and_credit_bridge_event(
@@ -595,6 +608,8 @@ class HybridDatabase:
         amount: float,
         log_index: int = 0,
         abs_tx_hash: str = "",
+        *,
+        amount_satoshi: int | None = None,
     ) -> Dict:
         return self._core.claim_and_credit_bridge_event(
             from_chain,
@@ -603,6 +618,7 @@ class HybridDatabase:
             amount,
             log_index=log_index,
             abs_tx_hash=abs_tx_hash,
+            amount_satoshi=amount_satoshi,
         )
 
     def debit_and_create_bridge_lock(
@@ -615,6 +631,10 @@ class HybridDatabase:
         to_addr: str,
         net_amount: float,
         tx_hash: str,
+        *,
+        amount_satoshi: int | None = None,
+        burn_satoshi: int | None = None,
+        net_amount_satoshi: int | None = None,
     ) -> None:
         return self._core.debit_and_create_bridge_lock(
             from_addr,
@@ -625,6 +645,9 @@ class HybridDatabase:
             to_addr,
             net_amount,
             tx_hash,
+            amount_satoshi=amount_satoshi,
+            burn_satoshi=burn_satoshi,
+            net_amount_satoshi=net_amount_satoshi,
         )
 
     def refund_pending_bridge_lock(self, tx_hash: str) -> Dict:

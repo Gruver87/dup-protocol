@@ -83,6 +83,12 @@ class RustBridge:
         "solana":   0.001,  # 0.1%
         "absolute": 0.005,  # 0.5%
     }
+    BRIDGE_FEE_BPS = {
+        "ethereum": 100,
+        "bsc": 20,
+        "solana": 10,
+        "absolute": 50,
+    }
 
     def __init__(self, config: Config, db: Database, bus: Optional[EventBus] = None):
         self.config = config
@@ -146,10 +152,13 @@ class RustBridge:
 
     def lock_and_bridge(self, from_addr: str, to_chain: str,
                         to_addr: str, amount: float,
-                        l1_tx_hash: str = "") -> Dict:
+                        l1_tx_hash: str = "",
+                        *,
+                        amount_satoshi: int | None = None) -> Dict:
         """
         Блокирует ABS на нашей цепи и инициирует перевод на to_chain.
 
+        ``amount_satoshi`` is money authority when set (ADR 0021).
         Возвращает: {"tx_hash": str, "fee": float, "net_amount": float, "status": str}
         """
         to_chain = self._normalize_chain(to_chain)
@@ -168,16 +177,36 @@ class RustBridge:
             return {"error": f"Unsupported chain: {to_chain}. "
                              f"Supported: {', '.join(self.SUPPORTED_CHAINS)}"}
 
-        fee_rate = self.BRIDGE_FEES.get(to_chain, 0.01)
-        fee = amount * fee_rate
-        net_amount = amount - fee
+        from decimal import Decimal, ROUND_DOWN
+        from runtime.amount import from_satoshi_float, resolve_amount_satoshi
 
-        if net_amount <= 0:
+        try:
+            amount_sats, amount = resolve_amount_satoshi(amount, amount_satoshi)
+        except ValueError as exc:
+            return {"error": str(exc) or "amount_satoshi_invalid"}
+        bps = int(self.BRIDGE_FEE_BPS.get(to_chain, 100))
+        fee_sats = (amount_sats * bps) // 10_000
+        net_sats = amount_sats - fee_sats
+        fee = float(from_satoshi_float(fee_sats))
+        net_amount = float(from_satoshi_float(net_sats))
+        burn_rate = float(getattr(self.config, "burn_rate", 0) or 0)
+        burn_sats = int(
+            (Decimal(fee_sats) * Decimal(str(burn_rate))).to_integral_value(
+                rounding=ROUND_DOWN
+            )
+        )
+        bridge_burn = float(from_satoshi_float(burn_sats))
+
+        if net_sats <= 0:
             return {"error": "Amount too small after fee"}
 
-        # Проверяем баланс отправителя (TOCTOU still possible until debit; debit fails closed)
-        balance = self.db.get_balance(from_addr)
-        if balance < amount:
+        if hasattr(self.db, "get_balance_satoshi"):
+            bal_sat = int(self.db.get_balance_satoshi(from_addr) or 0)
+        else:
+            from runtime.amount import to_satoshi
+
+            bal_sat = int(to_satoshi(self.db.get_balance(from_addr) or 0))
+        if bal_sat < amount_sats:
             return {"error": "Insufficient balance"}
 
         # v1.3.68: prod + bridge_enabled requires semantic L1 event mode
@@ -222,7 +251,6 @@ class RustBridge:
         else:
             return {"error": "bridge unavailable: rust binary missing or bridge mode invalid"}
 
-        bridge_burn = fee * self.config.burn_rate
         if hasattr(self.db, "debit_and_create_bridge_lock"):
             self.db.debit_and_create_bridge_lock(
                 from_addr=from_addr,
@@ -233,11 +261,25 @@ class RustBridge:
                 to_addr=to_addr,
                 net_amount=net_amount,
                 tx_hash=tx_hash,
+                amount_satoshi=amount_sats,
+                burn_satoshi=burn_sats,
+                net_amount_satoshi=net_sats,
             )
         else:
-            self.db.update_balance(from_addr, -amount)
-            self.db.update_balance(self.config.burn_address, bridge_burn)
-            self.db.save_bridge_lock(from_addr, to_chain, to_addr, net_amount, tx_hash)
+            from runtime.amount import apply_store_delta_satoshi
+
+            if not apply_store_delta_satoshi(
+                self.db, from_addr, -amount_sats, allow_float_fallback=False
+            ):
+                return {"error": "satoshi_store_required"}
+            if burn_sats:
+                apply_store_delta_satoshi(
+                    self.db, self.config.burn_address, burn_sats, allow_float_fallback=False
+                )
+            self.db.save_bridge_lock(
+                from_addr, to_chain, to_addr, net_amount, tx_hash,
+                amount_satoshi=net_sats,
+            )
 
         if l1_tx_hash:
             self._enqueue_l1_outbound(tx_hash, l1_tx_hash, to_chain)
@@ -249,6 +291,7 @@ class RustBridge:
                 "to_chain": to_chain,
                 "to_addr": to_addr,
                 "amount": net_amount,
+                "amount_satoshi": net_sats,
                 "fee": fee,
             })
 
@@ -258,8 +301,10 @@ class RustBridge:
             "to_chain": to_chain,
             "to_addr": to_addr,
             "amount": amount,
+            "amount_satoshi": amount_sats,
             "fee": fee,
             "net_amount": net_amount,
+            "net_amount_satoshi": net_sats,
             "status": "pending",
             "l1_queued": bool(l1_tx_hash),
         }
@@ -290,11 +335,18 @@ class RustBridge:
         amount: float,
         from_chain: str,
         tx_id: str = "",
+        *,
+        amount_satoshi: int | None = None,
     ) -> None:
         """Append incoming L1 proof watch entry for bridge relayer."""
         from bridge.l1_rpc import load_l1_queue, save_l1_queue
+        from runtime.amount import resolve_amount_satoshi
 
-        if not l1_tx_hash or not recipient or amount <= 0:
+        try:
+            amt_sat, amt_abs = resolve_amount_satoshi(amount, amount_satoshi)
+        except ValueError:
+            return
+        if not l1_tx_hash or not recipient or amt_sat <= 0:
             return
         path = getattr(self.config, "bridge_l1_queue_path", "data/bridge_l1_queue.json")
         queue = load_l1_queue(path)
@@ -304,7 +356,8 @@ class RustBridge:
             "tx_hash": l1_tx_hash,
             "tx_id": tx_id or l1_tx_hash,
             "recipient": recipient,
-            "amount": float(amount),
+            "amount": amt_abs,
+            "amount_satoshi": amt_sat,
             "from_chain": self._normalize_chain(from_chain),
             "queued_at": int(time.time()),
         }
@@ -321,13 +374,22 @@ class RustBridge:
     def confirm_incoming(self, tx_hash: str, recipient: str,
                          amount: float, from_chain: str,
                          l1_tx_hash: str = "",
-                         log_index: int = 0) -> Dict:
+                         log_index: int = 0,
+                         *,
+                         amount_satoshi: int | None = None) -> Dict:
         """
         Подтверждает входящий перевод с внешней цепи — начисляет ABS получателю.
         Replay key is source-event derived: (from_chain, event_tx, log_index).
+        ``amount_satoshi`` is money authority when set (ADR 0021).
         """
+        from runtime.amount import resolve_amount_satoshi
+
+        try:
+            credit_sats, amount = resolve_amount_satoshi(amount, amount_satoshi)
+        except ValueError as exc:
+            return {"confirmed": False, "error": str(exc) or "amount_satoshi_invalid"}
         event_tx = (l1_tx_hash or tx_hash or "").strip()
-        if not event_tx or not recipient or amount <= 0:
+        if not event_tx or not recipient or credit_sats <= 0:
             return {"confirmed": False, "error": "event_tx, recipient, amount required"}
 
         credit_key = self.db.bridge_credit_key(from_chain, event_tx, int(log_index or 0))
@@ -340,13 +402,19 @@ class RustBridge:
                 "log_index": int(log_index or 0),
                 "recipient": recipient,
                 "amount": amount,
+                "amount_satoshi": credit_sats,
                 "mode": self._mode,
                 "credit_key": credit_key,
             }
 
         if l1_tx_hash:
             self.enqueue_l1_incoming(
-                l1_tx_hash, recipient, amount, from_chain, tx_id=tx_hash
+                l1_tx_hash,
+                recipient,
+                amount,
+                from_chain,
+                tx_id=tx_hash,
+                amount_satoshi=credit_sats,
             )
 
         if self._mode == "rust":
@@ -381,6 +449,7 @@ class RustBridge:
                 amount=amount,
                 log_index=int(log_index or 0),
                 abs_tx_hash=tx_hash,
+                amount_satoshi=credit_sats,
             )
             if claim.get("duplicate"):
                 return {
@@ -391,13 +460,24 @@ class RustBridge:
                     "log_index": int(log_index or 0),
                     "recipient": recipient,
                     "amount": amount,
+                    "amount_satoshi": credit_sats,
                     "mode": self._mode,
                     "credit_key": claim.get("credit_key"),
                 }
         else:
-            self.db.update_balance(recipient, amount)
+            from runtime.amount import apply_store_delta_satoshi
+
+            if not apply_store_delta_satoshi(
+                self.db, recipient, credit_sats, allow_float_fallback=False
+            ):
+                return {"confirmed": False, "error": "satoshi_store_required"}
             self.db.save_bridge_credit(
-                event_tx, recipient, amount, from_chain, log_index=int(log_index or 0)
+                event_tx,
+                recipient,
+                amount,
+                from_chain,
+                log_index=int(log_index or 0),
+                amount_satoshi=credit_sats,
             )
             self.db.confirm_bridge_lock(tx_hash)
 
@@ -411,6 +491,7 @@ class RustBridge:
                 "log_index": int(log_index or 0),
                 "recipient": recipient,
                 "amount": amount,
+                "amount_satoshi": credit_sats,
                 "from_chain": from_chain,
             })
 
@@ -421,6 +502,7 @@ class RustBridge:
             "log_index": int(log_index or 0),
             "recipient": recipient,
             "amount": amount,
+            "amount_satoshi": credit_sats,
             "mode": self._mode,
             "l1_event_bound": bool(
                 getattr(self.config, "bridge_require_l1_event", False)
@@ -465,15 +547,25 @@ class RustBridge:
             "replay_key": "from_chain:event_tx_hash:log_index",
         }
 
-    def estimate_fee(self, to_chain: str, amount: float) -> Dict:
-        fee_rate = self.BRIDGE_FEES.get(to_chain.lower(), 0.01)
-        fee = amount * fee_rate
+    def estimate_fee(
+        self, to_chain: str, amount: float, *, amount_satoshi: int | None = None
+    ) -> Dict:
+        from runtime.amount import from_satoshi_float, resolve_amount_satoshi
+
+        chain = to_chain.lower()
+        amount_sats, amount = resolve_amount_satoshi(amount, amount_satoshi)
+        bps = int(self.BRIDGE_FEE_BPS.get(chain, 100))
+        fee_sats = (amount_sats * bps) // 10_000
+        net_sats = amount_sats - fee_sats
         return {
             "chain": to_chain,
             "amount": amount,
-            "fee": fee,
-            "fee_pct": fee_rate * 100,
-            "net_amount": amount - fee,
+            "amount_satoshi": amount_sats,
+            "fee": float(from_satoshi_float(fee_sats)),
+            "fee_satoshi": fee_sats,
+            "fee_pct": bps / 100.0,
+            "net_amount": float(from_satoshi_float(net_sats)),
+            "net_amount_satoshi": net_sats,
         }
 
     # ── Служебные методы ─────────────────────────────────────────────────────
@@ -486,6 +578,7 @@ class RustBridge:
                 recipient=event.get("recipient", ""),
                 amount=float(event.get("amount", 0)),
                 from_chain=event.get("from_chain", ""),
+                amount_satoshi=event.get("amount_satoshi"),
             )
 
     def confirm_lock(self, tx_hash: str, l1_tx_hash: str = "") -> Dict:

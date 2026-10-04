@@ -1,20 +1,34 @@
 """Crypto Will — blockchain inheritance with SQLite persistence (Wave 41)."""
 
 from crypto import native
-import json
 import threading
 import time
 from typing import Dict, List, Optional
 
 
 class CryptoWill:
-    def __init__(self, will_id: str, owner: str, heir: str, amount: float,
-                 assets: Dict, execution_time: int, witnesses: List[str] = None,
-                 created_at: int = None, status: str = "pending"):
+    def __init__(
+        self,
+        will_id: str,
+        owner: str,
+        heir: str,
+        amount: float,
+        assets: Dict,
+        execution_time: int,
+        witnesses: List[str] = None,
+        created_at: int = None,
+        status: str = "pending",
+        *,
+        amount_satoshi: int | None = None,
+    ):
+        from runtime.amount import resolve_amount_satoshi
+
+        amt_sat, amt_abs = resolve_amount_satoshi(amount, amount_satoshi)
         self.will_id = will_id
         self.owner = owner
         self.heir = heir
-        self.amount = amount
+        self.amount = amt_abs
+        self.amount_satoshi = int(amt_sat)
         self.assets = assets
         self.execution_time = execution_time
         self.created_at = created_at if created_at is not None else int(time.time())
@@ -31,6 +45,7 @@ class CryptoWill:
             "owner": self.owner[:16] + "..." if len(self.owner) > 20 else self.owner,
             "heir": self.heir[:16] + "..." if len(self.heir) > 20 else self.heir,
             "amount": self.amount,
+            "amount_satoshi": int(self.amount_satoshi),
             "assets": self.assets,
             "execution_time": self.execution_time,
             "created_at": self.created_at,
@@ -45,6 +60,7 @@ class CryptoWill:
             "owner": self.owner,
             "heir": self.heir,
             "amount": self.amount,
+            "amount_satoshi": int(self.amount_satoshi),
             "assets": self.assets,
             "execution_time": self.execution_time,
             "created_at": self.created_at,
@@ -73,30 +89,60 @@ class CryptoWillManager:
         print(f"[CryptoWill] Manager initialized ({len(self.wills)} wills, "
               f"persisted={bool(db)})")
 
-    def _balance(self, addr: str) -> float:
+    def _balance_sat(self, addr: str) -> int:
+        from runtime.amount import to_satoshi
+
+        if self.db and hasattr(self.db, "get_balance_satoshi"):
+            return int(self.db.get_balance_satoshi(addr))
         if self.db and hasattr(self.db, "get_balance"):
-            return float(self.db.get_balance(addr))
+            return int(to_satoshi(self.db.get_balance(addr)))
         if self.blockchain and hasattr(self.blockchain, "get_balance"):
-            return float(self.blockchain.get_balance(addr))
-        return 0.0
+            return int(to_satoshi(self.blockchain.get_balance(addr)))
+        return 0
 
-    def _debit(self, addr: str, amount: float) -> bool:
-        if amount <= 0 or self._balance(addr) < amount:
-            return False
-        if self.db and hasattr(self.db, "update_balance"):
-            self.db.update_balance(addr, -amount)
-            return True
-        return False
+    def _balance(self, addr: str) -> float:
+        from runtime.amount import from_satoshi_float
 
-    def _credit(self, addr: str, amount: float) -> bool:
-        if amount <= 0:
+        return float(from_satoshi_float(self._balance_sat(addr)))
+
+    def _debit(
+        self, addr: str, amount: float, *, amount_satoshi: int | None = None
+    ) -> bool:
+        from runtime.amount import (
+            apply_store_delta_satoshi,
+            resolve_amount_satoshi,
+            try_debit_satoshi,
+        )
+
+        try:
+            need, _ = resolve_amount_satoshi(amount, amount_satoshi)
+            try_debit_satoshi(self._balance_sat(addr), debit_satoshi=need)
+        except (TypeError, ValueError):
             return False
-        if self.db and hasattr(self.db, "update_balance"):
-            self.db.update_balance(addr, amount)
+        if need <= 0:
+            return False
+        return bool(
+            apply_store_delta_satoshi(
+                self.db, addr, -need, allow_float_fallback=False
+            )
+        )
+
+    def _credit(
+        self, addr: str, amount: float, *, amount_satoshi: int | None = None
+    ) -> bool:
+        from runtime.amount import apply_store_delta_satoshi, resolve_amount_satoshi
+
+        try:
+            add, _ = resolve_amount_satoshi(amount, amount_satoshi)
+        except (TypeError, ValueError):
+            return False
+        if add <= 0:
+            return False
+        if apply_store_delta_satoshi(
+            self.db, addr, add, allow_float_fallback=False
+        ):
             return True
-        if self.blockchain and hasattr(self.blockchain, "update_balance"):
-            self.blockchain.update_balance(addr, amount)
-            return True
+        # blockchain.update_balance float path refused
         return False
 
     def _load_from_db(self) -> None:
@@ -105,36 +151,60 @@ class CryptoWillManager:
         for row in self.db.get_crypto_wills(limit=500):
             if row.get("status") == "cancelled":
                 continue
-            w = CryptoWill(
-                will_id=row["will_id"],
-                owner=row["owner"],
-                heir=row["heir"],
-                amount=row["amount"],
-                assets=row.get("assets", {}),
-                execution_time=row["execution_time"],
-                witnesses=row.get("witnesses", []),
-                created_at=row.get("created_at"),
-                status=row.get("status", "pending"),
-            )
+            try:
+                w = CryptoWill(
+                    will_id=row["will_id"],
+                    owner=row["owner"],
+                    heir=row["heir"],
+                    amount=row["amount"],
+                    assets=row.get("assets", {}),
+                    execution_time=row["execution_time"],
+                    witnesses=row.get("witnesses", []),
+                    created_at=row.get("created_at"),
+                    status=row.get("status", "pending"),
+                    amount_satoshi=row.get("amount_satoshi"),
+                )
+            except (TypeError, ValueError):
+                continue
             self.wills[w.will_id] = w
 
     def _persist(self, will: CryptoWill) -> None:
         if self.db and hasattr(self.db, "save_crypto_will"):
             self.db.save_crypto_will(will.to_db())
 
-    def create_will(self, owner: str, heir: str, amount: float,
-                    assets: Dict, execution_delay: int,
-                    witnesses: List[str] = None) -> Optional[str]:
+    def create_will(
+        self,
+        owner: str,
+        heir: str,
+        amount: float,
+        assets: Dict,
+        execution_delay: int,
+        witnesses: List[str] = None,
+        *,
+        amount_satoshi: int | None = None,
+    ) -> Optional[str]:
+        from runtime.amount import resolve_amount_satoshi
+
         execution_delay = max(self.MIN_DELAY, min(self.MAX_DELAY, execution_delay))
-        if not self._debit(owner, amount):
+        try:
+            amt_sat, amount = resolve_amount_satoshi(amount, amount_satoshi)
+        except (TypeError, ValueError):
+            return None
+        if not self._debit(owner, amount, amount_satoshi=amt_sat):
             return None
         will_id = native.sha256_hex(
-            f"{owner}{heir}{amount}{time.time()}".encode()
+            f"{owner}{heir}{amt_sat}{time.time()}".encode()
         )[:16]
         execution_time = int(time.time()) + execution_delay
         will = CryptoWill(
-            will_id, owner, heir, amount, assets or {},
-            execution_time, witnesses or [],
+            will_id,
+            owner,
+            heir,
+            amount,
+            assets or {},
+            execution_time,
+            witnesses or [],
+            amount_satoshi=amt_sat,
         )
         with self._lock:
             try:
@@ -142,7 +212,7 @@ class CryptoWillManager:
             except Exception as exc:
                 self._monitor_errors += 1
                 # Fail-closed: refund locked funds if persistence fails.
-                self._credit(owner, amount)
+                self._credit(owner, amount, amount_satoshi=amt_sat)
                 print(f"[CryptoWill] create persist failed, refunded: {exc}")
                 return None
             self.wills[will_id] = will
@@ -170,7 +240,9 @@ class CryptoWillManager:
             w = self.wills.get(will_id)
             if not w or w.owner != owner or w.status != "pending":
                 return False
-            if not self._credit(owner, w.amount):
+            if not self._credit(
+                owner, w.amount, amount_satoshi=int(w.amount_satoshi)
+            ):
                 return False
             w.status = "cancelled"
             del self.wills[will_id]
@@ -197,7 +269,9 @@ class CryptoWillManager:
                 self._monitor_errors += 1
                 print(f"[CryptoWill] execute persist failed: {exc}")
                 return False
-            if not self._credit(w.heir, w.amount):
+            if not self._credit(
+                w.heir, w.amount, amount_satoshi=int(w.amount_satoshi)
+            ):
                 w.status = "pending"
                 try:
                     self._persist(w)
@@ -212,12 +286,22 @@ class CryptoWillManager:
         with self._lock:
             total = len(self.wills)
             pending = sum(1 for w in self.wills.values() if w.status == "pending")
-            total_amount = sum(w.amount for w in self.wills.values() if w.status == "pending")
+            total_amount = sum(
+                w.amount for w in self.wills.values() if w.status == "pending"
+            )
+            locked_sat = sum(
+                int(w.amount_satoshi)
+                for w in self.wills.values()
+                if w.status == "pending"
+            )
         return {
             "total_wills": total,
             "pending_wills": pending,
             "total_locked_amount": total_amount,
+            "total_locked_satoshi": int(locked_sat),
             "persisted": bool(self.db),
+            "execution_bound": bool(self.db),
+            "l1_balance_bound": bool(self.db),
             "min_delay_sec": self.MIN_DELAY,
             "monitor_errors": int(getattr(self, "_monitor_errors", 0) or 0),
             "healthy": int(getattr(self, "_monitor_errors", 0) or 0) == 0,

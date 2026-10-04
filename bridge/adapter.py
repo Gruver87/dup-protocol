@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import logging
+from dataclasses import replace
 from typing import Any, Dict, Optional, Union
 
 from bridge.ports import (
@@ -15,6 +17,8 @@ from bridge.ports import (
 from bridge.state_machine import inbound_status_from_claim
 from bridge.store_adapter import BridgeStoreAdapter
 from bridge.validators import InboundMessageValidator, PassthroughInboundValidator
+
+logger = logging.getLogger("abs.bridge")
 
 
 class LiveL1Rpc:
@@ -29,15 +33,23 @@ class LiveL1Rpc:
         try:
             receipt = _rpc_call(url, "eth_getTransactionReceipt", [tx_hash])
             return dict(receipt) if receipt else None
-        except Exception:
-            return None
+        except Exception as exc:
+            raise RuntimeError(f"L1 receipt fetch failed for {chain}: {exc}") from exc
 
     def get_confirmations(self, chain: str, tx_hash: str) -> int:
         from bridge.l1_rpc import chain_rpc_url, get_tx_confirmations
 
         url = chain_rpc_url(chain)
-        conf = get_tx_confirmations(url, tx_hash) if url else None
-        return int(conf or 0)
+        if not url:
+            raise RuntimeError(f"L1 RPC URL missing for chain={chain}")
+        if not tx_hash:
+            raise RuntimeError("tx_hash required for L1 confirmations")
+        conf = get_tx_confirmations(url, tx_hash)
+        if conf is None:
+            raise RuntimeError(
+                f"L1 confirmations probe failed for {chain}:{tx_hash}"
+            )
+        return int(conf)
 
     def receipt_status_ok(self, receipt: Dict[str, Any]) -> bool:
         from bridge.l1_rpc import _receipt_status_ok
@@ -89,15 +101,43 @@ class RustBridgeAdapter:
     def lock_and_bridge(
         self, from_addr, to_chain, to_addr, amount, **kwargs
     ) -> BridgeOpResult:
+        from runtime.amount import resolve_amount_satoshi
+
+        try:
+            sat, amount = resolve_amount_satoshi(
+                amount, kwargs.get("amount_satoshi")
+            )
+        except ValueError as exc:
+            return BridgeOpResult(
+                ok=False,
+                status="failed",
+                detail={
+                    "error": str(exc) or "amount_satoshi_required",
+                    "reason": str(exc) or "amount_satoshi_required",
+                },
+            )
+        kwargs["amount_satoshi"] = sat
         raw = self._inner.lock_and_bridge(
             from_addr, to_chain, to_addr, amount, **kwargs
         )
         return self._wrap_lock(raw)
 
     def confirm_incoming(self, *args, **kwargs) -> BridgeOpResult:
-        envelope = self._coerce_envelope(*args, **kwargs)
+        try:
+            envelope = self._coerce_envelope(*args, **kwargs)
+        except ValueError as exc:
+            return BridgeOpResult(
+                ok=False,
+                status=InboundStatus.REJECTED.value,
+                detail={
+                    "confirmed": False,
+                    "error": str(exc) or "amount_satoshi_required",
+                    "reason": str(exc) or "amount_satoshi_required",
+                },
+            )
         vr = self.validator.validate(envelope)
         if not vr.ok:
+            emit_failed = ""
             if self.bus:
                 try:
                     self.bus.emit(
@@ -109,17 +149,23 @@ class RustBridgeAdapter:
                             "from_chain": envelope.from_chain,
                         },
                     )
-                except Exception:
-                    pass
+                except Exception as exc:
+                    emit_failed = str(exc)
+                    logger.exception(
+                        "bridge.inbound_rejected bus emit failed: %s", exc
+                    )
+            detail = {
+                "confirmed": False,
+                "error": vr.reason,
+                "reason": vr.reason,
+                "replay_key": vr.replay_key,
+            }
+            if emit_failed:
+                detail["event_bus_emit_failed"] = emit_failed
             return BridgeOpResult(
                 ok=False,
                 status=InboundStatus.REJECTED.value,
-                detail={
-                    "confirmed": False,
-                    "error": vr.reason,
-                    "reason": vr.reason,
-                    "replay_key": vr.replay_key,
-                },
+                detail=detail,
             )
 
         abs_tx = envelope.abs_tx_hash or envelope.event_tx_hash
@@ -134,13 +180,20 @@ class RustBridgeAdapter:
             )
             or ""
         ).strip()
-        # Prefer integer satoshi twin; derive ABS float only for legacy inner API.
-        if envelope.amount_satoshi is not None:
-            from runtime.amount import from_satoshi_float
+        # Satoshi is canonical — never credit from float-only authority.
+        if envelope.amount_satoshi is None:
+            return BridgeOpResult(
+                ok=False,
+                status=InboundStatus.REJECTED.value,
+                detail={
+                    "confirmed": False,
+                    "error": "amount_satoshi_required",
+                    "reason": "amount_satoshi_required",
+                },
+            )
+        from runtime.amount import from_satoshi_float
 
-            amount_abs = float(from_satoshi_float(int(envelope.amount_satoshi)))
-        else:
-            amount_abs = float(envelope.amount)
+        amount_abs = float(from_satoshi_float(int(envelope.amount_satoshi)))
         raw = self._inner.confirm_incoming(
             abs_tx,
             envelope.to_addr,
@@ -148,6 +201,7 @@ class RustBridgeAdapter:
             envelope.from_chain,
             l1_tx_hash=l1_tx,
             log_index=int(envelope.log_index or 0),
+            amount_satoshi=int(envelope.amount_satoshi),
         )
         return self._wrap_inbound(raw)
 
@@ -181,12 +235,29 @@ class RustBridgeAdapter:
 
     @staticmethod
     def _coerce_envelope(*args, **kwargs) -> InboundEnvelope:
+        from runtime.amount import from_satoshi_float, to_satoshi
+
         if args and isinstance(args[0], InboundEnvelope):
-            return args[0]
+            env = args[0]
+            if env.amount_satoshi is not None:
+                return env
+            try:
+                sat = int(to_satoshi(env.amount))
+            except (TypeError, ValueError) as exc:
+                raise ValueError("amount_satoshi_required") from exc
+            return replace(
+                env,
+                amount_satoshi=sat,
+                amount=float(from_satoshi_float(sat)),
+            )
         # Legacy: confirm_incoming(tx_hash, recipient, amount, from_chain, ...)
         tx_hash = str(args[0] if len(args) > 0 else kwargs.get("tx_hash", "") or "")
         recipient = str(args[1] if len(args) > 1 else kwargs.get("recipient", "") or "")
-        amount = float(args[2] if len(args) > 2 else kwargs.get("amount", 0) or 0)
+        amount_raw = args[2] if len(args) > 2 else kwargs.get("amount", 0)
+        try:
+            amount = float(amount_raw or 0)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("amount_satoshi_required") from exc
         from_chain = str(
             args[3] if len(args) > 3 else kwargs.get("from_chain", "ethereum") or "ethereum"
         )
@@ -197,18 +268,14 @@ class RustBridgeAdapter:
         if l1_tx:
             meta.setdefault("l1_tx_hash", l1_tx)
         amount_satoshi = kwargs.get("amount_satoshi")
-        if amount_satoshi is None and amount:
-            try:
-                from runtime.amount import to_satoshi
-
+        try:
+            if amount_satoshi is not None:
+                amount_satoshi = int(amount_satoshi)
+            else:
                 amount_satoshi = int(to_satoshi(amount))
-            except (TypeError, ValueError):
-                amount_satoshi = None
-        else:
-            try:
-                amount_satoshi = int(amount_satoshi) if amount_satoshi is not None else None
-            except (TypeError, ValueError):
-                amount_satoshi = None
+        except (TypeError, ValueError) as exc:
+            raise ValueError("amount_satoshi_required") from exc
+        amount = float(from_satoshi_float(int(amount_satoshi)))
         return InboundEnvelope(
             from_chain=from_chain,
             to_addr=recipient,
