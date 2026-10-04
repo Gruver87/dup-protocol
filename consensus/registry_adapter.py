@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, List, Optional, Sequence
 
 from consensus.bft.types import (
@@ -9,6 +10,8 @@ from consensus.bft.types import (
     ValidatorInfo,
     ValidatorSetSnapshot,
 )
+
+logger = logging.getLogger("abs.consensus")
 
 
 class AdapterValidatorRegistry:
@@ -42,19 +45,33 @@ class AdapterValidatorRegistry:
         reason: str,
         evidence: Optional[ConsensusSecurityEvidence] = None,
     ) -> None:
+        """Persist slash fail-closed. Evidence emission is the caller's job.
+
+        Both adapter and registry paths must succeed or raise — no best-effort
+        silent miss that leaves an active validator after ConsensusMaliciousError.
+        """
         vid = str(validator_id or "").strip()
         if not vid:
             return
+        errors: list[str] = []
         try:
             self._adapter.slash_validator(vid)
-        except Exception:
-            # Best-effort; Round SM already emitted Evidence.
-            reg = getattr(self._adapter, "validator_registry", None)
-            if reg is not None and hasattr(reg, "slash_validator"):
-                try:
-                    reg.slash_validator(vid)
-                except Exception:
-                    pass
+            return
+        except Exception as exc:
+            errors.append(f"adapter:{exc}")
+            logger.warning("slash_validator via adapter failed: %s", exc)
+        reg = getattr(self._adapter, "validator_registry", None)
+        if reg is not None and hasattr(reg, "slash_validator"):
+            try:
+                reg.slash_validator(vid)
+                return
+            except Exception as exc2:
+                errors.append(f"registry:{exc2}")
+                logger.warning("slash_validator via registry failed: %s", exc2)
+        raise RuntimeError(
+            f"mark_slashed failed for {vid!r} reason={reason!r}: "
+            + ("; ".join(errors) if errors else "no slash backend")
+        )
 
     def snapshot(self) -> ValidatorSetSnapshot:
         return ValidatorSetSnapshot(validators=tuple(self._iter_infos()))

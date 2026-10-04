@@ -1103,6 +1103,7 @@ _PUBLIC_API_ROUTES = [
     {"method": "GET", "path": "/sync/status", "summary": "Chain sync status"},
     {"method": "GET", "path": "/features", "summary": "Feature flags and module availability"},
     {"method": "GET", "path": "/evm/supported-opcodes", "summary": "EVM opcode support matrix"},
+    {"method": "GET", "path": "/evm/status", "summary": "EVM compat honesty snapshot (not full geth)"},
     {"method": "GET", "path": "/consensus/attestations", "summary": "Latest validator attestations (LMD)"},
     {"method": "GET", "path": "/consensus/attestations/by-block", "summary": "Attestation votes aggregated per block"},
     {"method": "GET", "path": "/bridge", "summary": "Bridge overview"},
@@ -3250,6 +3251,22 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._json(supported_opcodes_summary())
                 except Exception as e:
                     self._json({"error": str(e)})
+
+            elif path == "/evm/status":
+                try:
+                    from execution.evm_runtime import evm_compat_honesty_snapshot
+
+                    cfg = self.__class__.config
+                    snap = evm_compat_honesty_snapshot(cfg)
+                    try:
+                        from execution.evm_bytecode_validator import supported_opcodes_summary
+
+                        snap["opcodes"] = supported_opcodes_summary()
+                    except Exception as exc:
+                        snap["opcodes_error"] = str(exc)
+                    self._json(snap)
+                except Exception as e:
+                    self._json({"evm_enabled": False, "error": str(e)})
 
             elif path == "/evm/logs" or path.startswith("/evm/logs/"):
                 db = self.__class__.db
