@@ -3118,6 +3118,12 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("native must expose pack_tx_row_value (v1.3.148)")
         if "tx_blob_to_value" not in tx_row_rs:
             errors.append("native must dual-decode tx blobs (v1.3.148)")
+        if "TX_ROW_VERSION: u8 = 2" not in tx_row_rs:
+            errors.append("ATXV tx_row must pack satoshi money as version 2")
+        if "TX_ROW_VERSION_V1" not in tx_row_rs:
+            errors.append("ATXV tx_row must dual-read v1 blobs")
+        if "FLAG_GAS_USED_UNOBSERVED" not in tx_row_rs:
+            errors.append("ATXV tx_row must not invent unobserved gas_used")
         if "_pack_tx_blob" not in rocks_py:
             errors.append("rocks_store must pack ATXV tx rows (v1.3.148)")
         if "_loads_tx_blob_or_none" not in rocks_py:
