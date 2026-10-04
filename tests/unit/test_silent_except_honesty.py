@@ -176,12 +176,44 @@ def test_state_root_status_peer_probe_error_surface():
     assert "sync_state probe failed" in Path("main.py").read_text(encoding="utf-8")
 
 
+def test_local_needs_genesis_store_error_empty_tip_fail_closed(caplog):
+    """Empty tip + store error must still request genesis, not skip as 'have chain'."""
+    import logging
+
+    class _BoomStore:
+        def get_height(self):
+            return 0
+
+        def get_last_block(self):
+            raise RuntimeError("store down")
+
+    eng = SyncEngine(SimpleNamespace(blockchain=_BoomStore()))
+    with caplog.at_level(logging.WARNING, logger="Sync.Engine"):
+        assert eng._local_needs_genesis() is True
+    assert "get_last_block failed in _local_needs_genesis" in caplog.text
+
+
+def test_local_needs_genesis_store_error_nonempty_does_not_force_genesis():
+    """Non-empty height must not force genesis import over an existing chain."""
+
+    class _BoomStore:
+        def get_height(self):
+            return 100
+
+        def get_last_block(self):
+            raise RuntimeError("store down")
+
+    eng = SyncEngine(SimpleNamespace(blockchain=_BoomStore()))
+    assert eng._local_needs_genesis() is False
+
+
 def test_shared_sync_engine_and_unsolicited_state_root_honesty():
     from pathlib import Path
 
     main_py = Path("main.py").read_text(encoding="utf-8")
     assert "p2p.sync_engine = self.sync_engine" in main_py
     assert "shared with P2P" in main_py
+    assert "ai_validator.update_performance" not in main_py
     p2p_py = Path("network/p2p_node.py").read_text(encoding="utf-8")
     solicit_py = Path("sync/solicit.py").read_text(encoding="utf-8")
     # ADR 0003: solicit-only strike lives in SyncSolicitHub (evacuated from p2p).

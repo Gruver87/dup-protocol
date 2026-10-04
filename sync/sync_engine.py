@@ -7,7 +7,10 @@ Sync Engine — fast catch-up for late-joining nodes
 """
 
 from typing import List, Dict, Optional, Any
+import logging
 import time
+
+logger = logging.getLogger("Sync.Engine")
 
 from crypto import native
 from sync.consistency import (
@@ -196,8 +199,12 @@ class SyncEngine:
         try:
             if hasattr(bc, "get_last_block"):
                 return bc.get_last_block() is None
-        except Exception:
-            return False
+        except Exception as exc:
+            logger.warning("get_last_block failed in _local_needs_genesis: %s", exc)
+            try:
+                return int(self._local_height() or 0) <= 0
+            except Exception:
+                return True
         return False
 
     def download_chain(self, head: str, stop_at_height: Optional[int] = None) -> List[Dict]:

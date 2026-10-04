@@ -5904,8 +5904,12 @@ class P2PNode:
             try:
                 if get_last() is None:
                     return None
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "[P2P] get_last_block failed in state_root_response; refuse: %s",
+                    exc,
+                )
+                return None
         if height == tip:
             return {
                 "height": tip,

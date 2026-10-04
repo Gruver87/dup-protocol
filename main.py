@@ -2306,9 +2306,8 @@ class NodeOrchestrator:
             if self.validator_selection:
                 self.validator_selection.update_seed(block.hash)
 
-            # AI Validator: обновляем performance proposer'а
-            if self.ai_validator:
-                self.ai_validator.update_performance(proposer, success=True)
+            # AI Validator sim is lab-only — never feed forge proposers into it.
+            # (Was update_performance(proposer) here; removed for honesty.)
 
             # ImmutableState: mirror DB satoshi after L1 apply (fees/rewards/burns)
             if self.immutable_state:

@@ -690,6 +690,28 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("MEV simulate_frontrun must not invent gas_used=21000*2")
         if '"simulation_only": True' not in mev_py:
             errors.append("MEV get_statistics must declare simulation_only=true")
+        if 'path == "/mev/history"' in http_py:
+            hist_chunk = http_py.split('path == "/mev/history"', 1)[1].split(
+                "elif path", 1
+            )[0]
+            if '"simulation_only": True' not in hist_chunk:
+                errors.append("/mev/history must stamp simulation_only=true")
+        if "ai_validator.update_performance" in (
+            ROOT / "main.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append("main forge path must not feed AI validator update_performance")
+        if "get_last_block failed in state_root_response" not in (
+            ROOT / "network" / "p2p_node.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append(
+                "P2P state_root_response must refuse when get_last_block fails"
+            )
+        if "get_last_block failed in _local_needs_genesis" not in (
+            ROOT / "sync" / "sync_engine.py"
+        ).read_text(encoding="utf-8", errors="replace"):
+            errors.append(
+                "SyncEngine._local_needs_genesis must fail-closed on store error"
+            )
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"

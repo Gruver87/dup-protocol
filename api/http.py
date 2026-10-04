@@ -4245,21 +4245,42 @@ class RESTHandler(BaseHTTPRequestHandler):
             elif path == "/mev/stats":
                 mev = self.__class__.mev_simulator
                 if mev:
-                    self._json(mev.get_statistics())
+                    stats = mev.get_statistics()
+                    stats.setdefault("simulation_only", True)
+                    stats.setdefault("consensus_wired", False)
+                    stats.setdefault("executed", False)
+                    self._json(stats)
                 else:
                     from features import probe_optional_module
 
                     probe = probe_optional_module("features.mev_analyzer", "MEVAnalyzer")
-                    self._json({"enabled": False, **probe})
+                    self._json({
+                        "enabled": False,
+                        "simulation_only": True,
+                        "consensus_wired": False,
+                        "executed": False,
+                        **probe,
+                    })
 
             elif path == "/mev/history":
                 mev = self.__class__.mev_simulator
                 limit = int(qs.get("limit", ["50"])[0])
                 if mev and hasattr(mev, "get_history"):
                     hist = mev.get_history(limit)
-                    self._json({"count": len(hist), "history": hist})
+                    self._json({
+                        "count": len(hist),
+                        "history": hist,
+                        "simulation_only": True,
+                        "consensus_wired": False,
+                    })
                 else:
-                    self._json({"count": 0, "history": [], "enabled": False})
+                    self._json({
+                        "count": 0,
+                        "history": [],
+                        "enabled": False,
+                        "simulation_only": True,
+                        "consensus_wired": False,
+                    })
 
             # ── Merkle proofs / Light client SPV ─────────────────────────────
             elif path.startswith("/merkle/root/"):
@@ -5662,6 +5683,9 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if mev and target and hasattr(mev, "simulate_frontrun"):
                     result = mev.simulate_frontrun(target, bot_balance=1000.0)
                     result["dev_only"] = True
+                    result["simulation_only"] = True
+                    result["consensus_wired"] = False
+                    result["executed"] = False
                     result["tx_hash"] = tx_hash
                     self._json(result)
                 else:
@@ -5669,6 +5693,9 @@ class RESTHandler(BaseHTTPRequestHandler):
                         "success": False,
                         "feasible": False,
                         "dev_only": True,
+                        "simulation_only": True,
+                        "consensus_wired": False,
+                        "executed": False,
                         "enabled": bool(mev),
                         "error": "tx not in mempool" if tx_hash else "tx_hash required",
                     })
@@ -8828,12 +8855,18 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if mev and target and hasattr(mev, "simulate_frontrun"):
                     result = mev.simulate_frontrun(target, bot_balance=1000.0)
                     result["dev_only"] = True
+                    result["simulation_only"] = True
+                    result["consensus_wired"] = False
+                    result["executed"] = False
                     self._json(result)
                 else:
                     self._json({
                         "success": False,
                         "feasible": False,
                         "dev_only": True,
+                        "simulation_only": True,
+                        "consensus_wired": False,
+                        "executed": False,
                         "enabled": bool(mev),
                         "error": "transaction or tx_hash required",
                     })
