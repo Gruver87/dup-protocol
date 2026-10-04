@@ -3,15 +3,30 @@
 """
 Управление блокировками пулов токеномики (ecosystem, treasury, staking).
 Реальное enforcement в validate_transaction / _apply_transaction.
+
+Pool totals/spent/released tracked in integer satoshi; ABS float is display.
 """
 
 from typing import Dict, Tuple, Any, Optional
 
+from runtime.amount import from_satoshi_float, money_abs, to_satoshi
 from runtime.tokenomics import build_allocations, MAX_SUPPLY_ABS
 
 POOL_META_KEY = "pool_locks_state"
 STAKING_RELEASE_EPOCHS = 100   # 100 эпох × 32 блока = полная разблокировка staking
 DAO_VOTE_THRESHOLD = 0.51        # 51% валидаторов для unlock ecosystem/treasury
+
+
+def _sat_field(info: dict, sat_key: str, abs_key: str) -> int:
+    if info.get(sat_key) is not None:
+        return max(0, int(info[sat_key]))
+    return max(0, int(to_satoshi(info.get(abs_key) or 0)))
+
+
+def _set_sat_pair(info: dict, sat_key: str, abs_key: str, sat: int) -> None:
+    sat = max(0, int(sat))
+    info[sat_key] = sat
+    info[abs_key] = from_satoshi_float(sat)
 
 
 class PoolLockManager:
@@ -31,13 +46,17 @@ class PoolLockManager:
         for pool in build_allocations(self.founder_address or None):
             if pool.id not in ("ecosystem", "treasury", "staking"):
                 continue
+            total_sat = int(to_satoshi(pool.amount_abs))
             pools[pool.address_key] = {
                 "id": pool.id,
                 "name": pool.name,
                 "locked": pool.locked,
-                "total": float(pool.amount_abs),
+                "total": from_satoshi_float(total_sat),
+                "total_satoshi": total_sat,
                 "released": 0.0,
+                "released_satoshi": 0,
                 "spent": 0.0,
+                "spent_satoshi": 0,
                 "dao_unlocked": False,
                 "dao_votes": {},
             }
@@ -59,28 +78,54 @@ class PoolLockManager:
     def is_system_pool(self, address: str) -> bool:
         return address in self.get_locked_addresses()
 
-    def spendable_balance(self, address: str, db_balance: float) -> float:
-        """Сколько ABS можно потратить с системного пула."""
+    def spendable_balance_sat(self, address: str, db_balance_sat: int = 0) -> int:
+        """Spendable pool balance in integer satoshi."""
         pools = self.get_locked_addresses()
         if address not in pools:
-            return db_balance
+            return max(0, int(db_balance_sat))
         info = pools[address]
         if info["id"] == "staking":
-            return max(0.0, info.get("released", 0.0) - info.get("spent", 0.0))
+            return max(
+                0,
+                _sat_field(info, "released_satoshi", "released")
+                - _sat_field(info, "spent_satoshi", "spent"),
+            )
         if info["id"] in ("ecosystem", "treasury"):
             if not info.get("dao_unlocked"):
-                return 0.0
-            return max(0.0, info["total"] - info.get("spent", 0.0))
-        return db_balance
+                return 0
+            return max(
+                0,
+                _sat_field(info, "total_satoshi", "total")
+                - _sat_field(info, "spent_satoshi", "spent"),
+            )
+        return max(0, int(db_balance_sat))
 
-    def is_outgoing_allowed(self, from_addr: str, amount: float, db_balance: float) -> Tuple[bool, str]:
-        """Проверка перед включением транзакции в блок / мемпул."""
+    def spendable_balance(self, address: str, db_balance: float) -> float:
+        """Сколько ABS можно потратить с системного пула (display float)."""
+        try:
+            db_sat = int(to_satoshi(db_balance))
+        except (TypeError, ValueError):
+            db_sat = 0
+        return from_satoshi_float(self.spendable_balance_sat(address, db_sat))
+
+    def is_outgoing_allowed_sat(
+        self, from_addr: str, amount_sat: int, db_balance_sat: int
+    ) -> Tuple[bool, str]:
+        """Satoshi admit gate before mempool/block include."""
         pools = self.get_locked_addresses()
         if from_addr not in pools:
             return True, "ok"
-        spendable = self.spendable_balance(from_addr, db_balance)
-        if amount > spendable + 1e-9:
+        try:
+            need = int(amount_sat)
+            db_sat = int(db_balance_sat)
+        except (TypeError, ValueError):
+            return False, "pool_amount_unparseable"
+        if need < 0 or db_sat < 0:
+            return False, "pool_amount_unparseable"
+        spendable_sat = self.spendable_balance_sat(from_addr, db_sat)
+        if need > spendable_sat:
             info = pools[from_addr]
+            spendable = from_satoshi_float(spendable_sat)
             if info["id"] in ("ecosystem", "treasury") and not info.get("dao_unlocked"):
                 return False, f"{info['id']}_dao_locked: требуется голосование DAO"
             if info["id"] == "staking":
@@ -91,13 +136,31 @@ class PoolLockManager:
             return False, f"pool_locked: spendable={spendable:,.2f}"
         return True, "ok"
 
-    def record_outgoing(self, from_addr: str, amount: float) -> None:
+    def is_outgoing_allowed(self, from_addr: str, amount: float, db_balance: float) -> Tuple[bool, str]:
+        """Display-float wrapper — prefer ``is_outgoing_allowed_sat`` on hot paths."""
+        try:
+            amount_sat = int(to_satoshi(amount))
+            db_sat = int(to_satoshi(db_balance))
+        except (TypeError, ValueError):
+            return False, "pool_amount_unparseable"
+        return self.is_outgoing_allowed_sat(from_addr, amount_sat, db_sat)
+
+    def record_outgoing_sat(self, from_addr: str, amount_sat: int) -> None:
         state = self._state()
         pools = state.get("pools", {})
         if from_addr not in pools:
             return
-        pools[from_addr]["spent"] = pools[from_addr].get("spent", 0.0) + float(amount)
+        info = pools[from_addr]
+        add_sat = int(amount_sat)
+        if add_sat < 0:
+            raise ValueError("value_negative")
+        spent_sat = _sat_field(info, "spent_satoshi", "spent") + add_sat
+        _set_sat_pair(info, "spent_satoshi", "spent", spent_sat)
         self._save(state)
+
+    def record_outgoing(self, from_addr: str, amount: float) -> None:
+        add_sat = int(to_satoshi(money_abs(amount, field="amount")))
+        self.record_outgoing_sat(from_addr, add_sat)
 
     def catch_up_epochs(self, current_epoch: int) -> Dict[str, Any]:
         """Догоняет пропущенные эпохи при старте узла (миграция / рестарт)."""
@@ -122,13 +185,18 @@ class PoolLockManager:
 
         if staking_addr in pools:
             info = pools[staking_addr]
-            total = info["total"]
-            per_epoch = total / STAKING_RELEASE_EPOCHS
+            total_sat = _sat_field(info, "total_satoshi", "total")
+            per_epoch_sat = total_sat // STAKING_RELEASE_EPOCHS
             epochs_done = state.get("staking_epochs_released", 0)
             if epochs_done < STAKING_RELEASE_EPOCHS:
-                new_released = min(total, info.get("released", 0.0) + per_epoch)
-                released_now = new_released - info.get("released", 0.0)
-                info["released"] = new_released
+                released_sat = _sat_field(info, "released_satoshi", "released")
+                if epochs_done + 1 >= STAKING_RELEASE_EPOCHS:
+                    new_released_sat = total_sat
+                else:
+                    new_released_sat = min(total_sat, released_sat + per_epoch_sat)
+                released_now_sat = new_released_sat - released_sat
+                _set_sat_pair(info, "released_satoshi", "released", new_released_sat)
+                released_now = from_satoshi_float(released_now_sat)
                 state["staking_epochs_released"] = epochs_done + 1
 
         state["last_epoch"] = epoch
@@ -202,16 +270,23 @@ class PoolLockManager:
         pools = state.get("pools", {})
         result = []
         for addr, info in pools.items():
-            spendable = self.spendable_balance(addr, info["total"])
+            spendable_sat = self.spendable_balance_sat(
+                addr, _sat_field(info, "total_satoshi", "total")
+            )
+            spendable = from_satoshi_float(spendable_sat)
             result.append({
                 "address": addr,
                 "id": info["id"],
                 "name": info["name"],
-                "total": info["total"],
+                "total": info.get("total", from_satoshi_float(_sat_field(info, "total_satoshi", "total"))),
+                "total_satoshi": _sat_field(info, "total_satoshi", "total"),
                 "released": info.get("released", 0.0),
+                "released_satoshi": _sat_field(info, "released_satoshi", "released"),
                 "spent": info.get("spent", 0.0),
+                "spent_satoshi": _sat_field(info, "spent_satoshi", "spent"),
                 "spendable": spendable,
-                "locked": info.get("locked", True) and spendable <= 0,
+                "spendable_satoshi": spendable_sat,
+                "locked": info.get("locked", True) and spendable_sat <= 0,
                 "dao_unlocked": info.get("dao_unlocked", False),
                 "dao_votes": len(info.get("dao_votes", {})),
             })

@@ -194,6 +194,47 @@ _AI_AGENT_HONESTY = (
 )
 
 
+
+def _http_engine_result(result: Any, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """JSON for engine ops. Never bool(arbitrary object).
+
+    Only True/False/None, dict, or an object with a bool ``success`` flag are
+    accepted. A truthy slash-evidence object must not paint ``success: true``.
+    """
+    extra = dict(extra or {})
+    if isinstance(result, dict):
+        out = dict(result)
+        for key, value in extra.items():
+            out.setdefault(key, value)
+        return out
+    if result is True:
+        out = {"success": True}
+        out.update(extra)
+        return out
+    if result is False:
+        out = {"success": False}
+        out.update(extra)
+        return out
+    if result is None:
+        out = {"success": False, "error": "engine_returned_none"}
+        out.update(extra)
+        return out
+    flagged = getattr(result, "success", None)
+    if flagged is True or flagged is False:
+        out = {"success": flagged}
+        err = getattr(result, "error", None)
+        if err:
+            out["error"] = str(err)
+        out.update(extra)
+        return out
+    logger.warning(
+        "HTTP engine result is not boolean/dict: %s", type(result).__name__
+    )
+    out = {"success": False, "error": "engine_result_not_boolean"}
+    out.update(extra)
+    return out
+
+
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Thread-per-request server with a hard concurrent-request cap (audit section 14)."""
 
@@ -2713,13 +2754,20 @@ class RESTHandler(BaseHTTPRequestHandler):
                             "transactions": txs,
                         })
                     else:
-                        balance = bc.get_balance(addr)
+                        from runtime.amount import from_satoshi_float
+
+                        if hasattr(bc, "get_balance_satoshi"):
+                            balance_sat = int(bc.get_balance_satoshi(addr) or 0)
+                        else:
+                            balance_sat = int(to_satoshi(bc.get_balance(addr) or 0))
+                        balance = float(from_satoshi_float(balance_sat))
                         nonce = db.get_nonce(addr)
                         txs = db.get_transactions_by_address(addr, limit=50)
                         account = db.get_account(addr)
                         self._json({
                             "address": addr,
                             "balance": balance,
+                            "balance_satoshi": balance_sat,
                             "balance_formatted": f"{balance:.6f} {cfg.coin_symbol}",
                             "nonce": nonce,
                             "is_contract": bool(account and account.get("code")),
@@ -7212,7 +7260,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 validator = body.get("validator", "")
                 if hasattr(fe, "add_attestation"):
                     ok = fe.add_attestation(source, target, validator)
-                    self._json({"success": bool(ok)})
+                    self._json({"success": ok is True})
                 else:
                     self._json({"success": False, "error": "not supported"})
 
@@ -7236,29 +7284,44 @@ class RESTHandler(BaseHTTPRequestHandler):
 
             # ── Devnet faucet (ABS credit for testing) ───────────────────────
             elif path == "/devnet/faucet":
+                from runtime.amount import (
+                    apply_store_delta_satoshi,
+                    from_satoshi_float,
+                    to_satoshi,
+                )
+
                 if getattr(cfg, "deployment_mode", "dev") == "prod":
                     self._error(403, "faucet disabled in production"); return
                 db = self.__class__.db
                 if not db:
                     self._error(503, "database unavailable"); return
                 address = (body.get("address", "") or "").strip()
+                if not address:
+                    self._error(400, "address required"); return
                 try:
                     amount, amount_sat = _http_amount_abs(body, cfg, field="amount")
                 except ValueError as exc:
-                    self._error(400, str(exc))
-                    return
-                if not address:
-                    self._error(400, "address required"); return
-                if amount > 1000:
+                    self._error(400, str(exc)); return
+                if amount > 1000 or amount_sat > int(to_satoshi(1000)):
                     self._error(400, "amount must be 0 < amount <= 1000"); return
-                db.update_balance(address, amount)
+                if not apply_store_delta_satoshi(
+                    db, address, amount_sat, allow_float_fallback=False
+                ):
+                    self._error(503, "satoshi_store_required"); return
+                bal_sat = (
+                    int(db.get_balance_satoshi(address) or 0)
+                    if hasattr(db, "get_balance_satoshi")
+                    else int(to_satoshi(db.get_balance(address) or 0))
+                )
                 self._json({
                     "success": True,
                     "address": address,
-                    "credited": amount,
-                    "amount_satoshi": int(amount_sat),
-                    "balance": db.get_balance(address),
+                    "credited": float(from_satoshi_float(amount_sat)),
+                    "credited_satoshi": amount_sat,
+                    "balance": float(from_satoshi_float(bal_sat)),
+                    "balance_satoshi": bal_sat,
                 })
+                return
 
             elif path == "/devnet/pool-spend":
                 if getattr(cfg, "deployment_mode", "dev") == "prod":
@@ -7582,7 +7645,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 guardian = body.get("guardian_address", "")
                 if hasattr(sa, "add_guardian"):
                     result = sa.add_guardian(account_address, guardian)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "not supported"})
 
@@ -7594,7 +7657,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 key = body.get("session_key", "")
                 if hasattr(sa, "revoke_session_key"):
                     result = sa.revoke_session_key(account_address, key)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "not supported"})
 
@@ -7608,7 +7671,14 @@ class RESTHandler(BaseHTTPRequestHandler):
                 epoch = int(body.get("epoch", 0))
                 if hasattr(se, "record_vote"):
                     result = se.record_vote(validator, epoch, block_hash)
-                    self._json({"success": True, "slashed": bool(result) if result else False})
+                    if result is True:
+                        self._json({"success": True, "slashed": False})
+                    elif result is False:
+                        self._json({"success": False, "slashed": True})
+                    else:
+                        self._json(
+                            _http_engine_result(result, extra={"slashed": False})
+                        )
                 else:
                     self._json({"success": False, "error": "record_vote not available"})
 
@@ -7617,15 +7687,27 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if not se:
                     self._error(503, "SlashingEngine not enabled"); return
                 validator = body.get("validator_address", body.get("validator", ""))
-                stake = float(body.get("stake", 32.0))
                 if not validator:
                     self._error(400, "validator_address required"); return
+                try:
+                    stake, stake_sat = _http_stake_abs(body, cfg)
+                except ValueError as exc:
+                    self._error(400, str(exc)); return
                 if hasattr(se, "register_validator"):
-                    se.register_validator(validator, stake)
-                    self._json({"success": True, "validator": validator, "stake": stake})
+                    se.register_validator(validator, int(stake_sat))
+                    self._json({
+                        "success": True,
+                        "validator": validator,
+                        "stake": stake,
+                        "stake_satoshi": int(stake_sat),
+                    })
                 elif hasattr(se, "add_validator"):
-                    se.add_validator(validator, stake)
-                    self._json({"success": True, "validator": validator})
+                    se.add_validator(validator, int(stake_sat))
+                    self._json({
+                        "success": True,
+                        "validator": validator,
+                        "stake_satoshi": int(stake_sat),
+                    })
                 else:
                     self._json({"success": False, "error": "add_validator not available"})
 
@@ -7676,7 +7758,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 target = body.get("target", 0)
                 if hasattr(bf, "add_vote"):
                     result = bf.add_vote(validator, source, target)
-                    self._json({"success": bool(result), "validator": validator})
+                    self._json(_http_engine_result(result, extra={"validator": validator}))
                 else:
                     self._json({"success": False, "error": "add_vote not available"})
 
@@ -7743,7 +7825,11 @@ class RESTHandler(BaseHTTPRequestHandler):
                 checkpoint_id = body.get("checkpoint_id", "")
                 if hasattr(fe, "finalize_checkpoint"):
                     result = fe.finalize_checkpoint(checkpoint_id)
-                    self._json({"success": bool(result), "checkpoint_id": checkpoint_id})
+                    self._json(
+                        _http_engine_result(
+                            result, extra={"checkpoint_id": checkpoint_id}
+                        )
+                    )
                 else:
                     self._json({"success": False, "error": "finalize_checkpoint not available"})
 
@@ -7950,7 +8036,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 tx = body.get("transaction", body)
                 if hasattr(sh, "add_transaction"):
                     result = sh.add_transaction(tx)
-                    self._json(result if isinstance(result, dict) else {"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "add_transaction not available"})
 
@@ -8042,7 +8128,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 new_owner = body.get("new_owner", "")
                 if hasattr(sa, "request_recovery"):
                     result = sa.request_recovery(account_address, new_owner)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "request_recovery not available"})
 
@@ -8054,7 +8140,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 guardian = body.get("guardian_address", "")
                 if hasattr(sa, "approve_recovery"):
                     result = sa.approve_recovery(account_address, guardian)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "approve_recovery not available"})
 
@@ -8065,7 +8151,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 account_address = body.get("account_address", "")
                 if hasattr(sa, "execute_recovery"):
                     result = sa.execute_recovery(account_address)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "execute_recovery not available"})
 
@@ -8078,7 +8164,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 guardian_address = body.get("guardian_address", "")
                 if hasattr(sa, "remove_guardian"):
                     result = sa.remove_guardian(account_address, guardian_address)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "remove_guardian not available"})
 
@@ -8090,7 +8176,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 guardian_address = body.get("guardian_address", "")
                 if hasattr(sa, "approve_guardian"):
                     result = sa.approve_guardian(account_address, guardian_address)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "approve_guardian not available"})
 
@@ -8102,7 +8188,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 provider = body.get("provider", "")
                 if hasattr(sa, "unlink_social_account"):
                     result = sa.unlink_social_account(account_address, provider)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "unlink_social_account not available"})
 
@@ -8115,7 +8201,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(400, "account_address required"); return
                 if hasattr(sa, "delete_account"):
                     result = sa.delete_account(account_address)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 elif hasattr(sa, "accounts") and account_address in sa.accounts:
                     del sa.accounts[account_address]
                     self._json({"success": True, "deleted": account_address})
@@ -8145,7 +8231,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 shard_id = int(body.get("shard_id", 0))
                 if hasattr(sh, "register_node"):
                     ok = sh.register_node(node_id, shard_id)
-                    self._json({"success": bool(ok), "node_id": node_id, "shard_id": shard_id})
+                    self._json({"success": ok is True, "node_id": node_id, "shard_id": shard_id})
                 else:
                     self._json({"success": False, "error": "register_node not available"})
 
@@ -8157,7 +8243,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 miner = body.get("miner", "")
                 if hasattr(sh, "mine_shard_block"):
                     result = sh.mine_shard_block(shard_id, miner)
-                    self._json(result if isinstance(result, dict) else {"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "mine_shard_block not available"})
 
@@ -8216,10 +8302,18 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(400, "owner_address required"); return
                 if hasattr(sa, "register_account"):
                     result = sa.register_account(owner)
-                    self._json(result if isinstance(result, dict) else {"success": bool(result), "owner": owner})
+                    if isinstance(result, str) and result.strip():
+                        self._json(
+                            {"success": True, "owner": owner, "address": result}
+                        )
+                    else:
+                        self._json(_http_engine_result(result, extra={"owner": owner}))
                 elif hasattr(sa, "create_account"):
                     result = sa.create_account(owner, body.get("auth_method","basic"))
-                    self._json(result if isinstance(result, dict) else {"success": bool(result)})
+                    if isinstance(result, str) and result.strip():
+                        self._json({"success": True, "address": result})
+                    else:
+                        self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "register not available"})
 
@@ -8232,7 +8326,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 credential = body.get("credential", "")
                 if hasattr(sa, "add_auth_method"):
                     result = sa.add_auth_method(account_address, auth_method, credential)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "add_auth_method not available"})
 
@@ -8244,7 +8338,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 auth_method = body.get("auth_method", "")
                 if hasattr(sa, "remove_auth_method"):
                     result = sa.remove_auth_method(account_address, auth_method)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "remove_auth_method not available"})
 
@@ -8256,7 +8350,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 settings = body.get("settings", {})
                 if hasattr(sa, "update_settings"):
                     result = sa.update_settings(account_address, settings)
-                    self._json({"success": bool(result)})
+                    self._json(_http_engine_result(result))
                 else:
                     self._json({"success": False, "error": "update_settings not available"})
 
@@ -9572,15 +9666,13 @@ def _handle_devnet_pool_spend(body: Dict, bc, db, cfg, pool_locks) -> Dict:
 
     pool_id = (body.get("pool_id", body.get("pool", "ecosystem")) or "").strip().lower()
     to_addr = (body.get("to", body.get("recipient", "")) or "").strip()
-    try:
-        amount, amount_sat = _http_amount_abs(body, cfg, field="amount")
-    except ValueError as exc:
-        raise ValueError(str(exc)) from exc
+    amount, amount_sat = _http_amount_abs(body, cfg, field="amount")
     if pool_id not in ("ecosystem", "treasury", "staking"):
         raise ValueError("pool_id must be ecosystem, treasury, or staking")
     if not to_addr:
         raise ValueError("to address required")
 
+    from runtime.amount import apply_store_delta_satoshi, to_satoshi
     from runtime.tokenomics import build_allocations, resolve_founder_address
 
     founder = resolve_founder_address(
@@ -9592,28 +9684,48 @@ def _handle_devnet_pool_spend(body: Dict, bc, db, cfg, pool_locks) -> Dict:
     if not from_addr:
         raise ValueError("pool address not found")
 
-    balance = float(db.get_balance(from_addr))
-    allowed, reason = pool_locks.is_outgoing_allowed(from_addr, amount, balance)
+    amount_sat = int(amount_sat)
+    if hasattr(db, "get_balance_satoshi"):
+        bal_sat = int(db.get_balance_satoshi(from_addr) or 0)
+    else:
+        bal_sat = int(to_satoshi(db.get_balance(from_addr)))
+    allowed, reason = pool_locks.is_outgoing_allowed_sat(
+        from_addr, amount_sat, bal_sat
+    )
     if not allowed:
         raise ValueError(reason)
 
-    db.update_balance(from_addr, -amount)
-    db.update_balance(to_addr, amount)
-    pool_locks.record_outgoing(from_addr, amount)
+    if not (
+        apply_store_delta_satoshi(
+            db, from_addr, -amount_sat, allow_float_fallback=False
+        )
+        and apply_store_delta_satoshi(
+            db, to_addr, amount_sat, allow_float_fallback=False
+        )
+    ):
+        raise ValueError("satoshi_store_required")
+    pool_locks.record_outgoing_sat(from_addr, amount_sat)
 
     tx_hash = native.sha256_hex(
-        f"pool-spend|{from_addr}|{to_addr}|{amount}|{_time.time()}".encode()
+        f"pool-spend|{from_addr}|{to_addr}|{amount_sat}|{_time.time()}".encode()
     )[:16]
     height = bc.get_height() if bc and hasattr(bc, "get_height") else 0
+    # Admin pool-spend is not an EVM transfer — never invent gas=21000.
     db.save_transaction({
         "hash": tx_hash,
         "from_addr": from_addr,
         "to_addr": to_addr,
         "value": amount,
+        "amount_satoshi": amount_sat,
+        "value_satoshi": amount_sat,
         "block_height": height,
         "fee": 0.0,
+        "fee_satoshi": 0,
+        "gas": 1,
+        "gas_used": 0,
         "status": 1,
         "timestamp": int(_time.time()),
+        "data": "devnet_pool_spend_admin",
     })
 
     return {
@@ -9623,10 +9735,11 @@ def _handle_devnet_pool_spend(body: Dict, bc, db, cfg, pool_locks) -> Dict:
         "from": from_addr,
         "to": to_addr,
         "amount": amount,
-        "amount_satoshi": int(amount_sat),
+        "amount_satoshi": amount_sat,
         "pool_balance": db.get_balance(from_addr),
         "recipient_balance": db.get_balance(to_addr),
         "spendable_remaining": pool_locks.spendable_balance(from_addr, db.get_balance(from_addr)),
+        "honesty": "devnet_pool_spend_admin — not EVM forge gas",
     }
 
 

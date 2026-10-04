@@ -1322,6 +1322,8 @@ class RocksChainStore:
         return [self._serialize_tx_row(row, addr) for row in page]
 
     def get_address_activity(self, address: str) -> Dict:
+        from runtime.amount import account_balance_abs, account_satoshi
+
         addr = SqliteDatabase._normalize_address(address)
         sent = self.count_transactions_by_address(addr, "sent")
         received = self.count_transactions_by_address(addr, "received")
@@ -1349,12 +1351,14 @@ class RocksChainStore:
         acct = self._load_account(addr)
         return {
             "address": addr,
-            "balance": float(acct.get("balance", 0.0) or 0.0),
+            "balance": account_balance_abs(acct),
+            "balance_satoshi": account_satoshi(acct),
             "nonce": int(acct.get("nonce", 0) or 0),
             "sent_count": sent,
             "received_count": received,
             "tx_count": total,
             "blocks_proposed": blocks_proposed,
+            "blocks_proposed_known": True,
             "last_tx_height": last_h,
             "is_contract": bool(acct.get("code")),
         }
