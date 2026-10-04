@@ -422,8 +422,8 @@ class RocksChainStore:
                 logger.warning("[RocksDB] flush on close failed: %s", exc)
             try:
                 del eng
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("[RocksDB] native engine drop failed: %s", exc)
             msg = f"[RocksDB] clean close ({self.db_path})"
             logger.info(msg)
             print(msg)
@@ -809,7 +809,11 @@ class RocksChainStore:
                 loaded = json.loads(engine.get_account_rows(json.dumps(addrs)))
                 if isinstance(loaded, dict):
                     rows = {str(k): dict(v) for k, v in loaded.items() if isinstance(v, dict)}
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "[RocksStore] get_account_rows failed, per-account load: %s",
+                    exc,
+                )
                 rows = {}
 
         out: Dict[str, Any] = {}

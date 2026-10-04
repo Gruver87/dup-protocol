@@ -444,6 +444,7 @@ class RoundStateMachine:
             self._registry.mark_slashed(validator_id, reason_code, evidence)
         except Exception:
             logger.exception("[RoundSM] mark_slashed failed")
+            raise
         if is_malicious_reason(reason_code) or reason_code == "consensus_round_spam":
             lock_reason = (
                 "consensus_double_sign"
@@ -453,7 +454,9 @@ class RoundStateMachine:
             try:
                 self._lockdown.request_lockdown(lock_reason)
             except Exception:
+                # Fail-closed: malicious slash without lockdown is not acceptable.
                 logger.exception("[RoundSM] lockdown failed")
+                raise
         self._phase = RoundPhase.LOCKED
         outcome = RoundOutcome.locked(
             reason_code,

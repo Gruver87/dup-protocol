@@ -1762,6 +1762,30 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         )
         if "canonical_balance_satoshi(store, address)" not in qf_py:
             errors.append("QueryFacade.get_balance_satoshi must use canonical_balance_satoshi")
+        bft_svc = (ROOT / "consensus" / "bft" / "service.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "mark_slashed failed" in bft_svc:
+            after = bft_svc.split("mark_slashed failed", 1)[1][:80]
+            if "raise" not in after:
+                errors.append("RoundSM must re-raise after mark_slashed failure")
+        if "lockdown failed" in bft_svc:
+            after_l = bft_svc.split("lockdown failed", 1)[1][:120]
+            if "raise" not in after_l:
+                errors.append("RoundSM must re-raise after lockdown failure")
+        if "if is_prod:" not in http_gate or 'return ""' not in http_gate:
+            # Defense-in-depth: prod must refuse CORS *
+            cors_fn = ""
+            if "def _resolve_cors_allow_origin" in http_gate:
+                cors_fn = http_gate.split("def _resolve_cors_allow_origin", 1)[1].split(
+                    "\ndef ", 1
+                )[0]
+            if "is_prod" not in cors_fn or 'return ""' not in cors_fn:
+                errors.append("prod CORS resolver must refuse wildcard *")
+        if "native engine drop failed" not in rocks_live:
+            errors.append("rocks close must warn on native engine drop failure")
+        if "get_account_rows failed, per-account load" not in rocks_live:
+            errors.append("rocks load_writeback_accounts must warn on get_account_rows failure")
         validators_py = (ROOT / "middleware" / "validators.py").read_text(
             encoding="utf-8", errors="replace"
         )

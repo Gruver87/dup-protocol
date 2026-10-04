@@ -1158,12 +1158,19 @@ def _resolve_cors_allow_origin(config, request_origin: str = "") -> str:
 
     empty cors_origins must not promote to * — omit ACAO via empty string.
     never echo first allowlist entry on miss.
+    production never emits ``*`` even if misconfigured in the list (defense in
+    depth; config.validate already refuses wildcard CORS in prod).
     """
     allowed = list(getattr(config, "cors_origins", None) or [])
     # Do not coerce empty allowlist to ["*"] (prod default is []).
     if not allowed:
         return ""
+    is_prod = bool(getattr(config, "is_production", False)) or (
+        str(getattr(config, "deployment_mode", "") or "").strip().lower() == "prod"
+    )
     if "*" in allowed:
+        if is_prod:
+            return ""
         return "*"
     origin = (request_origin or "").strip()
     if origin and origin in allowed:

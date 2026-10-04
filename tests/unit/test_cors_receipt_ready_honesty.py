@@ -33,6 +33,15 @@ def test_resolve_cors_miss_never_echoes_first_allowlist_entry():
     )
 
 
+def test_resolve_cors_star_refused_in_production():
+    from api import http as http_mod
+
+    cfg = SimpleNamespace(cors_origins=["*"], is_production=True, deployment_mode="prod")
+    assert http_mod._resolve_cors_allow_origin(cfg, "https://evil.example") == ""
+    lab = SimpleNamespace(cors_origins=["*"], is_production=False, deployment_mode="dev")
+    assert http_mod._resolve_cors_allow_origin(lab, "https://lab.example") == "*"
+
+
 def test_send_acao_skips_empty_origin():
     from api import http as http_mod
 
