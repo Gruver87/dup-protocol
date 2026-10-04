@@ -1786,6 +1786,20 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("rocks close must warn on native engine drop failure")
         if "get_account_rows failed, per-account load" not in rocks_live:
             errors.append("rocks load_writeback_accounts must warn on get_account_rows failure")
+        native_py = (ROOT / "crypto" / "native.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "insufficient_writeback_value" not in native_py:
+            errors.append("writeback must refuse underfunded transfer_value (no mint)")
+        if "def _writeback_transfers_covered" not in native_py:
+            errors.append("native must preflight writeback transfers")
+        if "account_blob_to_json failed under require" not in native_py:
+            errors.append("account_blob_to_row must raise under require mode")
+        evm_ad_gate = (ROOT / "execution" / "evm_adapter.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "bridge_pending_writeback_failed" not in evm_ad_gate:
+            errors.append("evm_adapter must fail-closed on pending writeback parse")
         validators_py = (ROOT / "middleware" / "validators.py").read_text(
             encoding="utf-8", errors="replace"
         )

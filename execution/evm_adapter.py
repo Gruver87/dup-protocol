@@ -706,16 +706,21 @@ class EVMAdapter:
                 if raw is not None:
                     try:
                         del bs["pending_writeback_ops"]
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.warning(
+                            "bridge pending_writeback_ops del failed: %s", exc
+                        )
             if not raw:
                 return []
             out: List[Dict[str, Any]] = []
             for item in list(raw):
                 out.append(dict(item))
             return out
-        except Exception:
-            return []
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            logger.warning("bridge pending writeback parse failed: %s", exc)
+            raise RuntimeError("bridge_pending_writeback_failed") from exc
 
     def _writeback_store(self):
         """Rocks/hybrid store exposing commit_writeback_accounts (v1.3.62)."""
