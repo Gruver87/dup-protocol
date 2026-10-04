@@ -3249,6 +3249,18 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append(
                 "config must expose p2p_mempool_min_fee_refuse (v1.3.177)"
             )
+        if "p2p_mempool_require_wire_satoshi" not in p2p_py:
+            errors.append("p2p_node must honor p2p_mempool_require_wire_satoshi")
+        if "amount_satoshi_required" not in p2p_py or "fee_satoshi_required" not in p2p_py:
+            errors.append(
+                "p2p_node must refuse float-only wire (amount/fee_satoshi_required)"
+            )
+        if "value_satoshi_mismatch" not in p2p_py or "fee_satoshi_mismatch" not in p2p_py:
+            errors.append("p2p_node must refuse fee/value satoshi mismatch")
+        if "p2p_mempool_require_wire_satoshi" not in (
+            ROOT / "runtime" / "config.py"
+        ).read_text(encoding="utf-8"):
+            errors.append("config must expose p2p_mempool_require_wire_satoshi")
         if "abs_p2p_native_mempool_min_fee_refuse" not in (
             ROOT / "observability" / "metrics.py"
         ).read_text(encoding="utf-8"):

@@ -110,3 +110,132 @@ def test_send_tx_obj_prod_refuses_float_only():
         assert False, "expected amount_satoshi_required"
     except ValueError as exc:
         assert "amount_satoshi_required" in str(exc)
+
+
+def _p2p_node(*, require_wire_satoshi: bool = True):
+    from unittest.mock import MagicMock
+
+    from network.p2p_node import P2PNode
+    from runtime.config import Config
+
+    cfg = Config()
+    cfg.p2p_native_transport = False
+    cfg.require_native_crypto = False
+    cfg.deployment_mode = "dev"
+    cfg.bootstrap_peers = []
+    cfg.p2p_mempool_min_fee_refuse = False
+    cfg.p2p_mempool_max_gas_refuse = False
+    cfg.p2p_mempool_max_calldata_refuse = False
+    cfg.p2p_mempool_negative_value_refuse = True
+    cfg.p2p_mempool_negative_fee_refuse = True
+    cfg.p2p_mempool_require_wire_satoshi = require_wire_satoshi
+    chain = MagicMock()
+    chain.get_height.return_value = 1
+    chain.get_state_root.return_value = "ee" * 32
+    chain.validate_transaction = MagicMock(return_value={"valid": True})
+    mp = MagicMock()
+    mp.min_fee = 0.0
+    mp.min_fee_satoshi = 0
+    mp.has_transaction = MagicMock(return_value=False)
+    return P2PNode(cfg, chain, mp)
+
+
+def _build_wire(node, payload: dict):
+    from crypto import native
+
+    if native.validate_p2p_wire_tx(payload):
+        return node._build_mempool_tx_from_wire(payload)
+    orig = native.validate_p2p_wire_tx
+    try:
+        native.validate_p2p_wire_tx = lambda _d: True  # type: ignore
+        return node._build_mempool_tx_from_wire(payload)
+    finally:
+        native.validate_p2p_wire_tx = orig  # type: ignore
+
+
+def test_p2p_ingest_prefers_fee_satoshi():
+    node = _p2p_node()
+    fee_sat = int(to_satoshi(0.05))
+    amount_sat = int(to_satoshi(1.0))
+    payload = {
+        "from": "0x" + "11" * 20,
+        "to": "0x" + "22" * 20,
+        "amount_satoshi": amount_sat,
+        "fee_satoshi": fee_sat,
+        "nonce": 0,
+        "gas": 21_000,
+        "signature": "sig",
+        "public_key": "pk",
+        "hash": "ab" * 32,
+        "data": "",
+    }
+    out = _build_wire(node, payload)
+    assert out is not None
+    mp_tx, _ = out
+    assert mp_tx.fee_satoshi == fee_sat
+    assert mp_tx.amount_satoshi == amount_sat
+    assert mp_tx.fee == from_satoshi_float(fee_sat)
+    assert mp_tx.amount == from_satoshi_float(amount_sat)
+
+
+def test_p2p_ingest_mismatch_value_refuses():
+    node = _p2p_node()
+    amount_sat = int(to_satoshi(1.0))
+    payload = {
+        "from": "0x" + "11" * 20,
+        "to": "0x" + "22" * 20,
+        "value": 2.0,
+        "amount_satoshi": amount_sat,
+        "fee": 0.01,
+        "fee_satoshi": int(to_satoshi(0.01)),
+        "nonce": 0,
+        "gas": 21_000,
+        "signature": "sig",
+        "public_key": "pk",
+        "hash": "ef" * 32,
+        "data": "",
+    }
+    out = _build_wire(node, payload)
+    assert out is None
+    assert node._last_tx_wire_reject == "value_satoshi_mismatch"
+    node.blockchain.validate_transaction.assert_not_called()
+
+
+def test_p2p_legacy_float_only_refused_by_default():
+    node = _p2p_node(require_wire_satoshi=True)
+    payload = {
+        "from": "0x" + "11" * 20,
+        "to": "0x" + "22" * 20,
+        "value": 1.25,
+        "fee": 0.002,
+        "nonce": 0,
+        "gas": 21_000,
+        "signature": "sig",
+        "public_key": "pk",
+        "hash": "11" * 32,
+        "data": "",
+    }
+    out = _build_wire(node, payload)
+    assert out is None
+    assert node._last_tx_wire_reject == "amount_satoshi_required"
+
+
+def test_p2p_legacy_float_only_ingests_when_flag_off():
+    node = _p2p_node(require_wire_satoshi=False)
+    payload = {
+        "from": "0x" + "11" * 20,
+        "to": "0x" + "22" * 20,
+        "value": 1.25,
+        "fee": 0.002,
+        "nonce": 0,
+        "gas": 21_000,
+        "signature": "sig",
+        "public_key": "pk",
+        "hash": "11" * 32,
+        "data": "",
+    }
+    out = _build_wire(node, payload)
+    assert out is not None
+    mp_tx, _ = out
+    assert mp_tx.amount_satoshi == int(to_satoshi(1.25))
+    assert mp_tx.fee_satoshi == int(to_satoshi(0.002))

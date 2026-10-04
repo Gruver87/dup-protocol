@@ -3672,8 +3672,42 @@ class P2PNode:
         from_addr = data.get("from_addr", data.get("from", ""))
         to_addr = data.get("to_addr", data.get("to", ""))
         # v1.3.204: junk value must refuse, not raise into the ingest path.
+        # ADR 0021: prefer amount_satoshi / value_satoshi; float-only refused when
+        # p2p_mempool_require_wire_satoshi (default True).
+        raw_value = data.get("value", data.get("amount", 0))
+        if isinstance(raw_value, float) and not math.isfinite(raw_value):
+            if bool(getattr(self.config, "p2p_mempool_nonfinite_value_refuse", True)):
+                self._last_tx_wire_reject = "value_non_finite"
+                self._mempool_nonfinite_value_refuse_total = int(
+                    getattr(self, "_mempool_nonfinite_value_refuse_total", 0) or 0
+                ) + 1
+                return None
         try:
-            value = float(data.get("value", data.get("amount", 0)))
+            from blockchain.mempool_wire import (
+                WireMoneyMismatch,
+                WireMoneyMissing,
+                resolve_wire_amount_sat,
+            )
+
+            require_sat = bool(
+                getattr(self.config, "p2p_mempool_require_wire_satoshi", True)
+            )
+            amount_sat, value = resolve_wire_amount_sat(
+                data, require_satoshi=require_sat
+            )
+        except WireMoneyMissing as exc:
+            reason = str(exc) or "amount_satoshi_required"
+            self._last_tx_wire_reject = reason
+            self._mempool_value_unparseable_refuse_total = int(
+                getattr(self, "_mempool_value_unparseable_refuse_total", 0) or 0
+            ) + 1
+            return None
+        except WireMoneyMismatch:
+            self._last_tx_wire_reject = "value_satoshi_mismatch"
+            self._mempool_value_unparseable_refuse_total = int(
+                getattr(self, "_mempool_value_unparseable_refuse_total", 0) or 0
+            ) + 1
+            return None
         except (TypeError, ValueError):
             if bool(getattr(self.config, "p2p_mempool_unparseable_value_refuse", True)):
                 self._last_tx_wire_reject = "value_unparseable"
@@ -3681,7 +3715,7 @@ class P2PNode:
                     getattr(self, "_mempool_value_unparseable_refuse_total", 0) or 0
                 ) + 1
                 return None
-            value = 0.0
+            amount_sat, value = 0, 0.0
         # v1.3.205: junk nonce must refuse, not raise into the ingest path.
         try:
             nonce = int(data.get("nonce", 0))
@@ -3852,16 +3886,73 @@ class P2PNode:
                 pass
 
         # v1.3.177: cheap min-fee refuse before validate_transaction (ECDSA/state).
-        # Soft DoS honesty — not Rust gas priority queue / EIP-1559 lanes.
+        # ADR 0021: prefer fee_satoshi; float-only / planned invent refused when
+        # p2p_mempool_require_wire_satoshi (default True).
+        raw_fee = data.get("fee", None)
+        if isinstance(raw_fee, float) and not math.isfinite(raw_fee):
+            if bool(getattr(self.config, "p2p_mempool_nonfinite_fee_refuse", True)):
+                self._last_tx_wire_reject = "fee_non_finite"
+                self._mempool_nonfinite_fee_refuse_total = int(
+                    getattr(self, "_mempool_nonfinite_fee_refuse_total", 0) or 0
+                ) + 1
+                return None
         try:
-            fee = float(
-                data.get(
-                    "fee",
-                    gas * getattr(self.config, "gas_price_wei", 0.001),
-                )
+            from blockchain.mempool_wire import (
+                WireMoneyMismatch,
+                WireMoneyMissing,
+                resolve_wire_fee_sat,
             )
+
+            require_sat = bool(
+                getattr(self.config, "p2p_mempool_require_wire_satoshi", True)
+            )
+            planned_fee_sat = None
+            if (
+                not require_sat
+                and raw_fee is None
+                and data.get("fee_satoshi") is None
+            ):
+                from runtime.amount import plan_transfer_fees_sat
+
+                _gp_raw = getattr(self.config, "gas_price_wei", None)
+                if _gp_raw is None:
+                    self._last_tx_wire_reject = "fee_gas_price_unset"
+                    return None
+                try:
+                    _gp = float(_gp_raw)
+                except (TypeError, ValueError):
+                    self._last_tx_wire_reject = "fee_gas_price_unparseable"
+                    return None
+                if (not math.isfinite(_gp)) or _gp < 0:
+                    self._last_tx_wire_reject = "fee_gas_price_invalid"
+                    return None
+                _br_raw = getattr(self.config, "burn_rate", 0.0)
+                try:
+                    _br = float(_br_raw if _br_raw is not None else 0.0)
+                except (TypeError, ValueError):
+                    self._last_tx_wire_reject = "fee_burn_rate_unparseable"
+                    return None
+                if (not math.isfinite(_br)) or _br < 0:
+                    self._last_tx_wire_reject = "fee_burn_rate_invalid"
+                    return None
+                planned_fee_sat = int(
+                    plan_transfer_fees_sat(int(gas), _gp, _br, 0)["fee_sat"]
+                )
+            fee_sat, fee = resolve_wire_fee_sat(
+                data,
+                planned_fee_sat=planned_fee_sat,
+                require_satoshi=require_sat,
+            )
+        except WireMoneyMissing as exc:
+            reason = str(exc) or "fee_satoshi_required"
+            self._last_tx_wire_reject = reason
+            return None
+        except WireMoneyMismatch:
+            self._last_tx_wire_reject = "fee_satoshi_mismatch"
+            return None
         except (TypeError, ValueError):
-            fee = 0.0
+            self._last_tx_wire_reject = "fee_unparseable"
+            return None
         if bool(getattr(self.config, "p2p_mempool_min_fee_refuse", True)):
             min_fee = 0.0
             if self.mempool is not None:
@@ -3913,7 +4004,7 @@ class P2PNode:
         # Soft DoS honesty — not amount-cap economics / full tokenomics port.
         if bool(getattr(self.config, "p2p_mempool_negative_value_refuse", True)):
             try:
-                if float(value) < 0.0:
+                if int(amount_sat) < 0:
                     self._last_tx_wire_reject = "value_negative"
                     self._mempool_value_refuse_total = int(
                         getattr(self, "_mempool_value_refuse_total", 0) or 0
@@ -4075,6 +4166,8 @@ class P2PNode:
             public_key=public_key,
             data=calldata,
             gas=gas,
+            amount_satoshi=int(amount_sat),
+            fee_satoshi=int(fee_sat),
         )
         return mp_tx, tx.hash
 

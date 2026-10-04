@@ -18,6 +18,7 @@ from runtime.config import Config
 
 def _node(*, min_fee: float = 0.001) -> P2PNode:
     cfg = Config()
+    cfg.p2p_mempool_require_wire_satoshi = False
     cfg.p2p_native_transport = False
     cfg.require_native_crypto = False
     cfg.deployment_mode = "dev"

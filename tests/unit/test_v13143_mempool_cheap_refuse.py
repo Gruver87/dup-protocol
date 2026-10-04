@@ -66,6 +66,7 @@ def test_new_tx_not_exempt_on_python_table():
 
 def test_dup_hash_refuses_before_validate():
     cfg = Config()
+    cfg.p2p_mempool_require_wire_satoshi = False
     cfg.require_native_crypto = False
     cfg.deployment_mode = "dev"
     cfg.require_signatures = False
@@ -110,6 +111,7 @@ def test_sig_before_db_order():
     from core.components import TxPipeline
 
     cfg = Config()
+    cfg.p2p_mempool_require_wire_satoshi = False
     cfg.require_signatures = True
     cfg.deployment_mode = "dev"
     cfg.require_native_crypto = False
