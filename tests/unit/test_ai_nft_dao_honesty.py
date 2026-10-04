@@ -58,6 +58,14 @@ def test_nft_stats_total_value_satoshi():
     assert "mint_fee_satoshi" in st
     listed = sum(int(t.price_satoshi) for t in nft.tokens.values() if t.for_sale)
     assert st["total_value_satoshi"] == listed
+    assert st["total_tokens"] == 0
+
+
+def test_nft_init_does_not_invent_genesis_collection():
+    src = (ROOT / "features" / "nft.py").read_text(encoding="utf-8")
+    init = src.split("def __init__(self, db=None, bus=None):")[1].split("def _token_from_dict")[0]
+    assert "_load_genesis_collection" not in init
+    assert "empty store stays empty" in init
 
 
 def test_dao_vote_does_not_invent_one_validator():

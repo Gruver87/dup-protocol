@@ -7003,10 +7003,39 @@ class RESTHandler(BaseHTTPRequestHandler):
                 fn = body.get("function", "")
                 params = body.get("params", {})
                 caller = body.get("caller", "")
-                value=_http_abs(body.get("value", 0), field="value")
                 if not contract_addr or not fn:
                     self._error(400, "contract and function required"); return
+                has_value = any(
+                    body.get(k) is not None and str(body.get(k)).strip() != ""
+                    for k in ("value_satoshi", "amount_satoshi", "value", "amount")
+                )
+                value_sat = 0
+                if has_value:
+                    try:
+                        value, value_sat = _http_amount_abs(
+                            body,
+                            self.__class__.config,
+                            field="value",
+                            sat_keys=("value_satoshi", "amount_satoshi"),
+                            abs_keys=("value", "amount"),
+                        )
+                    except ValueError as exc:
+                        self._error(400, str(exc)); return
+                    if int(value_sat) != 0:
+                        self._error(
+                            400,
+                            "wasm call value not L1-bound "
+                            "(pseudo host — omit value; use /tx/send for money)",
+                        )
+                        return
+                else:
+                    value = 0.0
                 result = vm.call(contract_addr, fn, params, caller, value)
+                if isinstance(result, dict):
+                    result = dict(result)
+                    result.setdefault("value_satoshi", int(value_sat))
+                    result.setdefault("l1_value_applied", False)
+                    result.setdefault("pseudo_token_host", True)
                 self._json(result)
 
             # ── AI Agent Manager ──────────────────────────────────────────────
@@ -9756,7 +9785,14 @@ def _handle_send_tx_with_wallet(tx_obj: Dict, bc, mp, cfg, wallet=None) -> str:
         to_addr = body.get("to", body.get("to_addr", ""))
         if not to_addr:
             raise ValueError("auto_sign requires 'to' address")
-        value = _parse_tx_value(body.get("value", body.get("amount", 0)))
+        from blockchain.mempool_wire import WireMoneyMissing, resolve_wire_amount_sat
+
+        try:
+            _amount_sat, value = resolve_wire_amount_sat(
+                body, require_satoshi=_is_production_cfg(cfg)
+            )
+        except WireMoneyMissing as exc:
+            raise ValueError(str(exc)) from exc
         nonce_raw = body.get("nonce")
         if nonce_raw is None:
             nonce = bc.db.get_nonce(wallet.address)
@@ -9771,6 +9807,7 @@ def _handle_send_tx_with_wallet(tx_obj: Dict, bc, mp, cfg, wallet=None) -> str:
             getattr(cfg, "chain_id", 1),
             data=body.get("data", body.get("input", "")),
             gas_limit=int(body.get("gas", body.get("gas_limit", 21000))),
+            amount_satoshi=int(_amount_sat),
         )
         body.update(signed)
         if "gas_limit" in body and "gas" not in body:
@@ -9804,11 +9841,16 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
     from core.blockchain import Transaction
     from core.tx_identity import bind_identity_from_fields
     from blockchain.mempool import MempoolTransaction
+    from blockchain.mempool_wire import WireMoneyMissing, resolve_wire_amount_sat
 
     from_addr = tx_obj.get("from", tx_obj.get("from_addr", ""))
     to_addr = tx_obj.get("to", tx_obj.get("to_addr", ""))
-    value_raw = tx_obj.get("value", tx_obj.get("amount", 0))
-    value = _parse_tx_value(value_raw)
+    try:
+        amount_sat, value = resolve_wire_amount_sat(
+            tx_obj, require_satoshi=_is_production_cfg(cfg)
+        )
+    except WireMoneyMissing as exc:
+        raise ValueError(str(exc)) from exc
 
     gas = int(tx_obj.get("gas", cfg.base_gas_price), 16) if isinstance(
         tx_obj.get("gas"), str) else int(tx_obj.get("gas", cfg.base_gas_price))
@@ -9861,6 +9903,7 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
             "to": to_addr,
             "amount": value,
             "value": value,
+            "amount_satoshi": int(amount_sat),
             "nonce": nonce,
             "fee": gas * cfg.gas_price_wei,
             "signature": tx_obj.get("signature", ""),
@@ -9896,6 +9939,7 @@ def _handle_send_tx_obj(tx_obj: Dict, bc, mp, cfg) -> str:
         data=tx_obj.get("data", tx_obj.get("input", "")),
         gas=gas,
         timestamp=float(tx.timestamp),
+        amount_satoshi=int(amount_sat),
     )
     if not mp.add(mp_tx):
         raise ValueError("mempool_rejected")

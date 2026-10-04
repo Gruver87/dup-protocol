@@ -17,6 +17,8 @@ def test_nft_genesis_persists():
     db.initialize()
 
     m1 = NFTMarketplace(db=db)
+    m1._load_genesis_collection()
+    m1._persist_all()
     assert m1.get_stats()["total_tokens"] >= 5
     assert m1.get_stats()["persisted"] is True
 

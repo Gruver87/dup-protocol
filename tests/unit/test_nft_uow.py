@@ -55,8 +55,6 @@ def test_nft_mint_rolls_back_memory_on_uow_failure():
             return []
 
     nft = NFTMarketplace(db=_BrokenAtomic())
-    # Clear genesis noise for assertion
-    nft.tokens.clear()
     r = nft.mint("x", "n", "d", "i", "0xcreator", 0.0)
     assert r["success"] is False
     assert "nft_uow_failed" in r["error"]

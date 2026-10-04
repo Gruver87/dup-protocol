@@ -10,6 +10,7 @@ import json
 import time
 from typing import Any, Callable, Dict, List, Optional
 
+from features.ai_ports import ModelPort, is_bound_model
 from runtime.amount import from_satoshi_float, to_satoshi
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,9 @@ class AIAgent:
                  total_profit_satoshi: Optional[int] = None,
                  actions_count: int = 0,
                  strategy: Dict = None,
-                 memory: List[Dict] = None):
+                 memory: List[Dict] = None,
+                 *,
+                 model: Optional[ModelPort] = None):
         self.agent_id = agent_id
         self.name = name
         self.owner = owner
@@ -47,6 +50,7 @@ class AIAgent:
             "max_position": 1000,
         }
         self.memory: List[Dict] = list(memory or [])
+        self.model = model
         if total_profit_satoshi is not None:
             self.total_profit_satoshi = max(0, int(total_profit_satoshi))
             self.total_profit = from_satoshi_float(self.total_profit_satoshi)
@@ -54,17 +58,43 @@ class AIAgent:
             self.total_profit_satoshi = int(to_satoshi(total_profit or 0))
             self.total_profit = from_satoshi_float(self.total_profit_satoshi)
 
+    def bind_model(self, model: Optional[ModelPort]) -> None:
+        self.model = model
+
     def predict(self, market_data: Dict) -> Dict:
         features = market_data.get("features") or market_data.get("prices", [])
         if not features:
             return {
                 "prediction": 0,
                 "confidence": None,
-                "model_bound": False,
+                "model_bound": is_bound_model(self.model),
                 "prediction_method": "none",
                 "consensus_wired": False,
             }
-        avg = sum(features) / len(features)
+        feat_list = [float(x) for x in features]
+        if is_bound_model(self.model):
+            try:
+                out = dict(self.model.predict(feat_list, context=market_data))
+            except Exception as exc:
+                return {
+                    "prediction": None,
+                    "confidence": None,
+                    "model_bound": True,
+                    "prediction_method": "model_error",
+                    "error": str(exc),
+                    "consensus_wired": False,
+                }
+            pred = out.get("prediction")
+            conf = out.get("confidence")
+            return {
+                "prediction": pred,
+                "confidence": conf if conf is not None else None,
+                "model_bound": True,
+                "prediction_method": str(out.get("prediction_method", "model_port")),
+                "agent_type": self.agent_type,
+                "consensus_wired": False,
+            }
+        avg = sum(feat_list) / len(feat_list)
         return {
             "prediction": avg,
             # No ML model is bound — do not invent a confidence score.
@@ -81,6 +111,7 @@ class AIAgent:
             return {
                 "trend": "neutral",
                 "confidence": None,
+                "model_bound": is_bound_model(self.model),
                 "heuristic": True,
             }
         trend = (prices[-1] - prices[0]) / prices[0] if prices[0] > 0 else 0
@@ -98,6 +129,7 @@ class AIAgent:
             "recommendation": recommendation,
             "price_change_pct": round(trend * 100, 2),
             "confidence": None,
+            "model_bound": is_bound_model(self.model),
             "heuristic": True,
             "consensus_wired": False,
         }
@@ -159,6 +191,8 @@ class AIAgent:
             "total_profit_satoshi": int(self.total_profit_satoshi),
             "actions_count": self.actions_count,
             "created_at": self.created_at,
+            "model_bound": is_bound_model(self.model),
+            "consensus_wired": False,
         }
 
     def to_db(self) -> Dict:
@@ -184,13 +218,30 @@ class AIAgentManager:
 
     CREATE_FEE = 0.01
 
-    def __init__(self, db=None, trade_executor: Optional[Callable[[Dict], Dict]] = None):
+    def __init__(
+        self,
+        db=None,
+        trade_executor: Optional[Callable[[Dict], Dict]] = None,
+        model: Optional[ModelPort] = None,
+    ):
         self.db = db
         self.trade_executor = trade_executor
+        self.model = model
         self.agents: Dict[str, AIAgent] = {}
         self._load_from_db()
-        print(f"[AIAgentManager] Initialized ({len(self.agents)} agents, "
-              f"persisted={bool(db)})")
+        logger.info(
+            "AIAgentManager initialized agents=%s persisted=%s model_bound=%s honesty=%s",
+            len(self.agents),
+            bool(db),
+            is_bound_model(self.model),
+            HONESTY,
+        )
+
+    def bind_model(self, model: Optional[ModelPort]) -> None:
+        """Bind or clear the optional ModelPort (propagates to existing agents)."""
+        self.model = model
+        for agent in self.agents.values():
+            agent.bind_model(model)
 
     def _load_from_db(self) -> None:
         if not self.db or not hasattr(self.db, "get_ai_agents"):
@@ -210,6 +261,7 @@ class AIAgentManager:
                 actions_count=row.get("actions_count", 0),
                 strategy=row.get("strategy"),
                 memory=row.get("memory"),
+                model=self.model,
             )
             self.agents[agent.agent_id] = agent
 
@@ -246,10 +298,17 @@ class AIAgentManager:
         agent_id = native.sha256_hex(
             f"{name}{owner}{time.time()}".encode()
         )[:16]
-        agent = AIAgent(agent_id, name, owner, agent_type)
+        agent = AIAgent(
+            agent_id, name, owner, agent_type, model=self.model
+        )
         self.agents[agent_id] = agent
         self._persist(agent)
-        print(f"[AIAgentManager] Created agent '{name}' ({agent_id}) for {owner[:12]}...")
+        logger.info(
+            "Created agent name=%s id=%s owner=%s...",
+            name,
+            agent_id,
+            owner[:12],
+        )
         return agent_id
 
     def get_agent(self, agent_id: str) -> Optional[AIAgent]:
@@ -346,7 +405,7 @@ class AIAgentManager:
             "persisted": bool(self.db),
             "create_fee": self.CREATE_FEE,
             "create_fee_satoshi": int(to_satoshi(self.CREATE_FEE)),
-            "model_bound": False,
+            "model_bound": is_bound_model(self.model),
             "executor_bound": executor_bound,
             "operational": bool(executor_bound),
             "consensus_wired": False,
@@ -354,5 +413,6 @@ class AIAgentManager:
             "note": (
                 "agent registry"
                 + (" + trade executor" if executor_bound else " — no trade executor")
+                + (" + model port" if is_bound_model(self.model) else " — no ML model bound")
             ),
         }

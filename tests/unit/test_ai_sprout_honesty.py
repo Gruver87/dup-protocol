@@ -56,3 +56,70 @@ def test_main_ai_nft_feature_defaults_fail_closed():
     assert 'getattr(config, "feature_nft", True)' not in src
     assert 'getattr(config, "feature_ai_agents", True)' not in src
     assert 'getattr(config, "feature_ai_validator", True)' not in src
+
+
+def test_feature_flags_sprouts_default_off():
+    from features import FeatureFlags
+
+    flags = FeatureFlags()
+    assert flags.evm is True
+    assert flags.nft is False
+    assert flags.ai_agents is False
+    assert flags.ai_validator is False
+    assert flags.mev is False
+    src = (ROOT / "features" / "__init__.py").read_text(encoding="utf-8")
+    assert 'getattr(config, "feature_nft", True)' not in src
+    assert 'getattr(config, "feature_nft", False)' in src
+    assert 'getattr(config, "feature_ai_agents", False)' in src
+
+
+class _LabModel:
+    def predict(self, features, *, context=None):
+        return {
+            "prediction": float(features[0]),
+            "confidence": 0.9,
+            "prediction_method": "lab",
+        }
+
+
+def test_unbound_model_sentinel():
+    from features.ai_ports import UnboundModel, is_bound_model
+    import pytest
+
+    assert is_bound_model(None) is False
+    assert is_bound_model(UnboundModel()) is False
+    assert is_bound_model(_LabModel()) is True
+    with pytest.raises(RuntimeError, match="model_unbound"):
+        UnboundModel().predict([1.0])
+
+
+def test_predict_unbound_no_invented_confidence():
+    from features.ai_manager import AIAgent, AIAgentManager
+
+    m = AIAgentManager(db=None)
+    agent = AIAgent("id1", "n", "0x" + "1" * 40)
+    m.agents[agent.agent_id] = agent
+    out = m.predict("id1", {"features": [10.0, 20.0]})
+    assert out["prediction"] == 15.0
+    assert out["confidence"] is None
+    assert out["model_bound"] is False
+    assert out["consensus_wired"] is False
+    assert m.get_stats()["model_bound"] is False
+
+
+def test_predict_bound_model_port():
+    from features.ai_manager import AIAgent, AIAgentManager
+
+    m = AIAgentManager(db=None, model=_LabModel())
+    agent = AIAgent("id2", "n", "0x" + "2" * 40, model=_LabModel())
+    m.agents[agent.agent_id] = agent
+    out = m.predict("id2", {"features": [7.0, 8.0]})
+    assert out["prediction"] == 7.0
+    assert out["confidence"] == 0.9
+    assert out["model_bound"] is True
+    assert m.get_stats()["model_bound"] is True
+    m.bind_model(None)
+    agent.bind_model(None)
+    unbound = m.predict("id2", {"features": [7.0, 8.0]})
+    assert unbound["model_bound"] is False
+    assert unbound["confidence"] is None

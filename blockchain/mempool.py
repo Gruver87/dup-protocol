@@ -46,6 +46,16 @@ class MempoolTransaction:
     data: str = ""
     gas: int = 21_000
     timestamp: float = field(default_factory=time.time)
+    amount_satoshi: int = -1
+    fee_satoshi: int = -1
+
+    def __post_init__(self) -> None:
+        from runtime.amount import to_satoshi
+
+        if int(self.amount_satoshi) < 0:
+            self.amount_satoshi = int(to_satoshi(self.amount))
+        if int(self.fee_satoshi) < 0:
+            self.fee_satoshi = int(to_satoshi(self.fee))
 
     def has_valid_signature(self) -> bool:
         """ECDSA check; when require_signatures is on, empty signature fails."""

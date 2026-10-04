@@ -106,11 +106,13 @@ class NFTMarketplace:
         self.sales_history: List[Dict] = []
         self.lock = threading.RLock()
         self._load_from_db()
-        if not self.tokens:
-            self._load_genesis_collection()
-            self._persist_all()
-        print(f"[NFT] Marketplace initialized ({len(self.tokens)} tokens, "
-              f"persisted={bool(self.db and hasattr(self.db, 'get_nft_tokens'))})")
+        # Do not invent a genesis NFT collection — empty store stays empty.
+        logger.info(
+            "NFT marketplace init tokens=%s persisted=%s honesty=%s",
+            len(self.tokens),
+            bool(self.db and hasattr(self.db, "get_nft_tokens")),
+            HONESTY,
+        )
 
     def _token_from_dict(self, d: Dict) -> NFTToken:
         return NFTToken(
@@ -341,7 +343,7 @@ class NFTMarketplace:
                 raise RuntimeError("nft_settle_failed: royalty credit")
 
     def _load_genesis_collection(self):
-        """Начальная коллекция Genesis."""
+        """Lab-only seed. Never called from ``__init__`` (no invented marketplace)."""
         genesis = [
             ("abs_genesis_crown",    "Absolute Crown",    "The ultimate crown of the Absolute Kingdom", "crown",    100.0),
             ("abs_quantum_guardian", "Quantum Guardian",  "Guardian of the quantum realm",              "guardian", 200.0),
