@@ -3974,13 +3974,32 @@ class P2PNode:
             self._last_tx_wire_reject = "fee_unparseable"
             return None
         if bool(getattr(self.config, "p2p_mempool_min_fee_refuse", True)):
-            min_fee = 0.0
+            min_fee_sat = 0
             if self.mempool is not None:
-                try:
-                    min_fee = float(getattr(self.mempool, "min_fee", 0) or 0)
-                except (TypeError, ValueError):
-                    min_fee = 0.0
-            if min_fee > 0 and fee < min_fee:
+                from runtime.amount import to_satoshi
+
+                raw_min_sat = getattr(self.mempool, "min_fee_satoshi", None)
+                if isinstance(raw_min_sat, bool):
+                    min_fee_sat = 0
+                elif isinstance(raw_min_sat, int):
+                    min_fee_sat = int(raw_min_sat)
+                elif isinstance(raw_min_sat, str):
+                    try:
+                        min_fee_sat = int(raw_min_sat.strip())
+                    except (TypeError, ValueError):
+                        min_fee_sat = 0
+                else:
+                    min_fee_sat = 0
+                if min_fee_sat <= 0:
+                    try:
+                        min_fee_sat = int(
+                            to_satoshi(
+                                float(getattr(self.mempool, "min_fee", 0) or 0)
+                            )
+                        )
+                    except (TypeError, ValueError):
+                        min_fee_sat = 0
+            if min_fee_sat > 0 and int(fee_sat) < min_fee_sat:
                 self._last_tx_wire_reject = "fee_too_low"
                 self._mempool_fee_refuse_total = int(
                     getattr(self, "_mempool_fee_refuse_total", 0) or 0
@@ -4020,18 +4039,14 @@ class P2PNode:
                 ) + 1
                 return None
 
-        # v1.3.184: cheap negative-value refuse before validate_transaction.
-        # Soft DoS honesty — not amount-cap economics / full tokenomics port.
+        # v1.3.184 / Wave K: negative-value refuse via satoshi (not float(value)).
         if bool(getattr(self.config, "p2p_mempool_negative_value_refuse", True)):
-            try:
-                if int(amount_sat) < 0:
-                    self._last_tx_wire_reject = "value_negative"
-                    self._mempool_value_refuse_total = int(
-                        getattr(self, "_mempool_value_refuse_total", 0) or 0
-                    ) + 1
-                    return None
-            except (TypeError, ValueError):
-                pass
+            if int(amount_sat) < 0:
+                self._last_tx_wire_reject = "value_negative"
+                self._mempool_value_refuse_total = int(
+                    getattr(self, "_mempool_value_refuse_total", 0) or 0
+                ) + 1
+                return None
 
         # v1.3.193: cheap non-finite value refuse before validate_transaction.
         # Soft DoS honesty — NaN/Inf slip past value_negative; not amount-cap economics.
@@ -4057,14 +4072,21 @@ class P2PNode:
             except (TypeError, ValueError):
                 max_value = 221_000_000.0
             try:
-                if max_value > 0 and float(value) > max_value:
+                from runtime.amount import to_satoshi
+
+                max_value_sat = int(to_satoshi(max_value)) if max_value > 0 else 0
+                if max_value_sat > 0 and int(amount_sat) > max_value_sat:
                     self._last_tx_wire_reject = "value_too_high"
                     self._mempool_value_high_refuse_total = int(
                         getattr(self, "_mempool_value_high_refuse_total", 0) or 0
                     ) + 1
                     return None
             except (TypeError, ValueError):
-                pass
+                self._last_tx_wire_reject = "value_unparseable"
+                self._mempool_value_high_refuse_total = int(
+                    getattr(self, "_mempool_value_high_refuse_total", 0) or 0
+                ) + 1
+                return None
 
         # v1.3.185: cheap negative-nonce refuse before validate_transaction.
         # Soft DoS honesty — not account-nonce window / full mempool scheduler.
@@ -4099,18 +4121,14 @@ class P2PNode:
             except (TypeError, ValueError):
                 pass
 
-        # v1.3.186: cheap negative-fee refuse before validate_transaction.
-        # Soft DoS honesty — complements fee_too_low when min_fee==0; not Rust fee PQ.
+        # v1.3.186 / Wave J: negative-fee refuse via satoshi (not float(fee) ABS).
         if bool(getattr(self.config, "p2p_mempool_negative_fee_refuse", True)):
-            try:
-                if float(fee) < 0.0:
-                    self._last_tx_wire_reject = "fee_negative"
-                    self._mempool_fee_negative_refuse_total = int(
-                        getattr(self, "_mempool_fee_negative_refuse_total", 0) or 0
-                    ) + 1
-                    return None
-            except (TypeError, ValueError):
-                pass
+            if int(fee_sat) < 0:
+                self._last_tx_wire_reject = "fee_negative"
+                self._mempool_fee_negative_refuse_total = int(
+                    getattr(self, "_mempool_fee_negative_refuse_total", 0) or 0
+                ) + 1
+                return None
 
         # v1.3.194: cheap non-finite fee refuse before validate_transaction.
         # Soft DoS honesty — NaN/Inf slip past fee_negative; not Rust fee PQ.
@@ -4136,7 +4154,10 @@ class P2PNode:
             except (TypeError, ValueError):
                 max_fee = 1_000_000_000.0
             try:
-                if max_fee > 0 and float(fee) > max_fee:
+                from runtime.amount import to_satoshi
+
+                max_fee_sat = int(to_satoshi(max_fee)) if max_fee > 0 else 0
+                if max_fee_sat > 0 and int(fee_sat) > max_fee_sat:
                     self._last_tx_wire_reject = "fee_too_high"
                     self._mempool_fee_high_refuse_total = int(
                         getattr(self, "_mempool_fee_high_refuse_total", 0) or 0

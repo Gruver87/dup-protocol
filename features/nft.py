@@ -529,6 +529,15 @@ class NFTMarketplace:
             t = self.tokens[token_id]
             if t.owner != from_addr:
                 return {"success": False, "error": "not owner"}
+            try:
+                from features.council_nft import council_transfer_refuse
+
+                refuse = council_transfer_refuse(t)
+                if refuse:
+                    return {"success": False, "error": refuse}
+            except ImportError:
+                # Wave L: missing council gate must not fail-open.
+                return {"success": False, "error": "nft_council_gate_unavailable"}
             t.owner = to_addr
             t.for_sale = False
             self._persist_token(token_id)
