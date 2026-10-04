@@ -5391,14 +5391,35 @@ class RESTHandler(BaseHTTPRequestHandler):
 
             # ── Consensus total stake ─────────────────────────────────────────
             elif path == "/consensus/stake":
+                # Wave P: stake is integer satoshi — label units (no silent ABS scale).
+                from runtime.amount import from_satoshi_float
+
                 ce = self.__class__.consensus_engine_standalone
                 if ce and hasattr(ce, "get_total_stake"):
-                    self._json({"total_stake": ce.get_total_stake()})
+                    total_sat = int(ce.get_total_stake() or 0)
+                    self._json({
+                        "total_stake_satoshi": total_sat,
+                        "total_stake": total_sat,
+                        "total_stake_abs": from_satoshi_float(total_sat),
+                        "unit": "satoshi",
+                    })
                 elif ce and hasattr(ce, "validators"):
-                    total = sum(getattr(v,"stake",0) for v in ce.validators.values())
-                    self._json({"total_stake": total, "validator_count": len(ce.validators)})
+                    total_sat = sum(int(getattr(v, "stake", 0) or 0) for v in ce.validators.values())
+                    self._json({
+                        "total_stake_satoshi": total_sat,
+                        "total_stake": total_sat,
+                        "total_stake_abs": from_satoshi_float(total_sat),
+                        "unit": "satoshi",
+                        "validator_count": len(ce.validators),
+                    })
                 else:
-                    self._json({"total_stake": 0, "enabled": False})
+                    self._json({
+                        "total_stake_satoshi": 0,
+                        "total_stake": 0,
+                        "total_stake_abs": 0.0,
+                        "unit": "satoshi",
+                        "enabled": False,
+                    })
 
             # ── MEV frontrun analysis ─────────────────────────────────────────
             elif path == "/mev/frontrun":
