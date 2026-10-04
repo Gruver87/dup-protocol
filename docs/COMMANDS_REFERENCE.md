@@ -23,6 +23,8 @@
 
 Доказательства: [`EVIDENCE_MATRIX.md`](EVIDENCE_MATRIX.md) · [`AT_A_GLANCE.md`](AT_A_GLANCE.md) · [`MAINNET_GAP_ANALYSIS.md`](MAINNET_GAP_ANALYSIS.md)
 
+- Waves A–G honesty DX on main; self-check: `.\scripts\verify_wave_g.ps1` (when packaged on pin)
+
 ---
 
 ## L1 Integration Gate [обязательно после core/P2P/sync]

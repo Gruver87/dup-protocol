@@ -11,8 +11,10 @@ param(
 )
 
 $ErrorActionPreference = "Continue"
-$Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$Root = Split-Path -Parent $ScriptDir
 Set-Location $Root
+. (Join-Path $ScriptDir "health_watch_core.ps1")
 
 if ($ProdMesh) {
     $Ports = @(18180, 18181, 18182)
@@ -45,9 +47,10 @@ function Test-NodeHealth([int]$Port, [bool]$FullHarness) {
     # poison a 48h soak — log WARN and continue if /status still answers.
     $readyOk = $false
     $readyErr = ""
+    $readyBody = $null
     for ($attempt = 1; $attempt -le 5; $attempt++) {
         try {
-            $null = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health/ready" -TimeoutSec $readySec
+            $readyBody = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health/ready" -TimeoutSec $readySec
             $readyOk = $true
             break
         } catch {
@@ -76,6 +79,7 @@ function Test-NodeHealth([int]$Port, [bool]$FullHarness) {
                 Head = $stProbe.head_hash
                 Peers = $stProbe.peers
                 P2P = $stProbe.p2p_sync_status
+                MempoolDemoted = (Get-MempoolDemotedFlag -Probe $stProbe -ReadyBody $readyBody)
                 Aligned = $true
                 HarnessHealthy = $false
                 Failed = @("ready_flap")
@@ -95,6 +99,7 @@ function Test-NodeHealth([int]$Port, [bool]$FullHarness) {
                 Head = $stProbe.head_hash
                 Peers = $stProbe.peers
                 P2P = $stProbe.p2p_sync_status
+                MempoolDemoted = (Get-MempoolDemotedFlag -Probe $stProbe -ReadyBody $readyBody)
                 Aligned = $true
                 HarnessHealthy = $false
                 Failed = @("ready_flap")
@@ -137,6 +142,7 @@ function Test-NodeHealth([int]$Port, [bool]$FullHarness) {
         Head = $st.head_hash
         Peers = $st.peers
         P2P = $st.p2p_sync_status
+        MempoolDemoted = (Get-MempoolDemotedFlag -Probe $st -ReadyBody $readyBody)
         Aligned = $aligned
         HarnessHealthy = $harnessHealthy
         Failed = $failed
@@ -205,11 +211,15 @@ while ($true) {
         $failedTxt = if ($r.Failed.Count -gt 0) { $r.Failed -join "," } else { "" }
         $line = "OK port $($r.Port) [$modeLabel] height=$($r.Height) peers=$($r.Peers) p2p=$($r.P2P) aligned=$($r.Aligned) failed=$failedTxt"
         $p2pWarn = ($r.P2P -in @("solo", "under_mesh", "stale"))
+        # Wave G: demote is soft-WARN only (never hard_fail / soak score).
+        $demoteWarn = $false
+        try { $demoteWarn = [bool]$r.MempoolDemoted } catch { $demoteWarn = $false }
         $harnessBad = ($r.Aligned -eq $false) -or ($r.Failed.Count -gt 0) -or ($r.HarnessHealthy -eq $false)
         if ($harnessBad) {
             $failures += $line
             Write-Log "WARN $line" "Yellow"
-        } elseif ($p2pWarn) {
+        } elseif ($p2pWarn -or $demoteWarn) {
+            if ($demoteWarn) { $line = "$line mempool_demoted=1" }
             Write-Log "$line (p2p not full mesh; chain OK)" "Yellow"
         } else {
             Write-Log $line "Green"

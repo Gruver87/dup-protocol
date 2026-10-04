@@ -1828,10 +1828,11 @@ class RESTHandler(BaseHTTPRequestHandler):
                 return
 
             if path == "/health/ready":
-                from crypto import native
-                native_crypto = native.native_crypto_status(
-                    required=bool(getattr(cfg, "require_native_crypto", False))
+                _native_req = bool(getattr(cfg, "require_native_crypto", False)) or (
+                    str(os.environ.get("ABS_NATIVE_MODE", "") or "").strip().lower()
+                    == "require"
                 )
+                native_crypto = native.native_crypto_status(required=_native_req)
                 bridge_health = _rust_bridge_health(cfg)
                 is_prod = str(getattr(cfg, "deployment_mode", "") or "").lower() == "prod"
                 db_ok = db is not None
@@ -1963,9 +1964,9 @@ class RESTHandler(BaseHTTPRequestHandler):
                     checks["peers_alive"] = bool(deep["peers_alive"])
                     checks["quorum_height"] = bool(deep["quorum_height"])
 
-                # Wire/state consistency stay visible in checks, but tip-v2 forge
-                # load causes brief wire_probe flaps that must not 503 a mesh that
-                # already passes ADR 0014 deep_ready (peers_alive + quorum_height).
+                # Wave H: with peers/mesh expected, wire/state probes gate ready
+                # (no paint-green while wire_probe_ok=false). Solo keeps soft keys
+                # out so single-node labs are not 503'd by absent peer probes.
                 _soft_ready_keys = frozenset(
                     {
                         "state_consistent",
@@ -1973,11 +1974,16 @@ class RESTHandler(BaseHTTPRequestHandler):
                         "wire_probe_ok",
                     }
                 )
-                ready = all(
-                    bool(v)
-                    for k, v in checks.items()
-                    if k not in _soft_ready_keys
-                )
+                peer_n = int(deep.get("peer_count") or 0)
+                if peer_n <= 0 and not mesh_expected:
+                    ready = all(
+                        bool(v)
+                        for k, v in checks.items()
+                        if k not in _soft_ready_keys
+                    )
+                else:
+                    ready = all(bool(v) for v in checks.values())
+
                 deep_ok = bool(deep["sync_not_stalled"]) and (
                     not mesh_expected
                     or (bool(deep["peers_alive"]) and bool(deep["quorum_height"]))
@@ -2000,6 +2006,46 @@ class RESTHandler(BaseHTTPRequestHandler):
                     payload["sprout_init"] = ready_sprout_init
                 if db_probe_error:
                     payload["db_probe_error"] = db_probe_error
+                # Wave G/I: mempool_store honesty; under prod+require demote gates ready.
+                mp_store_info: Dict[str, Any] = {}
+                if mp is not None and hasattr(mp, "get_stats"):
+                    try:
+                        _mst = mp.get_stats() or {}
+                        mp_store_info = {
+                            "store_backend": _mst.get("store_backend"),
+                            "store_demoted": bool(_mst.get("store_demoted")),
+                            "demote_count": int(_mst.get("demote_count") or 0),
+                        }
+                    except Exception as exc:
+                        logger.warning("/health/ready mempool_store snapshot failed: %s", exc)
+                payload["mempool_store"] = mp_store_info
+                if (
+                    is_prod
+                    and _native_req
+                    and bool(mp_store_info.get("store_demoted"))
+                ):
+                    checks["mempool_store_native"] = False
+                    if peer_n > 0 or mesh_expected:
+                        ready = all(bool(v) for v in checks.values())
+                    else:
+                        ready = all(
+                            bool(v)
+                            for k, v in checks.items()
+                            if k not in _soft_ready_keys
+                        )
+                    payload["status"] = "ready" if ready else "not_ready"
+                    payload["checks"] = checks
+                pack_fb = 0
+                if db is not None:
+                    try:
+                        # Cheap attribute only — never get_stats() on /health/ready.
+                        pack_fb = int(getattr(db, "_native_pack_fallbacks", 0) or 0)
+                    except Exception as exc:
+                        logger.warning(
+                            "/health/ready rocks pack_fallbacks snapshot failed: %s",
+                            exc,
+                        )
+                payload["rocks_native_pack_fallbacks"] = pack_fb
                 if ready:
                     self._json(payload)
                 else:
