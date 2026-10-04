@@ -108,29 +108,55 @@ def apply_public_manifest(node, path: str) -> int:
         if not addr:
             continue
         min_stake = float(getattr(node.config, "min_stake", 1000) or 1000)
-        stake, _stake_sat = _manifest_stake_abs(row, default_stake=min_stake)
+        stake, stake_sat = _manifest_stake_abs(row, default_stake=min_stake)
         key = addr.lower()
         if key in existing:
             current = next(
                 (v for v in (node.db.get_validators(active_only=False) or []) if v.get("address", "").lower() == key),
                 None,
             )
+            current_sat = None
+            if current and current.get("stake_satoshi") is not None:
+                try:
+                    current_sat = int(current["stake_satoshi"])
+                except (TypeError, ValueError):
+                    current_sat = None
             current_stake = float((current or {}).get("stake", 0) or 0)
-            if stake != current_stake:
-                node.consensus.add_validator(addr, stake)
+            if current_sat is not None:
+                needs_update = current_sat != int(stake_sat)
+            else:
+                needs_update = stake != current_stake
+            if needs_update:
+                try:
+                    node.consensus.add_validator(
+                        addr, stake, stake_satoshi=int(stake_sat)
+                    )
+                except TypeError:
+                    node.consensus.add_validator(addr, stake)
                 if hasattr(node.db, "save_validator"):
-                    node.db.save_validator(addr, stake)
+                    try:
+                        node.db.save_validator(
+                            addr, stake, stake_satoshi=int(stake_sat)
+                        )
+                    except TypeError:
+                        node.db.save_validator(addr, stake)
             continue
-        node.consensus.add_validator(addr, stake)
+        try:
+            node.consensus.add_validator(addr, stake, stake_satoshi=int(stake_sat))
+        except TypeError:
+            node.consensus.add_validator(addr, stake)
         if hasattr(node.db, "save_validator"):
-            node.db.save_validator(addr, stake)
+            try:
+                node.db.save_validator(addr, stake, stake_satoshi=int(stake_sat))
+            except TypeError:
+                node.db.save_validator(addr, stake)
         existing.add(key)
         added += 1
         if getattr(node, "validator_registry", None) and hasattr(
             node.validator_registry, "register_validator"
         ):
-            # Registry stake remains ABS whole-units (historical contract).
-            node.validator_registry.register_validator(addr, int(stake))
+            # Canonical registry stake is satoshi (matches ConsensusAdapter).
+            node.validator_registry.register_validator(addr, int(stake_sat))
     node._public_validator_manifest = path  # noqa: SLF001
     node._public_validator_set = snapshot_public_set(manifest)  # noqa: SLF001
     if added:
