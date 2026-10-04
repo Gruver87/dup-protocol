@@ -629,6 +629,35 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("p2p must document/refuse invent gas (explicit gas required)")
         if 'int(data.get("gas", 0) or 0) or 21_000' in p2p_py:
             errors.append("p2p must not invent gas=21000 on mempool ingest")
+        types_py = (ROOT / "storage" / "types.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "SATOSHI_PER_COIN: int = 100_000_000" in types_py:
+            errors.append("AccountRecord SATOSHI_PER_COIN must be protocol 1e6, not Bitcoin 1e8")
+        if "to_satoshi(d.get(\"balance\"))" not in types_py:
+            errors.append("AccountRecord.from_mapping must convert float balance via to_satoshi")
+        state_svc_py = (ROOT / "core" / "components" / "state_service.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "satoshi_store_required_credit" not in state_svc_py:
+            errors.append("StateService._credit_sat must refuse float store fallback")
+        exec_mp = (ROOT / "execution" / "mempool.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if 'tx.get("fee", 1)' in exec_mp or "gas_price: float = 1.0" in exec_mp:
+            errors.append("execution mempool must not invent gas_price/fee=1")
+        if "gas_price_required" not in exec_mp:
+            errors.append("execution create_transaction must require explicit gas_price")
+        sec_mp = (ROOT / "execution" / "secure_mempool.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "fee_required" not in sec_mp:
+            errors.append("secure_mempool must refuse omitted fee (no invent 1)")
+        txv_sat = (ROOT / "blockchain" / "tx_validator.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "value_satoshi_mismatch" not in txv_sat:
+            errors.append("tx_validator must refuse value_satoshi_mismatch")
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"

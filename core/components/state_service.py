@@ -637,26 +637,18 @@ class StateService:
 
 
     def _credit_sat(self, address: str, delta_sat: int, *, in_atomic: bool) -> None:
-        """Apply integer satoshi delta via storage (Wave C)."""
+        """Apply integer satoshi delta via storage (Wave C). Refuse float fallback."""
         if not delta_sat:
             return
-        if hasattr(self.storage, "balance_delta_satoshi"):
-            if in_atomic:
-                self.storage.balance_delta_satoshi(address, int(delta_sat))
-            else:
-                # Non-atomic path: satoshi delta then commit via update_balance(0) if needed.
-                self.storage.balance_delta_satoshi(address, int(delta_sat))
-                if hasattr(self.storage, "conn") and hasattr(self.storage, "lock"):
-                    with self.storage.lock:
-                        self.storage.conn.commit()
-            return
-        from runtime.amount import from_satoshi_float
-
-        abs_delta = from_satoshi_float(int(delta_sat))
+        if not hasattr(self.storage, "balance_delta_satoshi"):
+            raise RuntimeError("satoshi_store_required_credit")
         if in_atomic:
-            self.storage.balance_delta(address, abs_delta)
+            self.storage.balance_delta_satoshi(address, int(delta_sat))
         else:
-            self.storage.update_balance(address, abs_delta)
+            self.storage.balance_delta_satoshi(address, int(delta_sat))
+            if hasattr(self.storage, "conn") and hasattr(self.storage, "lock"):
+                with self.storage.lock:
+                    self.storage.conn.commit()
 
     def apply_transaction(
         self, tx: Transaction, block_height: int, proposer: str = None, in_atomic: bool = False

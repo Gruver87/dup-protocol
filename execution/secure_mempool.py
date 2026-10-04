@@ -4,7 +4,7 @@ import time
 from typing import Dict, Tuple, Union
 
 from crypto import native
-from execution.mempool import Mempool, MempoolTransaction, Transaction
+from execution.mempool import Mempool, MempoolTransaction, Transaction, _require_wire_satoshi
 
 
 class SecureMempool(Mempool):
@@ -15,13 +15,31 @@ class SecureMempool(Mempool):
 
     def add_transaction(self, tx: Union[Dict, Transaction]) -> Tuple[bool, str]:
         if isinstance(tx, dict):
-            amount = float(tx.get("value", tx.get("amount", 0)))
-            if amount < 0:
+            from blockchain.mempool_wire import WireMoneyMissing, resolve_wire_amount_sat
+            from runtime.amount import from_satoshi_float
+
+            try:
+                amount_sat, amount = resolve_wire_amount_sat(
+                    tx, require_satoshi=_require_wire_satoshi()
+                )
+            except WireMoneyMissing:
+                return False, "amount_satoshi_required"
+            amount = float(from_satoshi_float(int(amount_sat)))
+            if amount < 0 or amount_sat < 0:
                 return False, "negative_amount"
             sender = tx.get("from", tx.get("from_addr", ""))
             recipient = tx.get("to", tx.get("to_addr", ""))
             nonce = int(tx.get("nonce", 0))
-            fee = float(tx.get("gas_price", tx.get("fee", 1)))
+            # Refuse invent fee=1 when gas_price/fee omitted.
+            raw_fee = tx.get("gas_price", tx.get("fee"))
+            if raw_fee is None or raw_fee == "":
+                return False, "fee_required"
+            try:
+                fee = float(raw_fee)
+            except (TypeError, ValueError):
+                return False, "fee_required"
+            if fee <= 0:
+                return False, "fee_required"
             tx_hash = tx.get("hash") or (
                 "0x" + native.sha256_hex(f"{sender}{recipient}{amount}{nonce}".encode())
             )
@@ -41,6 +59,7 @@ class SecureMempool(Mempool):
                 signature=tx.get("signature", ""),
                 public_key=tx.get("public_key", ""),
                 timestamp=time.time(),
+                amount_satoshi=int(amount_sat),
             )
             if not self.add_raw(mempool_tx):
                 return False, "mempool_rejected"

@@ -51,10 +51,19 @@ class TransactionValidator:
         if not cls._validate_address(to_addr):
             return False, f"Invalid receiver address: {to_addr}"
 
-        amount_satoshi = tx.get(
-            "amount_satoshi",
-            to_satoshi(tx.get("amount", tx.get("value", 0))),
-        )
+        try:
+            raw_amt_sat = tx.get("amount_satoshi", tx.get("value_satoshi"))
+            if raw_amt_sat is not None and raw_amt_sat != "":
+                amount_satoshi = int(raw_amt_sat)
+                raw_abs = tx.get("value", tx.get("amount"))
+                if raw_abs is not None and raw_abs != "":
+                    abs_sat = int(to_satoshi(raw_abs))
+                    if abs_sat != amount_satoshi:
+                        return False, "value_satoshi_mismatch"
+            else:
+                amount_satoshi = int(to_satoshi(tx.get("amount", tx.get("value", 0))))
+        except (TypeError, ValueError):
+            return False, "Unparseable amount"
         data = str(tx.get("data", tx.get("input", "")) or "").strip()
         zero_addr = "0x0000000000000000000000000000000000000000"
         is_evm_deploy = bool(data.replace("0x", "")) and to_addr.lower() == zero_addr
@@ -63,7 +72,17 @@ class TransactionValidator:
         if amount_satoshi > cls.MAX_TRANSACTION_AMOUNT_SATOSHI:
             return False, "Amount exceeds maximum"
 
-        fee_satoshi = tx.get("fee_satoshi", to_satoshi(tx.get("fee", 0)))
+        try:
+            raw_fee_sat = tx.get("fee_satoshi")
+            if raw_fee_sat is not None and raw_fee_sat != "":
+                fee_satoshi = int(raw_fee_sat)
+                if tx.get("fee") is not None and tx.get("fee") != "":
+                    if int(to_satoshi(tx.get("fee"))) != fee_satoshi:
+                        return False, "fee_satoshi_mismatch"
+            else:
+                fee_satoshi = int(to_satoshi(tx.get("fee", 0)))
+        except (TypeError, ValueError):
+            return False, "Unparseable fee"
         if fee_satoshi < cls.MIN_TRANSACTION_FEE_SATOSHI:
             return False, (
                 f"Fee too low. Minimum: {cls.MIN_TRANSACTION_FEE_SATOSHI / SATOSHI_MULTIPLIER} ABS"

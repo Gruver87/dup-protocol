@@ -142,14 +142,24 @@ class StateEngine:
     def _apply_transaction(self, accounts: Dict[str, AccountState], tx: dict) -> None:
         from_addr = tx.get("from", tx.get("from_addr"))
         to_addr = tx.get("to", tx.get("to_addr"))
-        if "amount_satoshi" in tx:
-            amount_sat = max(0, int(tx["amount_satoshi"]))
+        # ADR 0021: amount_satoshi / value_satoshi authority; refuse dual-write mismatch.
+        raw_amt_sat = tx.get("amount_satoshi", tx.get("value_satoshi"))
+        if raw_amt_sat is not None and raw_amt_sat != "":
+            amount_sat = max(0, int(raw_amt_sat))
+            raw_abs = tx.get("value", tx.get("amount"))
+            if raw_abs is not None and raw_abs != "":
+                if int(to_satoshi(raw_abs)) != amount_sat:
+                    raise ValueError("value_satoshi_mismatch")
         else:
-            amount_sat = to_satoshi(tx.get("amount", tx.get("value", 0)))
-        if "fee_satoshi" in tx:
-            fee_sat = max(0, int(tx["fee_satoshi"]))
+            amount_sat = max(0, int(to_satoshi(tx.get("amount", tx.get("value", 0)))))
+        raw_fee_sat = tx.get("fee_satoshi")
+        if raw_fee_sat is not None and raw_fee_sat != "":
+            fee_sat = max(0, int(raw_fee_sat))
+            if tx.get("fee") is not None and tx.get("fee") != "":
+                if int(to_satoshi(tx.get("fee"))) != fee_sat:
+                    raise ValueError("fee_satoshi_mismatch")
         else:
-            fee_sat = to_satoshi(tx.get("fee", 0) or 0)
+            fee_sat = max(0, int(to_satoshi(tx.get("fee", 0) or 0)))
 
         if from_addr not in accounts:
             accounts[from_addr] = AccountState(balance=0, nonce=0)
