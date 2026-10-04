@@ -155,12 +155,16 @@ class NftMarketplaceAdapter:
             stats = fn()
             if isinstance(stats, dict):
                 stats = dict(stats)
-                stats.setdefault("enabled", True)
+                # Never invent enabled=True over an explicit False from core.
+                if "enabled" not in stats:
+                    stats["enabled"] = bool(
+                        stats.get("execution_bound") or stats.get("balance_backend")
+                    )
                 stats.setdefault("tier", "app-profile")
                 stats.setdefault("adr", "0016")
                 return stats
         return {
-            "enabled": True,
+            "enabled": False,
             "tier": "app-profile",
             "adr": "0016",
             "token_count": len(getattr(self._m, "tokens", {}) or {}),

@@ -5423,26 +5423,35 @@ class RESTHandler(BaseHTTPRequestHandler):
             # ── ZK range proof ────────────────────────────────────────────────
             elif path == "/zk/prove/range":
                 zk = self.__class__.zk
-                value = int(qs.get("value", ["42"])[0])
-                min_v  = int(qs.get("min", ["0"])[0])
-                max_v  = int(qs.get("max", ["100"])[0])
+                # Refuse invent value=42 — require explicit query params.
+                value_raw = (qs.get("value") or [None])[0]
+                if value_raw is None or str(value_raw).strip() == "":
+                    self._error(400, "value required (do not invent demo 42)")
+                    return
+                try:
+                    value = int(value_raw)
+                    min_v = int((qs.get("min") or ["0"])[0])
+                    max_v = int((qs.get("max") or ["100"])[0])
+                except (TypeError, ValueError) as exc:
+                    self._error(400, f"invalid range params: {exc}")
+                    return
                 if zk and hasattr(zk, "prove_range"):
-                    proof = zk.prove_range(value, min_v, max_v)
+                    try:
+                        proof = zk.prove_range(value, min_v, max_v)
+                    except NotImplementedError as e:
+                        self._error(501, str(e))
+                        return
+                    # Educational ZK only — never paint cryptographic valid:true.
+                    proof_valid = getattr(proof, "valid", None)
                     self._json({
-                        "proof": proof.__dict__ if hasattr(proof,'__dict__') else str(proof),
-                        "valid": True,
+                        "proof": proof.__dict__ if hasattr(proof, "__dict__") else str(proof),
+                        "valid": proof_valid if isinstance(proof_valid, bool) else None,
                         "range": f"[{min_v}, {max_v}]",
                         "canonical": False,
                         "educational_only": True,
                     })
                 else:
-                    self._json({
-                        "enabled": False,
-                        "valid": False,
-                        "canonical": False,
-                        "error": "zk_missing",
-                        "range": f"[{min_v}, {max_v}]",
-                    })
+                    self._error(503, "zk_missing")
 
             elif path == "/zk/transaction":
                 # Never accept private keys via GET query string.
@@ -5836,10 +5845,27 @@ class RESTHandler(BaseHTTPRequestHandler):
                         proof = zk.prove_balance(secret, threshold)
                     else:
                         self._error(400, "Unknown proof type"); return
-                    pd = proof.to_dict() if hasattr(proof, "to_dict") else {"valid": getattr(proof, "valid", True)}
-                    self._json({"proof_type": proof_type, "valid": True, **pd})
+                    # Educational ZK — never force valid:true; only echo bool from proof.
+                    if hasattr(proof, "to_dict"):
+                        pd = dict(proof.to_dict())
+                    else:
+                        raw_valid = getattr(proof, "valid", None)
+                        pd = {
+                            "valid": raw_valid if isinstance(raw_valid, bool) else None,
+                        }
+                    out = {
+                        "proof_type": proof_type,
+                        "educational_only": True,
+                        "canonical": False,
+                        **pd,
+                    }
+                    if not isinstance(out.get("valid"), bool):
+                        out["valid"] = None
+                    self._json(out)
+                except NotImplementedError as e:
+                    self._error(501, str(e))
                 except Exception as e:
-                    self._json({"proof_type": proof_type, "valid": False, "error": str(e)})
+                    self._error(503, f"zk prove unavailable: {e}")
 
             # ── Wallet create ─────────────────────────────────────────────────
             elif path == "/wallet/create":

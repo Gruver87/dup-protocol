@@ -540,6 +540,20 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         )
         if "signature verify unavailable" not in txv_py:
             errors.append("tx_validator must not paint probe failure as Invalid signature")
+        if "do not invent demo 42" not in http_py:
+            errors.append("ZK prove/range must not invent demo value=42")
+        if '"valid": True' in http_py and 'path == "/zk/prove/range"' in http_py:
+            # Force-valid paint on educational ZK is dishonest when prove_range returns no bool.
+            chunk = http_py.split('path == "/zk/prove/range"')[1].split("elif path")[0]
+            if '"valid": True' in chunk:
+                errors.append("ZK prove/range must not force valid:true")
+        nft_ports_py = (ROOT / "features" / "nft_ports.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if 'stats.setdefault("enabled", True)' in nft_ports_py:
+            errors.append("NFT get_stats must not invent enabled=True")
+        if '"enabled": False' not in nft_ports_py:
+            errors.append("NFT get_stats fallback must default enabled=false")
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"
