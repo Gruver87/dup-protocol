@@ -9,6 +9,7 @@ from api.ports import BlockQuery, LogsQuery, QueryLimitError, QueryTimeoutError
 from runtime.amount import WEI_PER_SATOSHI, to_satoshi
 
 ZERO_ROOT = "0x" + ("0" * 64)
+ZERO_HASH = "0x" + ("0" * 64)
 EMPTY_LOGS_BLOOM = "0x" + ("0" * 512)
 DEFAULT_EVM_GAS_LIMIT = 8_000_000
 
@@ -45,6 +46,187 @@ def _as_eth_root(value: str) -> str:
     if len(s) != 64 or any(c not in "0123456789abcdef" for c in s):
         raise ValueError(f"invalid merkle root encoding: {value!r}")
     return "0x" + s
+
+
+def _as_int_height(value: Any) -> Optional[int]:
+    if value is None or value == "":
+        return None
+    try:
+        if isinstance(value, str) and str(value).startswith(("0x", "0X")):
+            return int(value, 16)
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_block_hash(value: Any) -> Optional[str]:
+    """Return a non-zero 0x-hash, or None if missing / all-zero stub."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    if not s.startswith(("0x", "0X")):
+        s = "0x" + s
+    hexpart = s[2:]
+    if not hexpart or any(c not in "0123456789abcdefABCDEF" for c in hexpart):
+        return None
+    if all(c == "0" for c in hexpart):
+        return None
+    return s
+
+
+def observed_block_hash(
+    tx: Optional[Dict[str, Any]] = None,
+    blk: Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
+    """Block hash from the tx row or block listing. Never the 32-byte zero stub."""
+    if isinstance(tx, dict):
+        h = _normalize_block_hash(tx.get("block_hash") or tx.get("blockHash"))
+        if h:
+            return h
+    if isinstance(blk, dict):
+        h = _normalize_block_hash(blk.get("hash") or blk.get("block_hash") or blk.get("blockHash"))
+        if h:
+            return h
+    return None
+
+
+def observed_parent_hash(blk: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Parent hash from the header. Genesis may be the 32-byte zero digest.
+
+    Missing parent on a non-genesis block is None — not an empty string and not
+    an invented zero hash (that would look like genesis).
+    """
+    if not isinstance(blk, dict):
+        return None
+    raw = blk.get("parent_hash")
+    if raw is None or str(raw).strip() == "":
+        raw = blk.get("parentHash")
+    if raw is not None and str(raw).strip() != "":
+        try:
+            return _as_eth_root(str(raw))
+        except ValueError:
+            return None
+    height = _as_int_height(blk.get("height", blk.get("block_height", blk.get("number"))))
+    if height == 0:
+        return ZERO_HASH
+    return None
+
+
+def observed_state_root(blk: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Stored state root. Never the 32-byte zero stub (not Absolute empty merkle)."""
+    if not isinstance(blk, dict):
+        return None
+    raw = blk.get("state_root") or blk.get("stateRoot")
+    if raw is None or str(raw).strip() == "":
+        return None
+    return _normalize_eth_root(raw)
+
+
+def observed_block_nonce(blk: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Ethereum header nonce is 8 bytes. Absolute is not ethash.
+
+    Missing is JSON null — never the 8-byte zero stub. A bare integer ``nonce``
+    on the block dict is not used (that field is a tx/account nonce elsewhere).
+    """
+    if not isinstance(blk, dict):
+        return None
+    raw = blk.get("block_nonce")
+    if raw is None or str(raw).strip() == "":
+        raw = blk.get("nonce")
+        if isinstance(raw, int) and "block_nonce" not in blk:
+            return None
+    if raw is None or str(raw).strip() == "":
+        return None
+    if isinstance(raw, str):
+        s = raw.strip()
+        if s.startswith(("0x", "0X")):
+            hexpart = s[2:]
+            if len(hexpart) == 16 and all(c in "0123456789abcdefABCDEF" for c in hexpart):
+                return "0x" + hexpart.lower()
+            return None
+        return None
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if n < 0 or n >= 1 << 64:
+        return None
+    return "0x" + format(n, "016x")
+
+
+def observed_block_size(blk: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Stored encoded size only. Never invent 256 + 32 * tx_count (not RLP)."""
+    if not isinstance(blk, dict):
+        return None
+    raw = blk.get("size", blk.get("block_size"))
+    if raw is None or raw == "":
+        return None
+    try:
+        if isinstance(raw, str) and str(raw).startswith(("0x", "0X")):
+            n = int(raw, 16)
+        else:
+            n = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if n < 0:
+        return None
+    return hex(n)
+
+
+def observed_miner(blk: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Proposer from the header. Missing is null — never '' or the 20-byte zero address."""
+    if not isinstance(blk, dict):
+        return None
+    raw = blk.get("miner")
+    if raw is None or str(raw).strip() == "":
+        raw = blk.get("proposer")
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    hexpart = s[2:] if s.startswith(("0x", "0X")) else s
+    if hexpart and all(c in "0123456789abcdefABCDEF" for c in hexpart):
+        if all(c == "0" for c in hexpart):
+            return None
+        return "0x" + hexpart.lower()
+    return s
+
+
+def observed_block_timestamp(blk: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Unix timestamp from the header. Missing is null, never epoch 0."""
+    if not isinstance(blk, dict):
+        return None
+    if "timestamp" in blk:
+        raw = blk.get("timestamp")
+    elif "time" in blk:
+        raw = blk.get("time")
+    else:
+        return None
+    if raw is None or raw == "":
+        return None
+    n = _as_int_height(raw)
+    if n is None or n < 0:
+        return None
+    return hex(n)
+
+
+def observed_block_number(
+    tx: Optional[Dict[str, Any]] = None,
+    blk: Optional[Dict[str, Any]] = None,
+) -> Optional[int]:
+    """Inclusion height from the block listing or tx row. Missing is None, not 0."""
+    if isinstance(blk, dict):
+        n = _as_int_height(blk.get("height", blk.get("block_height", blk.get("number"))))
+        if n is not None:
+            return n
+    if not isinstance(tx, dict):
+        return None
+    if tx.get("block_height") is None and tx.get("blockNumber") is None:
+        return None
+    return _as_int_height(tx.get("block_height", tx.get("blockNumber")))
 
 
 def _abs_tx_merkle_root(items: List[str]) -> str:
@@ -325,14 +507,10 @@ def format_block(blk: Optional[Dict], full_tx: bool = False, *, query=None, bc=N
         tx.get("hash", "") if isinstance(tx, dict) else str(tx)
         for tx in tx_list
     ]
-    height = blk.get("height", blk.get("block_height", blk.get("number")))
-    try:
-        number = int(height) if height is not None and height != "" else None
-    except (TypeError, ValueError):
-        number = None
+    number = observed_block_number(blk=blk)
     # Roots: stored Absolute merkle, else compute from txs. Corrupt stored → None.
     # Never invent Ethereum zero merkle / ethash nonce / 30M gas.
-    state_root = _normalize_eth_root(blk.get("state_root") or blk.get("stateRoot"))
+    state_root = observed_state_root(blk)
     tx_root = block_transactions_root(blk)
     receipts_root = block_receipts_root(blk)
     bloom_raw = blk.get("logs_bloom") or blk.get("logsBloom")
@@ -350,25 +528,24 @@ def format_block(blk: Optional[Dict], full_tx: bool = False, *, query=None, bc=N
     limit_i = observed_block_gas_limit(blk, protocol_limit=gas_limit)
     limit = hex(limit_i) if limit_i is not None else None
     used = _observed_uint_hex(blk, "gas_used", "gasUsed")
-    ts = _observed_uint_hex(blk, "timestamp")
     return {
         "number": hex(number) if number is not None else None,
-        "hash": blk.get("hash", blk.get("block_hash")) or None,
-        "parentHash": blk.get("parent_hash") or blk.get("parentHash") or None,
-        "nonce": None,  # Absolute is not ethash — never paint 8-byte zero
+        "hash": observed_block_hash(blk=blk),
+        "parentHash": observed_parent_hash(blk),
+        "nonce": observed_block_nonce(blk),
         "sha3Uncles": None,  # no uncle trie on pin formatter; null > zero digest
         "logsBloom": bloom_out,
         "transactionsRoot": tx_root,
         "stateRoot": state_root,
         "receiptsRoot": receipts_root,
-        "miner": blk.get("miner") or blk.get("proposer") or None,
+        "miner": observed_miner(blk),
         "difficulty": "0x0",
         "totalDifficulty": "0x0",
         "extraData": block_extra_data(blk),
-        "size": _observed_uint_hex(blk, "size"),
+        "size": observed_block_size(blk),
         "gasLimit": limit,
         "gasUsed": used,
-        "timestamp": ts,
+        "timestamp": observed_block_timestamp(blk),
         "uncles": [],
         "transactions": txs if full_tx else tx_hashes,
         "totalBurned": _burned_satoshi(blk, "total_burned"),
@@ -379,16 +556,20 @@ def format_block(blk: Optional[Dict], full_tx: bool = False, *, query=None, bc=N
 def format_tx(tx: Optional[Dict]) -> Optional[Dict]:
     if not tx:
         return None
+    number = observed_block_number(tx)
     return {
         "hash": observed_tx_hash(tx),
-        "blockNumber": hex(tx.get("block_height", 0)) if tx.get("block_height") is not None else None,
+        "blockNumber": hex(number) if number is not None else None,
+        "blockHash": observed_block_hash(tx=tx),
         "from": observed_tx_address(tx, "from_addr", "from"),
         "to": observed_tx_address(tx, "to_addr", "to", allow_zero=True),
         "value": observed_value_hex(tx),
         "gas": _observed_uint_hex(tx, "gas", "gas_limit"),
+        "gasPrice": _observed_uint_hex(tx, "gas_price", "gasPrice"),
         "gasUsed": _observed_uint_hex(tx, "gas_used", "gasUsed"),
         "nonce": _observed_uint_hex(tx, "nonce"),
         "input": observed_tx_input(tx),
+        "type": _observed_uint_hex(tx, "type"),
         "burned": _burned_satoshi(tx, "burned"),
     }
 
@@ -417,9 +598,9 @@ def normalize_log_data(data) -> str:
     return raw if raw.startswith("0x") else "0x" + raw
 
 
-def tx_index_in_block(bc, block_height: int, tx_hash: str) -> int:
+def tx_index_in_block(bc, block_height: int, tx_hash: str) -> Optional[int]:
     if not bc or not tx_hash:
-        return 0
+        return None
     blk = None
     get_block = getattr(bc, "get_block", None)
     if callable(get_block):
@@ -430,10 +611,10 @@ def tx_index_in_block(bc, block_height: int, tx_hash: str) -> int:
         except Exception:
             blk = None
     if not blk:
-        return 0
+        return None
     txs = blk.get("transactions", [])
     if not isinstance(txs, list):
-        return 0
+        return None
     target = tx_hash.lower()
     for idx, entry in enumerate(txs):
         if isinstance(entry, dict):
@@ -442,39 +623,69 @@ def tx_index_in_block(bc, block_height: int, tx_hash: str) -> int:
             h = str(entry).lower()
         if h == target:
             return idx
-    return 0
+    return None
 
 
-def format_eth_log(row: Dict, bc=None) -> Dict:
-    block_height = int(row.get("block_height", 0))
-    block_hash = ""
-    if bc is not None:
-        blk = None
-        get_block = getattr(bc, "get_block", None)
-        if callable(get_block):
-            try:
-                blk = bc.get_block(BlockQuery(height=block_height))
-            except TypeError:
-                try:
-                    blk = bc.get_block(block_height)
-                except Exception:
-                    blk = None
-            except Exception:
-                blk = None
-        if blk:
-            block_hash = blk.get("hash", blk.get("block_hash", ""))
-    tx_hash = row.get("tx_hash", "")
+def _block_at_height(height: int, query=None, bc=None) -> Optional[Dict[str, Any]]:
+    src = query if query is not None else bc
+    if src is None:
+        return None
+    get_block = getattr(src, "get_block", None)
+    if not callable(get_block):
+        return None
+    try:
+        blk = get_block(BlockQuery(height=int(height)))
+    except TypeError:
+        try:
+            blk = get_block(int(height))
+        except Exception:
+            return None
+    except Exception:
+        return None
+    return blk if isinstance(blk, dict) else None
+
+
+def _tx_index_in_listing(tx_hash: Any, blk: Optional[Dict[str, Any]]) -> Optional[int]:
+    """Index of `tx_hash` in block tx order, or None if the slot is not observed."""
+    if not blk or not tx_hash:
+        return None
+    txs = blk.get("transactions")
+    if not isinstance(txs, list) or not txs:
+        return None
+    want = str(tx_hash).lower()
+    for i, entry in enumerate(txs):
+        if isinstance(entry, dict):
+            h = str(entry.get("hash") or entry.get("tx_hash") or "").lower()
+        else:
+            h = str(entry).lower()
+        if h == want:
+            return i
+    return None
+
+
+def format_eth_log(row: Dict, bc=None, query=None) -> Dict:
+    facade = query if query is not None else bc
+    number = observed_block_number(row)
+    blk = _block_at_height(number, query=facade, bc=bc) if number is not None else None
+    raw_hash = row.get("tx_hash") or row.get("transactionHash") or row.get("transaction_hash")
+    tx_hash = str(raw_hash).strip() if raw_hash is not None and str(raw_hash).strip() else None
     topics = row.get("topics", [])
     if not isinstance(topics, list):
         topics = []
+    listing_index = _tx_index_in_listing(tx_hash, blk) if tx_hash else None
+    tx_index = listing_index
+    if tx_index is None:
+        tx_index = observed_uint(row, "tx_index", "transactionIndex")
+    if tx_index is None and number is not None and tx_hash:
+        tx_index = tx_index_in_block(facade, number, tx_hash)
     return {
         "removed": False,
-        "logIndex": hex(int(row.get("log_index", 0))),
-        "transactionIndex": hex(tx_index_in_block(bc, block_height, tx_hash)),
+        "logIndex": observed_uint_hex(row, "log_index", "logIndex"),
+        "transactionIndex": hex(int(tx_index)) if tx_index is not None else None,
         "transactionHash": tx_hash,
-        "blockHash": block_hash,
-        "blockNumber": hex(block_height),
-        "address": row.get("contract_address", ""),
+        "blockHash": observed_block_hash(row, blk),
+        "blockNumber": hex(number) if number is not None else None,
+        "address": observed_tx_address(row, "contract_address", "address", allow_zero=True),
         "data": normalize_log_data(row.get("data", "")),
         "topics": topics,
     }
@@ -494,9 +705,10 @@ def format_receipt(tx: Optional[Dict], bc=None, query=None) -> Optional[Dict]:
         rows = bc.query_facade.get_evm_logs_by_tx(tx_hash)
         logs = [format_eth_log(row, bc.query_facade) for row in rows]
     status_hex = observed_receipt_status(tx)
+    number = observed_block_number(tx)
     return {
         "transactionHash": observed_tx_hash(tx),
-        "blockNumber": hex(tx.get("block_height", 0)) if tx.get("block_height") is not None else None,
+        "blockNumber": hex(number) if number is not None else None,
         "from": observed_tx_address(tx, "from_addr", "from"),
         "to": observed_tx_address(tx, "to_addr", "to", allow_zero=True),
         "status": status_hex,

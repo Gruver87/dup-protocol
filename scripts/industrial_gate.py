@@ -538,6 +538,34 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
                 errors.append(
                     "receipt format must use observed_receipt_status (null if unobserved)"
                 )
+            if "def observed_block_hash" not in eth_fmt_py:
+                errors.append("eth_format must expose observed_block_hash (no zero stub)")
+            if "def observed_parent_hash" not in eth_fmt_py:
+                errors.append("eth_format must expose observed_parent_hash (genesis zero only)")
+            if "def observed_state_root" not in eth_fmt_py:
+                errors.append("eth_format must not stub missing stateRoot as the zero digest")
+            if "def observed_miner" not in eth_fmt_py:
+                errors.append("eth_format must not default miner to empty string")
+            if "def observed_block_nonce" not in eth_fmt_py:
+                errors.append("eth_format must not stub block nonce as 8 zero bytes")
+            if "def observed_block_size" not in eth_fmt_py:
+                errors.append("eth_format must not invent block size from tx count")
+            if "def observed_block_timestamp" not in eth_fmt_py:
+                errors.append("eth_format must not default missing timestamp to epoch 0")
+            if '"parentHash": blk.get("parent_hash", "")' in eth_fmt_py:
+                errors.append("format_block must not default parentHash to empty string")
+            if '"hash": blk.get("hash", blk.get("block_hash", ""))' in eth_fmt_py:
+                errors.append("format_block hash must not default to empty string")
+            if '"nonce": "0x0000000000000000"' in eth_fmt_py:
+                errors.append("format_block must not hardcode ethash-shaped nonce")
+            if "256 + len(tx_hashes)" in eth_fmt_py:
+                errors.append("format_block size must not use the 256+32*n heuristic")
+            if 'hex(int(row.get("log_index", 0)))' in eth_fmt_py:
+                errors.append("format_eth_log must not default missing logIndex to 0")
+            if 'int(row.get("block_height", 0))' in eth_fmt_py:
+                errors.append("format_eth_log must not default missing blockNumber to height 0")
+            if '"address": row.get("contract_address", "")' in eth_fmt_py:
+                errors.append("format_eth_log must not default address to empty string")
         if '"bridge_relayer_live": bool(cfg.bridge_enabled)' in http_py:
             errors.append("bridge_relayer_live must not equal bridge_enabled alone")
         if '"bridge_rust_binary_healthy"' not in http_py:

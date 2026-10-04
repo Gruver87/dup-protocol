@@ -104,6 +104,9 @@ def test_format_tx_value_satoshi_no_invented_gas():
     assert missing["hash"] is None
     assert missing["from"] is None
     assert missing["to"] is None
+    assert missing["blockHash"] is None
+    assert missing["gasPrice"] is None
+    assert missing["type"] is None
 
 
 def test_format_block_no_invented_eth_stubs():
@@ -137,6 +140,31 @@ def test_format_block_no_invented_eth_stubs():
     stored = dict(blk)
     stored["extra_data"] = "0xabcd"
     assert format_block(stored)["extraData"] == "0xabcd"
+    sparse = format_block({"height": 3, "transactions": []})
+    assert sparse["hash"] is None
+    assert sparse["parentHash"] is None
+    assert sparse["miner"] is None
+    assert sparse["timestamp"] is None
+    assert sparse["size"] is None
+    zero_hash = format_block({"height": 1, "hash": "0x" + "00" * 32, "transactions": []})
+    assert zero_hash["hash"] is None
+    genesis = format_block({"height": 0, "transactions": []})
+    assert genesis["parentHash"] == ("0x" + "00" * 32)
+
+
+def test_format_eth_log_no_invented_indexes():
+    from api.eth_format import format_eth_log, format_receipt
+
+    log = format_eth_log({})
+    assert log["logIndex"] is None
+    assert log["transactionIndex"] is None
+    assert log["transactionHash"] is None
+    assert log["blockHash"] is None
+    assert log["blockNumber"] is None
+    assert log["address"] is None
+    rec = format_receipt({"value": 1})
+    assert rec["blockNumber"] is None
+    assert rec["status"] is None
 
 
 def test_multisig_amount_satoshi_and_execution_failed():
