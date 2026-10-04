@@ -3928,8 +3928,10 @@ class P2PNode:
                         getattr(self, "_mempool_dup_refuse_total", 0) or 0
                     ) + 1
                     return None
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("mempool has_transaction check failed: %s", exc)
+                self._last_tx_wire_reject = "mempool_dup_check_failed"
+                return None
 
         # v1.3.177: cheap min-fee refuse before validate_transaction (ECDSA/state).
         # ADR 0021: prefer fee_satoshi; float-only / planned invent refused when

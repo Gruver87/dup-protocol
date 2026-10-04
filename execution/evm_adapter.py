@@ -924,6 +924,24 @@ class EVMAdapter:
                 int(caller_ctx.block_number),
                 len(init_code),
             )
+        endowment_sat = int(value or 0) // 1_000_000_000_000
+        if endowment_sat > 0:
+            if not self._caller_covers_call_value(deployer, int(value or 0)):
+                return {
+                    "success": False,
+                    "reverted": True,
+                    "gas_used": 0,
+                    "error": "insufficient_call_value",
+                }
+            err = self._transfer_sat_fail_closed(deployer, contract_addr, endowment_sat)
+            if err:
+                return {
+                    "success": False,
+                    "reverted": True,
+                    "gas_used": 0,
+                    "error": err,
+                }
+        journal_snap = len(self._writeback_journal)
         try:
             result = self._run_evm(
                 init_code, {}, self.config.evm_gas_limit,
@@ -931,10 +949,22 @@ class EVMAdapter:
                 contract_addr=contract_addr,
                 value=value,
             )
-        except Exception:
-            return {"success": False, "reverted": True, "gas_used": 0}
+        except Exception as exc:
+            logger.warning("CREATE _run_evm failed: %s", exc)
+            self._writeback_journal = self._writeback_journal[:journal_snap]
+            if endowment_sat > 0:
+                self._refund_sat(contract_addr, deployer, endowment_sat)
+            return {
+                "success": False,
+                "reverted": True,
+                "gas_used": 0,
+                "error": "create_evm_failed",
+            }
 
         if result.get("reverted"):
+            self._writeback_journal = self._writeback_journal[:journal_snap]
+            if endowment_sat > 0:
+                self._refund_sat(contract_addr, deployer, endowment_sat)
             return {
                 "success": False,
                 "reverted": True,
@@ -943,16 +973,35 @@ class EVMAdapter:
 
         ret_code = result.get("return_data") or b""
         code_hex = ret_code.hex() if ret_code else init_code.hex()
+        # Endowment already on the account so constructor could spend it.
         plan = native.evm_plan_create_writeback(
             deployer,
             contract_addr,
-            int(value or 0),
+            0,
             True,
             code_hex,
             result.get("storage"),
         )
         ops = list(plan.get("ops") or [])
-        if ops:
+        from runtime.amount import from_satoshi_float
+
+        live = int(
+            self.db.get_balance_satoshi(self._normalize_addr(contract_addr)) or 0
+        )
+        for op in ops:
+            if str(op.get("op") or "") == "save_account":
+                op["balance"] = from_satoshi_float(live)
+                op["balance_satoshi"] = live
+        if self._writeback_journaling:
+            save_ops = [op for op in ops if str(op.get("op") or "") == "save_account"]
+            rest = [op for op in ops if str(op.get("op") or "") != "save_account"]
+            self._writeback_journal = (
+                self._writeback_journal[:journal_snap]
+                + save_ops
+                + self._writeback_journal[journal_snap:]
+                + rest
+            )
+        elif ops:
             self._apply_nested_writeback_ops(ops)
 
         return {

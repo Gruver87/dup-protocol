@@ -1830,6 +1830,26 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("SPHINCS+ must not invent qc: addresses or fake verify=False")
         if '"qc:"' in code_blob or "'qc:'" in code_blob:
             errors.append("SPHINCS+ must not invent qc: addresses without real backend")
+        evm_interp = (ROOT / "evm_interpreter.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "def _revert_static_write" not in evm_interp:
+            errors.append("evm_interpreter must refuse STATICCALL writes (EIP-214)")
+        rust_runner = (
+            ROOT / "native" / "abs_native" / "src" / "evm_pure_runner.rs"
+        ).read_text(encoding="utf-8", errors="replace")
+        if "static_write_protection" not in rust_runner or "_abs_inline_read_only" not in rust_runner:
+            errors.append("Rust EVM runner must refuse STATICCALL writes (EIP-214)")
+        if 'host["_abs_read_only"]' not in native_py:
+            errors.append("evm_host_context_from_evm must copy _abs_read_only")
+        create_hook = evm_ad_gate.split("def _contract_create_hook", 1)
+        if len(create_hook) < 2 or "insufficient_call_value" not in create_hook[1][:2500]:
+            errors.append("CREATE hook must pre-transfer endowment fail-closed")
+        p2p_py = (ROOT / "network" / "p2p_node.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "mempool_dup_check_failed" not in p2p_py:
+            errors.append("P2P mempool dup check must refuse on has_transaction failure")
         validators_py = (ROOT / "middleware" / "validators.py").read_text(
             encoding="utf-8", errors="replace"
         )
