@@ -1488,10 +1488,8 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
                 blk = q.get_block(BlockQuery(block_hash=str(block_hash)))
             else:
                 blk = None
-            if not blk:
-                return hex(0)
-            txs = blk.get("transactions", [])
-            return hex(len(txs) if isinstance(txs, list) else int(blk.get("tx_count", 0) or 0))
+            from api.eth_format import format_block_tx_count
+            return format_block_tx_count(blk)
 
         if method == "eth_getTransactionByBlockNumberAndIndex":
             tag = params[0] if params else "latest"
@@ -1605,12 +1603,17 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
 
         if method == "eth_getBlockTransactionCountByNumber":
             tag = params[0] if params else "latest"
-            blk = _resolve_block_by_tag(bc, tag)
-            if not blk:
-                return hex(0)
-            txs = blk.get("transactions", [])
-            count = len(txs) if isinstance(txs, list) else int(blk.get("tx_count", 0) or 0)
-            return hex(count)
+            q = self.__class__.query_facade or getattr(bc, "query_facade", None)
+            if q is not None:
+                from api.ports import BlockQuery
+                from api.eth_format import format_block_tx_count
+
+                blk = q.get_block(BlockQuery(tag=str(tag)))
+            else:
+                from api.eth_format import format_block_tx_count
+
+                blk = _resolve_block_by_tag(bc, tag)
+            return format_block_tx_count(blk)
 
         raise ValueError(f"Method not supported: {method}")
 

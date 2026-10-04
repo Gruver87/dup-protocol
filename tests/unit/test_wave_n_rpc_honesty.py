@@ -215,6 +215,14 @@ def test_uncle_rpc_no_invent_zero_count():
     assert present == hex(0)
     uncle = client.call("eth_getUncleByBlockNumberAndIndex", ["0x1", "0x0"]).get("result")
     assert uncle is None
+    missing_txc = client.call("eth_getBlockTransactionCountByNumber", ["0x2"]).get("result")
+    assert missing_txc is None
+    client.query.blocks[2] = {
+        "height": 2,
+        "hash": "0x" + "cd" * 32,
+        "transactions": ["0xaa", "0xbb"],
+    }
+    assert client.call("eth_getBlockTransactionCountByNumber", ["0x2"]).get("result") == hex(2)
 
 
 def test_multisig_amount_satoshi_and_execution_failed():
