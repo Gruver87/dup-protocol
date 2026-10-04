@@ -840,6 +840,39 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("api/ports.py must define RpcPort (ADR 0011)")
         if "class QueryFacadePort" not in api_ports_py:
             errors.append("api/ports.py must define QueryFacadePort (ADR 0011)")
+        if "def get_evm_logs_by_block" not in api_ports_py:
+            errors.append("QueryFacadePort must expose get_evm_logs_by_block (block logsBloom)")
+        eth_fmt_py_adr = (ROOT / "api" / "eth_format.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "def block_logs_bloom" not in eth_fmt_py_adr:
+            errors.append("api/eth_format.py must compute block logsBloom (not a zero stub)")
+        if "def block_transactions_root" not in eth_fmt_py_adr:
+            errors.append("eth_format must expose block_transactions_root (Absolute merkle)")
+        if "def block_receipts_root" not in eth_fmt_py_adr:
+            errors.append("eth_format must expose block_receipts_root (Absolute merkle)")
+        if "def format_uncle_by_index" not in eth_fmt_py_adr:
+            errors.append("eth_format must expose format_uncle_by_index (null, not invented header)")
+        if "def format_uncle_count" not in eth_fmt_py_adr:
+            errors.append("eth_format must return null uncle-count when the block is missing")
+        if "def observed_receipt_status" not in eth_fmt_py_adr:
+            errors.append("receipt status must not treat omitted status as reverted 0x0")
+        if "def block_gas_used" not in eth_fmt_py_adr:
+            errors.append("eth_format must reconstruct block gasUsed from observed txs")
+        rpc_svc_py_adr = (ROOT / "api" / "rpc_service.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "eth_getUncleByBlockNumberAndIndex" not in rpc_svc_py_adr:
+            errors.append("rpc_service must implement eth_getUncleByBlockNumberAndIndex")
+        if 'return hex(0)' in rpc_svc_py_adr and "eth_getUncleCountByBlockNumber" in rpc_svc_py_adr:
+            # Still allow other hex(0) uses; refuse invent uncle-count when block missing.
+            if "format_uncle_count" not in rpc_svc_py_adr:
+                errors.append("rpc_service uncle-count must use format_uncle_count (null if missing)")
+        http_py_uncle = (ROOT / "api" / "http.py").read_text(encoding="utf-8", errors="replace")
+        if "eth_getUncleByBlockNumberAndIndex" not in http_py_uncle:
+            errors.append("http.py must implement eth_getUncleByBlockNumberAndIndex")
+        if "format_uncle_count" not in http_py_uncle:
+            errors.append("http.py uncle-count must use format_uncle_count (null if missing)")
         if not (ROOT / "api" / "eth_format.py").is_file():
             errors.append("api/eth_format.py missing (ADR 0011)")
         if not (ROOT / "api" / "fake_rpc.py").is_file():

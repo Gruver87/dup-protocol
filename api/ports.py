@@ -99,6 +99,9 @@ class QueryFacadePort(Protocol):
     def get_evm_logs_by_tx(self, tx_hash: str) -> List[Dict[str, Any]]:
         ...
 
+    def get_evm_logs_by_block(self, block_height: int) -> List[Dict[str, Any]]:
+        ...
+
 
 @runtime_checkable
 class RpcPort(Protocol):
@@ -143,6 +146,9 @@ class NullQueryFacade:
         return []
 
     def get_evm_logs_by_tx(self, tx_hash: str) -> List[Dict[str, Any]]:
+        return []
+
+    def get_evm_logs_by_block(self, block_height: int) -> List[Dict[str, Any]]:
         return []
 
 

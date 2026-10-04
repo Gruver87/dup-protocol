@@ -199,6 +199,24 @@ def test_block_gas_used_and_uncle_index_honesty():
     assert missing_listing["gasUsed"] is None
 
 
+def test_uncle_rpc_no_invent_zero_count():
+    from api.fake_rpc import FakeRpcClient
+
+    client = FakeRpcClient()
+    missing = client.call("eth_getUncleCountByBlockNumber", ["0x1"]).get("result")
+    assert missing is None
+    client.query.blocks[1] = {
+        "height": 1,
+        "hash": "0x" + "ab" * 32,
+        "transactions": [],
+        "uncles": [],
+    }
+    present = client.call("eth_getUncleCountByBlockNumber", ["0x1"]).get("result")
+    assert present == hex(0)
+    uncle = client.call("eth_getUncleByBlockNumberAndIndex", ["0x1", "0x0"]).get("result")
+    assert uncle is None
+
+
 def test_multisig_amount_satoshi_and_execution_failed():
     from features.multisig import MultiSigWallet
 

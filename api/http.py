@@ -1511,10 +1511,48 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
             return _format_tx(_tx_at_block_index(bc, blk, idx))
 
         if method == "eth_getUncleCountByBlockNumber":
-            return hex(0)
+            from api.eth_format import format_uncle_count
+            from api.ports import BlockQuery
+
+            tag = params[0] if params else "latest"
+            q = self.__class__.query_facade or getattr(bc, "query_facade", None)
+            if q is not None:
+                blk = q.get_block(BlockQuery(tag=str(tag)))
+            else:
+                blk = _resolve_block_by_tag(bc, tag)
+            return format_uncle_count(blk)
 
         if method == "eth_getUncleCountByBlockHash":
-            return hex(0)
+            from api.eth_format import format_uncle_count
+            from api.ports import BlockQuery
+
+            block_hash = params[0] if params else ""
+            q = self.__class__.query_facade or getattr(bc, "query_facade", None)
+            blk = q.get_block(BlockQuery(block_hash=str(block_hash))) if q is not None else None
+            return format_uncle_count(blk)
+
+        if method == "eth_getUncleByBlockNumberAndIndex":
+            from api.eth_format import format_uncle_by_index
+            from api.ports import BlockQuery
+
+            tag = params[0] if params else "latest"
+            index = params[1] if len(params) > 1 else 0
+            q = self.__class__.query_facade or getattr(bc, "query_facade", None)
+            if q is not None:
+                blk = q.get_block(BlockQuery(tag=str(tag)))
+            else:
+                blk = _resolve_block_by_tag(bc, tag)
+            return format_uncle_by_index(blk, index, query=q, bc=bc)
+
+        if method == "eth_getUncleByBlockHashAndIndex":
+            from api.eth_format import format_uncle_by_index
+            from api.ports import BlockQuery
+
+            block_hash = params[0] if params else ""
+            index = params[1] if len(params) > 1 else 0
+            q = self.__class__.query_facade or getattr(bc, "query_facade", None)
+            blk = q.get_block(BlockQuery(block_hash=str(block_hash))) if q is not None else None
+            return format_uncle_by_index(blk, index, query=q, bc=bc)
 
         if method == "eth_getLogs":
             filt = params[0] if params else {}
