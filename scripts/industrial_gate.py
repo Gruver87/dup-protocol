@@ -1716,6 +1716,17 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("EVM adapter must cap/burn precompile gas (geth CALL semantics)")
         if "_precompile_nested_call" not in evm_ad_py:
             errors.append("EVM nested precompile OOG must burn forwarded gas")
+        if "get_balance(addr) * 10**18" in evm_ad_py.replace(" ", ""):
+            errors.append("evm_adapter BALANCE must not use float get_balance*1e18")
+        if "get_balance_satoshi" not in evm_ad_py or "WEI_PER_SATOSHI" not in evm_ad_py:
+            errors.append("evm_adapter BALANCE must use get_balance_satoshi * WEI_PER_SATOSHI")
+        sign_py = (ROOT / "crypto" / "signing.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "gas_limit_required" not in sign_py or "gas_price_required" not in sign_py:
+            errors.append("crypto.signing must refuse invent gas_limit=21000 / gas_price=1")
+        if '"gas_limit": 21000' in sign_py:
+            errors.append("crypto.signing must not hardcode gas_limit=21000")
         wasm_py = (ROOT / "features" / "wasm_vm.py").read_text(
             encoding="utf-8", errors="replace"
         )
@@ -3161,6 +3172,10 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         ).read_text(encoding="utf-8")
         if "pack_receipt_row_value" not in receipt_row_rs:
             errors.append("native must expose pack_receipt_row_value (v1.3.151)")
+        if "RECEIPT_ROW_VERSION: u8 = 2" not in receipt_row_rs:
+            errors.append("ATXR receipt_row must pack satoshi money as version 2")
+        if "RECEIPT_ROW_VERSION_V1" not in receipt_row_rs:
+            errors.append("ATXR receipt_row must dual-read v1 blobs")
         if "receipt_blob_to_value" not in receipt_row_rs:
             errors.append("native must dual-decode receipt blobs (v1.3.151)")
         if "_pack_receipt_blob" not in rocks_py:

@@ -161,6 +161,14 @@ class EVMAdapter:
                 raise RuntimeError("static_selfdestruct_rejected")
             self._selfdestruct_contract(contract_addr, beneficiary)
 
+        from runtime.amount import WEI_PER_SATOSHI, to_satoshi
+
+        def _balance_wei(addr: str) -> int:
+            naddr = self._normalize_addr(addr)
+            if hasattr(self.db, "get_balance_satoshi"):
+                return int(self.db.get_balance_satoshi(naddr) or 0) * WEI_PER_SATOSHI
+            return int(to_satoshi(self.db.get_balance(naddr) or 0)) * WEI_PER_SATOSHI
+
         ctx = EVMContext(
             caller=caller or "",
             origin=caller or "",
@@ -170,7 +178,7 @@ class EVMAdapter:
             block_number=int(tip),
             timestamp=ts,
             chain_id=int(getattr(self.config, "chain_id", 77777)),
-            balance_of=lambda addr: int(self.db.get_balance(addr) * 10**18),
+            balance_of=_balance_wei,
             code_size_of=lambda addr: len(self._code_bytes(addr)),
             code_copy_of=lambda addr, off, size: self._code_bytes(addr)[off:off + size],
             selfdestruct=_selfdestruct,

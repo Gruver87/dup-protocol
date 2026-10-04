@@ -90,28 +90,38 @@ def create_signed_transaction(
     value: int,
     nonce: int,
     private_key: bytes,
-    chain_id: int = 1
+    chain_id: int = 1,
+    *,
+    gas_limit: int | None = None,
+    gas_price: int | None = None,
 ) -> dict:
-    """Create a fully signed transaction"""
+    """Create a fully signed transaction (lab helper).
+
+    Refuse invent ``gas_limit=21000`` / ``gas_price=1`` — callers must pass both.
+    """
+    if gas_limit is None or int(gas_limit) <= 0:
+        raise ValueError("gas_limit_required")
+    if gas_price is None or int(gas_price) <= 0:
+        raise ValueError("gas_price_required")
     tx = {
         "from": from_addr,
         "to": to_addr,
         "value": value,
         "nonce": nonce,
         "chain_id": chain_id,
-        "gas_limit": 21000,
-        "gas_price": 1
+        "gas_limit": int(gas_limit),
+        "gas_price": int(gas_price),
     }
-    
+
     # Add signature
     signature = Signer.sign_transaction(tx, private_key)
     tx["signature"] = signature
-    
+
     # Add public key for verification
     keypair = KeyGenerator.from_private_key(private_key.hex())
     tx["public_key"] = keypair.public_key.hex()
-    
+
     # Add hash
     tx["hash"] = Hasher.hash_transaction(tx)
-    
+
     return tx
