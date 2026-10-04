@@ -635,6 +635,7 @@ _PROD_BLOCKED_PATHS = frozenset({
     "/pq/decapsulate",
     "/pq/hybrid-decrypt",
     "/pq/hybrid-sign",
+    "/pq/keygen",
     "/pq/sphincs/sign",
     "/pools/dao/vote",
     "/pools/spend",
@@ -4850,7 +4851,12 @@ class RESTHandler(BaseHTTPRequestHandler):
                 self._json(stats)
 
             elif path == "/bridge2/fee":
-                from runtime.amount import money_abs, resolve_amount_satoshi, to_satoshi
+                from runtime.amount import (
+                    from_satoshi_float,
+                    money_abs,
+                    resolve_amount_satoshi,
+                    to_satoshi,
+                )
 
                 cb = self.__class__.cross_bridge
                 chain = qs.get("chain", ["ethereum"])[0]
@@ -4879,24 +4885,33 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(400, f"invalid amount: {exc}")
                     return
                 if cb and hasattr(cb, "estimate_fee"):
-                    try:
-                        est = cb.estimate_fee(
-                            chain, amount, amount_satoshi=int(amount_sat)
-                        )
-                    except TypeError:
-                        est = cb.estimate_fee(chain, amount)
+                    est = cb.estimate_fee(
+                        chain, amount, amount_satoshi=int(amount_sat)
+                    )
                     if isinstance(est, dict):
-                        est.setdefault("amount_satoshi", int(amount_sat))
-                        self._json(est)
+                        self._json({
+                            "chain": chain,
+                            "amount": est.get("amount", from_satoshi_float(amount_sat)),
+                            "amount_satoshi": int(est.get("amount_satoshi", amount_sat)),
+                            "fee": est.get("fee", 0),
+                            "fee_satoshi": int(est.get("fee_satoshi", 0)),
+                        })
                         return
                     fee = est
                 else:
                     fee = 0
+                try:
+                    fee_abs = money_abs(fee, field="fee") if fee else 0.0
+                    fee_sat = int(to_satoshi(fee_abs)) if fee else 0
+                except (TypeError, ValueError):
+                    self._error(502, "bridge fee unparseable")
+                    return
                 self._json({
                     "chain": chain,
-                    "amount": amount,
+                    "amount": from_satoshi_float(amount_sat),
                     "amount_satoshi": amount_sat,
-                    "fee": fee,
+                    "fee": fee_abs,
+                    "fee_satoshi": fee_sat,
                 })
 
             # ── Standalone Consensus Engine ───────────────────────────────────
@@ -6223,49 +6238,13 @@ class RESTHandler(BaseHTTPRequestHandler):
                 except Exception as e:
                     self._error(500, str(e))
 
-            # ── NFT mint (owner-keyed legacy; prefer POST /nft/mint) ──────────
+            # Dead duplicate of canonical /nft/mint (Wave L path above).
             elif path == "/nft/mint-legacy":
-                nft = self.__class__.nft
-                if not nft:
-                    self._error(503, "NFT module not enabled"); return
-                name  = body.get("name", "Unnamed NFT")
-                owner = body.get("owner", "")
-                desc  = body.get("description", "")
-                if not owner:
-                    self._error(400, "owner is required"); return
-                has_price = any(
-                    body.get(k) is not None and str(body.get(k)).strip() != ""
-                    for k in ("price_satoshi", "amount_satoshi", "price", "amount")
+                self._error(
+                    410,
+                    "use POST /nft/mint with price_satoshi (legacy invent-price path removed)",
                 )
-                if has_price:
-                    try:
-                        price, price_sat = _http_amount_abs(
-                            body,
-                            cfg,
-                            field="price",
-                            sat_keys=("price_satoshi", "amount_satoshi"),
-                            abs_keys=("price", "amount"),
-                        )
-                    except ValueError as exc:
-                        self._error(400, str(exc)); return
-                else:
-                    price, price_sat = 0.0, 0
-                token = _call_drop_satoshi_kwargs(
-                    nft.mint,
-                    owner=owner,
-                    name=name,
-                    description=desc,
-                    price=price,
-                    price_satoshi=int(price_sat),
-                )
-                if token:
-                    out = {"token_id": getattr(token, "token_id", str(token)), "name": name}
-                    if isinstance(token, dict):
-                        out = {**token, **out}
-                    out["price_satoshi"] = int(price_sat)
-                    self._json(out)
-                else:
-                    self._error(500, "Mint failed")
+                return
 
             # ── MiniVM contract deploy ─────────────────────────────────────────
             elif path == "/minivm/compile":

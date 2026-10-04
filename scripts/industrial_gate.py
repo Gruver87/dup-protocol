@@ -1734,6 +1734,18 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("Wallet.export must refuse bare plaintext without allow_plaintext")
         if "plaintext wallet import refused" not in wallet_py:
             errors.append("Wallet.import_wallet must refuse bare plaintext without allow_plaintext")
+        http_gate = (ROOT / "api" / "http.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if '"/pq/keygen"' not in http_gate:
+            errors.append("prod must block POST /pq/keygen")
+        if "legacy invent-price path removed" not in http_gate:
+            errors.append("/nft/mint-legacy must be 410 tombstone")
+        if '"fee_satoshi": fee_sat' not in http_gate and '"fee_satoshi": int(est.get("fee_satoshi"' not in http_gate:
+            errors.append("/bridge2/fee must emit fee_satoshi")
+        main_boot = (ROOT / "main.py").read_text(encoding="utf-8", errors="replace")
+        if "stake_satoshi=_min_stake_sat" not in main_boot:
+            errors.append("boot add_validator must pass stake_satoshi")
         validators_py = (ROOT / "middleware" / "validators.py").read_text(
             encoding="utf-8", errors="replace"
         )

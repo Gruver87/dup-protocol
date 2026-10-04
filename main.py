@@ -687,8 +687,18 @@ class NodeOrchestrator:
                 print(f"[Node] Devnet5 manifest note: {_d5m}")
 
         # Если нет валидаторов в БД — регистрируем текущий узел как валидатор
+        from runtime.amount import to_satoshi as _to_satoshi_boot
+
+        _min_stake_sat = int(_to_satoshi_boot(config.min_stake))
         if not self.db.get_validators():
-            self.consensus.add_validator(config.miner_address, config.min_stake)
+            try:
+                self.consensus.add_validator(
+                    config.miner_address,
+                    config.min_stake,
+                    stake_satoshi=_min_stake_sat,
+                )
+            except TypeError:
+                self.consensus.add_validator(config.miner_address, config.min_stake)
             print(f"[Node] Registered self as validator: {config.miner_address}")
 
         # Operational wallet (WALLET_PRIVATE_KEY) must mine + sign on solo devnet
@@ -704,7 +714,12 @@ class NodeOrchestrator:
         ):
             _vals = self.db.get_validators(active_only=True) or []
             if not any(v["address"].lower() == _op.lower() for v in _vals):
-                self.consensus.add_validator(_op, config.min_stake)
+                try:
+                    self.consensus.add_validator(
+                        _op, config.min_stake, stake_satoshi=_min_stake_sat
+                    )
+                except TypeError:
+                    self.consensus.add_validator(_op, config.min_stake)
             config.miner_address = _op
             print(f"[Node] Mining proposer locked to operational wallet: {_op}")
 
