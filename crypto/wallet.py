@@ -127,12 +127,36 @@ class Wallet:
         return tx
 
     @staticmethod
+    def _normalize_sign_value(value):
+        """Collapse whole-number floats to int so JSON digest matches satoshi resolve.
+
+        Prod HTTP resolves amount_satoshi → ``from_satoshi_float`` (float). Signing
+        with int ``1`` then verifying with ``1.0`` must not flip the ECDSA digest
+        (``json.dumps`` emits ``1`` vs ``1.0``).
+        """
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, float):
+            if value.is_integer():
+                return int(value)
+            return value
+        if isinstance(value, int):
+            return value
+        try:
+            as_float = float(value)
+        except (TypeError, ValueError):
+            return value
+        if as_float.is_integer():
+            return int(as_float)
+        return as_float
+
+    @staticmethod
     def _canonical_tx_for_hash(tx: dict) -> dict:
         """Canonical signing payload; includes data/gas when present."""
         payload = {
             "from": tx["from"],
             "to": tx["to"],
-            "value": tx["value"],
+            "value": Wallet._normalize_sign_value(tx["value"]),
             "nonce": tx["nonce"],
             "chain_id": tx.get("chain_id", 1),
         }

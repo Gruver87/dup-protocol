@@ -109,14 +109,18 @@ class ImmutableStateManager:
         with self._lock:
             from_addr = tx.get('from', tx.get('from_addr', ''))
             to_addr = tx.get('to', tx.get('to_addr', ''))
-            amount_satoshi = tx.get(
-                "amount_satoshi",
-                to_satoshi(tx.get("amount", 0)),
-            )
-            fee_satoshi = tx.get(
-                "fee_satoshi",
-                to_satoshi(tx.get("fee", 0)),
-            )
+            raw_amt_sat = tx.get("amount_satoshi", tx.get("value_satoshi"))
+            if raw_amt_sat is not None and raw_amt_sat != "":
+                amount_satoshi = int(raw_amt_sat)
+            else:
+                amount_satoshi = int(
+                    to_satoshi(tx.get("amount", tx.get("value", 0)))
+                )
+            raw_fee_sat = tx.get("fee_satoshi")
+            if raw_fee_sat is not None and raw_fee_sat != "":
+                fee_satoshi = int(raw_fee_sat)
+            else:
+                fee_satoshi = int(to_satoshi(tx.get("fee", 0)))
             
             from_acc = self.get_account(from_addr, create=True)
             to_acc = self.get_account(to_addr, create=True)

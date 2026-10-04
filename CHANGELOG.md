@@ -12,6 +12,7 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ### Industrial harden (no new features)
 
+- **P1 (2026-10-04):** Apply/sign satoshi twins — `Wallet._normalize_sign_value` digest parity; BlockValidator `value_satoshi_mismatch`; StateService pool-locks sat path; immutable_state prefers `amount_satoshi`/`value_satoshi`. **Not** soak.
 - **P1 (2026-10-04):** Consensus refuse invent `stake=100` — LMD/Casper/Beacon/Slashing `stake_required`; main LMD binds `min_stake` satoshi; `/pq/status` no fake `{"enabled":True}` stats. Units `test_exp_consensus_stake_required.py`. **Not** soak.
 - **P1 (2026-10-04):** Hot persist fail-closed — Rocks/SQLite/chain_storage raise `PersistError` (no soft `False`); chain_backup refuses silent live-DB `copy2`. `evm_writeback` refuses float `balance_satoshi` + insufficient transfer. Units `test_persist_fail_closed.py`. **Not** soak.
 - **P1 (2026-10-04):** Native `amount.rs` fail-closed satoshi (refuse float JSON, no `0.0` paint, `balance_satoshi` twins). REST `WireMoneyMismatch` remap + `/status` degrades on prod+require_native mempool_store demote. **Not** soak.

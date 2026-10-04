@@ -92,11 +92,19 @@ class BlockValidator:
                 alt = {"from": "from_addr", "to": "to_addr", "hash": "tx_hash"}.get(field)
                 if not alt or alt not in tx:
                     return False, f"Missing field: {field}"
-        # Wave L / audit §9: satoshi gate — refuse unparseable / negative (no float).
+        # Wave L: satoshi gate — prefer amount_satoshi; refuse unparseable / negative.
         from runtime.amount import to_satoshi
 
         try:
-            value_sat = int(to_satoshi(tx.get("value", tx.get("amount", 0))))
+            raw_sat = tx.get("amount_satoshi", tx.get("value_satoshi"))
+            if raw_sat is not None and raw_sat != "":
+                value_sat = int(raw_sat)
+                raw_abs = tx.get("value", tx.get("amount"))
+                if raw_abs is not None and raw_abs != "":
+                    if int(to_satoshi(raw_abs)) != value_sat:
+                        return False, "value_satoshi_mismatch"
+            else:
+                value_sat = int(to_satoshi(tx.get("value", tx.get("amount", 0))))
         except (TypeError, ValueError):
             return False, "Unparseable value"
         if value_sat < 0:

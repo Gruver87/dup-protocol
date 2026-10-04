@@ -693,9 +693,14 @@ class StateService:
         sender_balance = from_satoshi_float(sender_sat)
 
         if self.pool_locks:
-            allowed, reason = self.pool_locks.is_outgoing_allowed(
-                tx.from_addr, total_cost, sender_balance
-            )
+            if hasattr(self.pool_locks, "is_outgoing_allowed_sat"):
+                allowed, reason = self.pool_locks.is_outgoing_allowed_sat(
+                    tx.from_addr, total_cost_sat, sender_sat
+                )
+            else:
+                allowed, reason = self.pool_locks.is_outgoing_allowed(
+                    tx.from_addr, total_cost, sender_balance
+                )
             if not allowed:
                 return {"success": False, "error": reason}
 
@@ -743,7 +748,10 @@ class StateService:
                 else:
                     self.storage.increment_nonce(tx.from_addr)
                 if self.pool_locks:
-                    self.pool_locks.record_outgoing(tx.from_addr, fee + tx.value)
+                    if hasattr(self.pool_locks, "record_outgoing_sat"):
+                        self.pool_locks.record_outgoing_sat(tx.from_addr, fee_sat)
+                    else:
+                        self.pool_locks.record_outgoing(tx.from_addr, fee + tx.value)
                 tx.fee = fee
                 tx.burned = burn_amount
                 tx.gas_used = evm_res.gas_used or tx.gas
@@ -803,7 +811,10 @@ class StateService:
                 else:
                     self.storage.increment_nonce(tx.from_addr)
                 if self.pool_locks:
-                    self.pool_locks.record_outgoing(tx.from_addr, deploy_cost)
+                    if hasattr(self.pool_locks, "record_outgoing_sat"):
+                        self.pool_locks.record_outgoing_sat(tx.from_addr, deploy_cost_sat)
+                    else:
+                        self.pool_locks.record_outgoing(tx.from_addr, deploy_cost)
                 tx.fee = fee
                 tx.burned = burn_amount
                 tx.gas_used = evm_res.gas_used or tx.gas
@@ -833,7 +844,10 @@ class StateService:
             self.storage.increment_nonce(tx.from_addr)
 
         if self.pool_locks:
-            self.pool_locks.record_outgoing(tx.from_addr, total_cost)
+            if hasattr(self.pool_locks, "record_outgoing_sat"):
+                self.pool_locks.record_outgoing_sat(tx.from_addr, total_cost_sat)
+            else:
+                self.pool_locks.record_outgoing(tx.from_addr, total_cost)
 
         tx.fee = fee
         tx.burned = burn_amount
