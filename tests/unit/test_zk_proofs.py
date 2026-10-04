@@ -4,6 +4,8 @@
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from features.zk import ZKProof, ZKProofSystem
@@ -42,33 +44,37 @@ def test_knowledge_proof_rejects_tampered_challenge_and_response():
     assert zk.verify_knowledge(tampered_response, public_value) is False
 
 
-def test_range_and_balance_proofs_reject_tampered_challenge():
+def test_range_proof_refused_hash_theater_removed():
     zk = ZKProofSystem()
-    range_proof = zk.prove_range(42, 0, 100)
-    balance_proof = zk.prove_balance(1000, 250)
+    with pytest.raises(NotImplementedError, match="zk_range_proof_not_implemented"):
+        zk.prove_range(42, 0, 100)
+    with pytest.raises(NotImplementedError, match="zk_range_proof_not_implemented"):
+        zk.verify_range(
+            ZKProof(commitment="x", response=1, challenge=1, proof_type="range"),
+            0,
+            100,
+        )
 
-    assert zk.verify_range(range_proof, 0, 100) is True
+
+def test_balance_proof_rejects_tampered_challenge():
+    zk = ZKProofSystem()
+    balance_proof = zk.prove_balance(1000, 250)
     assert zk.verify_balance(balance_proof, 250) is True
 
-    bad_range = ZKProof(
-        commitment=range_proof.commitment,
-        response=range_proof.response,
-        challenge=range_proof.challenge + 1,
-        proof_type=range_proof.proof_type,
-    )
     bad_balance = ZKProof(
         commitment=balance_proof.commitment,
         response=balance_proof.response,
         challenge=balance_proof.challenge + 1,
         proof_type=balance_proof.proof_type,
     )
-
-    assert zk.verify_range(bad_range, 0, 100) is False
     assert zk.verify_balance(bad_balance, 250) is False
 
 
-def test_zk_system_info_is_not_marked_educational():
+def test_zk_system_info_refuses_range_claim():
     info = ZKProofSystem().get_system_info()
 
     assert info["security_level"] == "r-and-d"
     assert "Fiat-Shamir" in info["knowledge_proof"]
+    assert "range" not in info["supported_proofs"]
+    assert "range" in info["refused_proofs"]
+    assert "refused" in info["range_proof"]

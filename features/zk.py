@@ -110,31 +110,25 @@ class ZKProofSystem:
         ) % self.PARAMS["p"]
         return left == right
 
-    # ── Range Proof ──────────────────────────────────────────────────────────
+    # ── Range Proof (fail-closed — hash theater removed) ─────────────────────
 
     def prove_range(self, value: int, min_val: int = 0, max_val: int = 100) -> ZKProof:
-        """Доказываем что value в [min_val, max_val] не раскрывая value."""
-        if not (min_val <= value <= max_val):
-            raise ValueError(f"Value {value} not in [{min_val}, {max_val}]")
-        commitment = native.sha256_hex(f"{value}:{min_val}:{max_val}".encode())
-        challenge = self._challenge("range", commitment, min_val, max_val, modulus=1_000_000)
-        proof_data = f"{commitment}:{challenge}:{min_val}:{max_val}"
-        response = int(native.sha256_hex(proof_data.encode()), 16)
-        return ZKProof(commitment=commitment, response=response,
-                       challenge=challenge, proof_type="range")
+        """Refuse educational sha256(value:min:max) 'range proofs' (audit C2).
+
+        Prior implementation never proved ``value ∈ [min,max]`` in ZK — only
+        hashed the plaintext. Removed so explorers/APIs cannot paint green.
+        """
+        raise NotImplementedError(
+            "zk_range_proof_not_implemented: educational hash binding removed "
+            "(not a ZK range proof; no Bulletproofs/Plonk backend)"
+        )
 
     def verify_range(self, proof: ZKProof, min_val: int = 0, max_val: int = 100) -> bool:
-        expected_challenge = self._challenge(
-            "range", proof.commitment, min_val, max_val, modulus=1_000_000
+        """Refuse verify of forgeable hash-theater range proofs (audit C2)."""
+        raise NotImplementedError(
+            "zk_range_proof_not_implemented: educational hash binding removed "
+            "(not a ZK range proof; no Bulletproofs/Plonk backend)"
         )
-        if proof.challenge != expected_challenge:
-            return False
-        expected = int(
-            native.sha256_hex(
-                f"{proof.commitment}:{proof.challenge}:{min_val}:{max_val}".encode()
-            ), 16
-        )
-        return expected == proof.response
 
     # ── Balance Proof (Pedersen-style commitment + Schnorr) ─────────────────
 
@@ -216,10 +210,15 @@ class ZKProofSystem:
     def get_system_info(self) -> Dict:
         return {
             "curve": "finite-field-schnorr-like",
-            "supported_proofs": ["knowledge", "range", "balance", "pedersen_balance"],
+            "supported_proofs": ["knowledge", "balance", "pedersen_balance"],
+            "refused_proofs": ["range"],
             "security_level": "r-and-d",
             "knowledge_proof": "non-interactive Fiat-Shamir Schnorr-style proof",
-            "balance_proof": "Pedersen commitment + Fiat-Shamir (difference >= amount)",
+            "balance_proof": "Pedersen commitment + Fiat-Shamir (difference >= amount) — R&D only",
+            "range_proof": (
+                "refused: educational sha256 binding removed "
+                "(not ZK; forgeable commitment theater)"
+            ),
             "production_note": "R&D module; disabled by production profile until independently audited",
             "p_bits": self.PARAMS["p"].bit_length(),
         }

@@ -5327,8 +5327,12 @@ class RESTHandler(BaseHTTPRequestHandler):
                 except (json.JSONDecodeError, ValueError, TypeError) as e:
                     self._error(400, f"invalid proof: {e}")
                     return
-                ok = zk.verify_range(proof, min_v, max_v)
-                self._json({"valid": bool(ok), "value_checked": value})
+                try:
+                    ok = zk.verify_range(proof, min_v, max_v)
+                except NotImplementedError as e:
+                    self._error(501, str(e))
+                    return
+                self._json({"valid": ok is True, "value_checked": value})
 
             # ── Slashing engine ───────────────────────────────────────────────
             elif path == "/slashing/status":

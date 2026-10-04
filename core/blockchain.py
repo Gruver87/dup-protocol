@@ -1357,8 +1357,30 @@ class Blockchain:
         return self.storage.get_transaction(tx_hash)
 
     def get_state_root(self) -> str:
-        """Canonical L1 state root from SQLite balances (consensus/P2P path)."""
-        return self._compute_state_root_from_db()
+        """Last committed canonical root (header/meta). Does not rescan accounts.
+
+        Apply/verify still call ``_compute_state_root_from_db``. HTTP /status, P2P
+        solicit, and harness must not rehash full state on every poll.
+        """
+        store = self.storage
+        if store is not None and hasattr(store, "get_live_state_root_meta"):
+            try:
+                root, _height = store.get_live_state_root_meta()
+                root_s = str(root or "").strip()
+                if root_s:
+                    return root_s
+            except (OSError, TypeError, ValueError, AttributeError):
+                pass
+        if store is not None and hasattr(store, "get_last_block"):
+            try:
+                last = store.get_last_block() or {}
+                root_s = str((last or {}).get("state_root") or "").strip()
+                if root_s:
+                    return root_s
+            except (OSError, TypeError, ValueError, AttributeError):
+                pass
+        # Empty committed root: return "" (fail-closed for HTTP/P2P). Never scan accounts.
+        return ""
 
     def get_stats(self) -> Dict:
         db_stats = self.storage.get_stats()

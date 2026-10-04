@@ -547,6 +547,11 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             chunk = http_py.split('path == "/zk/prove/range"')[1].split("elif path")[0]
             if '"valid": True' in chunk:
                 errors.append("ZK prove/range must not force valid:true")
+        zk_src = (ROOT / "features" / "zk.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "zk_range_proof_not_implemented" not in zk_src:
+            errors.append("features/zk.py must refuse educational range hash theater")
         nft_ports_py = (ROOT / "features" / "nft_ports.py").read_text(
             encoding="utf-8", errors="replace"
         )
@@ -1812,6 +1817,16 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         )
         if "allow_slashed=bool(preserve_peer_hash)" not in bc_py:
             errors.append("catch-up must allow_slashed for preserve_peer_hash import")
+        if "Last committed canonical root" not in bc_py:
+            errors.append(
+                "get_state_root must return committed header/meta, not rescan accounts"
+            )
+        sr_idx = bc_py.find("def get_state_root")
+        sr_fn = bc_py[sr_idx : sr_idx + 1400] if sr_idx >= 0 else ""
+        if "return self._compute_state_root_from_db()" in sr_fn:
+            errors.append(
+                "get_state_root must not fall through to _compute_state_root_from_db"
+            )
         if "ABS_ALLOW_DEV_ADMIN_JWT" not in http_gate:
             errors.append("non-prod admin JWT mint must require ABS_ALLOW_DEV_ADMIN_JWT")
         sphincs_py = (ROOT / "crypto" / "sphincs_plus.py").read_text(
@@ -3272,6 +3287,31 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("rocks_store must pack ABAR account rows (v1.3.147)")
         if "_loads_account_blob_or_none" not in rocks_py:
             errors.append("rocks_store must dual-read account blobs (v1.3.147)")
+        keycodec_py = (ROOT / "storage" / "keycodec.py").read_text(encoding="utf-8")
+        if "def prefix_evm_logs_block" not in keycodec_py:
+            errors.append(
+                "keycodec must expose prefix_evm_logs_block for height-bounded log seeks"
+            )
+        if "def prefix_family_end" not in keycodec_py:
+            errors.append(
+                "keycodec must expose prefix_family_end for exclusive family scans"
+            )
+        qlog_fn = rocks_py.split("def query_evm_logs", 1)[-1].split(
+            "def _decode_nft_token", 1
+        )[0]
+        if "_scan_prefix" in qlog_fn:
+            errors.append(
+                "Rocks query_evm_logs must not prefix-scan; delegate to _scan_evm_log_blobs"
+            )
+        if "_scan_evm_log_blobs" not in qlog_fn:
+            errors.append("Rocks query_evm_logs must seek via _scan_evm_log_blobs")
+        evm_blob_fn = rocks_py.split("def _scan_evm_log_blobs", 1)[-1].split(
+            "def query_evm_logs", 1
+        )[0]
+        if "_scan_prefix(kc.prefix_evm_logs()" in evm_blob_fn:
+            errors.append("_scan_evm_log_blobs must not scan the full P_EVM_LOG family")
+        if "prefix_evm_logs_block" not in evm_blob_fn:
+            errors.append("_scan_evm_log_blobs must seek per-height EVM log prefixes")
         # v1.3.148 — typed Rocks tx-row ATXV codec
         tx_row_rs = (ROOT / "native" / "abs_native" / "src" / "tx_row.rs").read_text(
             encoding="utf-8"

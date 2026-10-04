@@ -379,6 +379,45 @@ class RocksChainStore:
         rows = self._engine.prefix_scan(prefix, limit)
         return [(bytes(k), bytes(v)) for k, v in rows]
 
+    def _prefix_last_kv(self, prefix: bytes) -> Optional[tuple[bytes, bytes]]:
+        engine = self._engine
+        if engine is None or not hasattr(engine, "prefix_last"):
+            return None
+        try:
+            row = engine.prefix_last(prefix)
+        except Exception as exc:
+            logger.warning("[RocksStore] prefix_last failed: %s", exc)
+            return None
+        if not row:
+            return None
+        return bytes(row[0]), bytes(row[1])
+
+    def _scan_range(
+        self, start: bytes, end_exclusive: bytes, limit: int
+    ) -> List[tuple[bytes, bytes]]:
+        """Forward scan [start, end_exclusive). Never a full-CF walk."""
+        limit = max(0, min(int(limit), 100_000))
+        if limit == 0 or not start or end_exclusive <= start:
+            return []
+        engine = self._engine
+        if engine is not None and hasattr(engine, "scan_range"):
+            try:
+                rows = engine.scan_range(start, end_exclusive, limit)
+            except Exception as exc:
+                logger.warning("[RocksStore] scan_range failed: %s", exc)
+            else:
+                return [(bytes(k), bytes(v)) for k, v in rows]
+        # Old wheel: prefix_scan from `start` then clip. Multi-height EVM
+        # ranges must not use this path (query_evm_logs loops heights).
+        clipped: List[tuple[bytes, bytes]] = []
+        for key, value in self._scan_prefix(start, limit=limit):
+            if key >= end_exclusive:
+                break
+            clipped.append((key, value))
+            if len(clipped) >= limit:
+                break
+        return clipped
+
     @contextmanager
     def atomic(self):
         import abs_native  # type: ignore
@@ -2388,6 +2427,45 @@ class RocksChainStore:
         logs.sort(key=lambda r: (int(r.get("log_index", 0) or 0), int(r.get("block_height", 0) or 0)))
         return logs
 
+    def _evm_log_tip_height(self) -> int:
+        last = self._prefix_last_kv(kc.P_EVM_LOG)
+        if last is not None and len(last[0]) >= 1 + 8:
+            try:
+                return int(kc.unpack_u64(last[0][1:9]))
+            except ValueError:
+                pass
+        return int(self.get_chain_tip() or 0)
+
+    def _scan_evm_log_blobs(
+        self, from_block: int, to_block: Optional[int], budget: int
+    ) -> List[tuple[bytes, bytes]]:
+        """Logs in [from_block, to_block], O(rows in range) — not all P_EVM_LOG."""
+        start = kc.prefix_evm_logs_block(from_block)
+        engine = self._engine
+        if to_block is None and engine is not None and hasattr(engine, "scan_range"):
+            end = kc.prefix_family_end(kc.P_EVM_LOG)
+            return self._scan_range(start, end, budget)
+        if to_block is None:
+            to_block = self._evm_log_tip_height()
+        to_block = int(to_block)
+        if from_block > to_block:
+            return []
+        end = kc.prefix_evm_logs_block(to_block + 1)
+        if engine is not None and hasattr(engine, "scan_range"):
+            return self._scan_range(start, end, budget)
+        # Old wheel: per-height prefix, never a full P_EVM_LOG walk.
+        out: List[tuple[bytes, bytes]] = []
+        remaining = budget
+        for height in range(from_block, to_block + 1):
+            if remaining <= 0:
+                break
+            chunk = self._scan_prefix(
+                kc.prefix_evm_logs_block(height), limit=remaining
+            )
+            out.extend(chunk)
+            remaining -= len(chunk)
+        return out
+
     def query_evm_logs(
         self,
         from_block: int = 0,
@@ -2396,20 +2474,25 @@ class RocksChainStore:
         topics: Optional[List] = None,
         limit: int = 10_000,
     ) -> List[Dict]:
-        to_block = 2**63 - 1 if to_block is None else int(to_block)
         from_block = max(0, int(from_block))
         limit = max(1, min(int(limit), 10_000))
         addr_set = None
         if addresses:
             addr_set = {kc.normalize_address_key(a) for a in addresses if a}
-        rows = self._scan_prefix(kc.prefix_evm_logs(), limit=50_000)
+        if addr_set or topics:
+            budget = min(50_000, max(limit * 32, 256))
+        else:
+            budget = limit
+        rows = self._scan_evm_log_blobs(from_block, to_block, budget)
         out: List[Dict] = []
         for _, val in rows:
             row = self._decode_evm_log_row(val)
             if row is None:
                 continue
             bh = int(row.get("block_height", 0) or 0)
-            if bh < from_block or bh > to_block:
+            if to_block is not None and (bh < from_block or bh > int(to_block)):
+                continue
+            if bh < from_block:
                 continue
             if addr_set and kc.normalize_address_key(row.get("contract_address", "")) not in addr_set:
                 continue

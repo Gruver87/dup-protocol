@@ -56,7 +56,11 @@ class FeaturesZkGateway:
             zp = ZKProof.from_dict(proof) if isinstance(proof, dict) else proof
             ptype = str(proof_type or getattr(zp, "proof_type", "") or "knowledge")
             if ptype == "range":
-                return bool(self._system.verify_range(zp))
+                # Hash-theater range proofs refused — never paint verify green.
+                try:
+                    return bool(self._system.verify_range(zp))
+                except NotImplementedError:
+                    return False
             if ptype == "balance":
                 amount = int(proof.get("amount", 0) or 0) if isinstance(proof, dict) else 0
                 return bool(self._system.verify_balance(zp, amount))

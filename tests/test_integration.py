@@ -482,13 +482,11 @@ class TestFeatures:
 
     def test_zk_proof_range(self):
         zk = ZKProofSystem()
-        proof = zk.prove_range(50, 0, 100)
-        assert proof is not None
-        # ZKProof is a dataclass/object, check as dict via __dict__ or attributes
-        if hasattr(proof, "valid"):
-            assert proof.valid is True
-        elif hasattr(proof, "proof_data"):
-            assert "in_range" in proof.proof_data or proof.proof_data is not None
+        # Educational hash-theater range proofs refused (audit Phase A).
+        import pytest
+
+        with pytest.raises(NotImplementedError, match="zk_range_proof_not_implemented"):
+            zk.prove_range(50, 0, 100)
 
     def test_zk_proof_balance(self):
         zk = ZKProofSystem()
