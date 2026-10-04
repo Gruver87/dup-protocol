@@ -3,7 +3,7 @@ from crypto import native
 import time
 from typing import Callable, List, Dict, Any, Optional, Set
 
-from runtime.amount import to_satoshi
+from runtime.amount import resolve_amount_satoshi
 
 
 class MultiSigWallet:
@@ -34,13 +34,15 @@ class MultiSigWallet:
         self.confirmations: Dict[str, Set[str]] = {}
         self._registry[self.wallet_id] = self
 
-    def create_transaction(self, to: str, amount) -> Dict[str, Any]:
+    def create_transaction(
+        self, to: str, amount, *, amount_satoshi: int | None = None
+    ) -> Dict[str, Any]:
         if not to:
             return {"success": False, "error": "recipient required"}
         try:
-            amount_sat = int(to_satoshi(amount))
-        except (TypeError, ValueError):
-            return {"success": False, "error": "invalid amount"}
+            amount_sat, _display = resolve_amount_satoshi(amount, amount_satoshi)
+        except (TypeError, ValueError) as exc:
+            return {"success": False, "error": str(exc) or "invalid amount"}
         if amount_sat <= 0:
             return {"success": False, "error": "amount must be > 0"}
 

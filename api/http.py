@@ -5019,9 +5019,18 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(503, "ZK module not enabled")
                     return
                 from features.zk import ZKProof
-                value = int(qs.get("value", ["42"])[0])
-                min_v = int(qs.get("min", ["0"])[0])
-                max_v = int(qs.get("max", ["100"])[0])
+                # Refuse invent value=42 — require explicit value when reporting value_checked.
+                value_raw = (qs.get("value") or [None])[0]
+                if value_raw is None or str(value_raw).strip() == "":
+                    self._error(400, "value required (do not invent demo 42)")
+                    return
+                try:
+                    value = int(value_raw)
+                    min_v = int((qs.get("min") or ["0"])[0])
+                    max_v = int((qs.get("max") or ["100"])[0])
+                except (TypeError, ValueError) as exc:
+                    self._error(400, f"invalid range params: {exc}")
+                    return
                 proof_raw = qs.get("proof", [""])[0]
                 try:
                     if proof_raw.startswith("{"):
@@ -5846,7 +5855,11 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if not zk:
                     self._error(503, "ZK module not enabled"); return
                 proof_type = body.get("type", "knowledge")
-                secret = int(body.get("secret", body.get("value", 42)))
+                secret_raw = body.get("secret", body.get("value"))
+                if secret_raw is None or str(secret_raw).strip() == "":
+                    self._error(400, "value required (do not invent demo 42)")
+                    return
+                secret = int(secret_raw)
                 try:
                     if proof_type == "knowledge":
                         proof = zk.prove_knowledge(secret)
@@ -5899,15 +5912,35 @@ class RESTHandler(BaseHTTPRequestHandler):
                 owners = body.get("owners", [])
                 required = int(body.get("required", 2))
                 to = body.get("to", "")
-                value=_http_abs(body.get("value", 0), field="value")
+                try:
+                    value, value_sat = _http_amount_abs(
+                        body,
+                        cfg,
+                        field="value",
+                        sat_keys=("value_satoshi", "amount_satoshi"),
+                        abs_keys=("value", "amount"),
+                    )
+                except ValueError as exc:
+                    self._error(400, str(exc)); return
                 try:
                     from features.multisig import MultiSigWallet
                     ms = MultiSigWallet(owners, required)
-                    result = ms.create_transaction(to, value)
+                    result = ms.create_transaction(
+                        to, value, amount_satoshi=int(value_sat)
+                    )
                     if isinstance(result, dict) and result.get("success") is False:
                         self._error(400, result.get("error", "multisig transaction failed"))
                         return
-                    self._json({**result, "owners": owners, "required": required})
+                    self._json({
+                        **result,
+                        "owners": owners,
+                        "required": required,
+                        "value_satoshi": int(value_sat),
+                        "amount_satoshi": int(value_sat),
+                        "execution_bound": False,
+                        "l1_wired": False,
+                        "honesty": "multisig registry is in-memory — not L1 execution-bound",
+                    })
                 except ValueError as e:
                     self._error(400, str(e))
                 except Exception as e:
@@ -7834,26 +7867,34 @@ class RESTHandler(BaseHTTPRequestHandler):
                 except ValueError as exc:
                     self._error(400, str(exc))
                     return
-                if hasattr(vr, "register"):
-                    try:
-                        vr.register(address, stake, stake_satoshi=int(stake_sat))
-                    except TypeError:
-                        vr.register(address, stake)
+                if hasattr(vr, "register_validator"):
+                    vr.register_validator(address, int(stake_sat))
                     self._json({
                         "success": True,
                         "address": address,
                         "stake": stake,
-                        "stake_satoshi": stake_sat,
+                        "stake_satoshi": int(stake_sat),
+                    })
+                elif hasattr(vr, "register"):
+                    try:
+                        vr.register(address, int(stake_sat))
+                    except TypeError:
+                        vr.register(address, stake, stake_satoshi=int(stake_sat))
+                    self._json({
+                        "success": True,
+                        "address": address,
+                        "stake": stake,
+                        "stake_satoshi": int(stake_sat),
                     })
                 elif hasattr(vr, "add"):
                     try:
-                        vr.add(address, stake, stake_satoshi=int(stake_sat))
+                        vr.add(address, int(stake_sat))
                     except TypeError:
                         vr.add(address, stake)
                     self._json({
                         "success": True,
                         "address": address,
-                        "stake_satoshi": stake_sat,
+                        "stake_satoshi": int(stake_sat),
                     })
                 else:
                     self._json({"success": False, "error": "register not available"})
@@ -8556,13 +8597,33 @@ class RESTHandler(BaseHTTPRequestHandler):
 
             # ── ZK: range proof & transaction ─────────────────────────────────
             elif path == "/zk/prove/range":
+                # POST body path (GET handler above is educational-only too).
                 zk = self.__class__.zk
-                value = int(body.get("value", 42))
-                min_v = int(body.get("min_value", 0))
-                max_v = int(body.get("max_value", 100))
+                value_raw = body.get("value", body.get("secret"))
+                if value_raw is None or str(value_raw).strip() == "":
+                    self._error(400, "value required (do not invent demo 42)")
+                    return
+                try:
+                    value = int(value_raw)
+                    min_v = int(body.get("min_value", body.get("min", 0)))
+                    max_v = int(body.get("max_value", body.get("max", 100)))
+                except (TypeError, ValueError) as exc:
+                    self._error(400, f"invalid range params: {exc}")
+                    return
                 if zk and hasattr(zk, "prove_range"):
-                    proof = zk.prove_range(value, min_v, max_v)
-                    self._json({"proof": str(proof), "valid": True})
+                    try:
+                        proof = zk.prove_range(value, min_v, max_v)
+                    except NotImplementedError as e:
+                        self._error(501, str(e))
+                        return
+                    proof_valid = getattr(proof, "valid", None)
+                    self._json({
+                        "proof": proof.__dict__ if hasattr(proof, "__dict__") else str(proof),
+                        "valid": proof_valid if isinstance(proof_valid, bool) else None,
+                        "range": f"[{min_v}, {max_v}]",
+                        "canonical": False,
+                        "educational_only": True,
+                    })
                 else:
                     self._error(503, "ZK range proofs not available")
 

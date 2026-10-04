@@ -658,6 +658,21 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         )
         if "value_satoshi_mismatch" not in txv_sat:
             errors.append("tx_validator must refuse value_satoshi_mismatch")
+        if 'v.get("stake", 100)' in (ROOT / "main.py").read_text(
+            encoding="utf-8", errors="replace"
+        ):
+            errors.append("main.py must not invent stake=100 for proposer selection")
+        if "Refuse invent stake=100" not in (ROOT / "main.py").read_text(
+            encoding="utf-8", errors="replace"
+        ):
+            errors.append("main.py must skip validators with missing stake")
+        mev_py = (ROOT / "features" / "mev_analyzer.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "21000 * 2" in mev_py or "21000*2" in mev_py:
+            errors.append("MEV simulate_frontrun must not invent gas_used=21000*2")
+        if '"simulation_only": True' not in mev_py:
+            errors.append("MEV get_statistics must declare simulation_only=true")
         if "Database._normalize_tx_status(tx.get(\"status\"))" not in http_py:
             eth_fmt_py = (ROOT / "api" / "eth_format.py").read_text(
                 encoding="utf-8", errors="replace"
