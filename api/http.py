@@ -2133,6 +2133,12 @@ class RESTHandler(BaseHTTPRequestHandler):
                     if compute_tps_from_chain_metrics
                     else 0.0
                 )
+                mempool_store: dict = {}
+                if mp is not None and hasattr(mp, "get_stats"):
+                    try:
+                        mempool_store = dict(mp.get_stats() or {})
+                    except Exception as exc:
+                        logger.warning("/metrics mempool_store snapshot failed: %s", exc)
                 # ADR 0015: snapshot on HTTP worker thread → MetricsExporterPort.render
                 if exporter is not None and MetricsSnapshot is not None:
                     snap = MetricsSnapshot(
@@ -2156,6 +2162,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                         },
                         ws_stats=ws_stats,
                         apply_isolation=self._apply_isolation_metrics(p2p),
+                        mempool_store=mempool_store,
                     )
                     text = exporter.render(snap)
                 else:
@@ -2178,6 +2185,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                         },
                         ws_stats=ws_stats,
                         apply_isolation=self._apply_isolation_metrics(p2p),
+                        mempool_store=mempool_store,
                         tps=tps,
                     )
                 body = text.encode()

@@ -3692,3 +3692,24 @@ def _python_state_root_from_accounts(accounts: List[dict], *, encoding_version: 
     payload = build_tip_payload(accounts, version=version)
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return sha256_hex(encoded.encode())
+
+def create_mempool_store(max_size: int = 10000, min_fee: float = 0.0001):
+    """ADR 0021 phase-2 Rust fee-sorted store, or None > Python dict fallback.
+
+    `min_fee` is ABS float at the Python boundary; store receives satoshi i64
+    so sort/evict never ranks on IEEE float.
+    """
+    reg = get_registry()
+    if (
+        reg.use_rust(NativeFamily.MEMPOOL_STORE)
+        and _native is not None
+        and hasattr(_native, "MempoolStore")
+    ):
+        try:
+            from runtime.amount import to_satoshi
+
+            min_fee_satoshi = int(to_satoshi(min_fee))
+            return _native.MempoolStore(int(max_size), int(min_fee_satoshi))
+        except Exception as exc:
+            reg.demote(NativeFamily.MEMPOOL_STORE, str(exc))
+    return None
