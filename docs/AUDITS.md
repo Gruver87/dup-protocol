@@ -30,11 +30,11 @@ Do **not** mark tracker items complete with template notes.
 
 Related: [SECURITY.md](../SECURITY.md) · [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md) · [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) · [INDUSTRIAL_HARDEN_RUNBOOK.md](INDUSTRIAL_HARDEN_RUNBOOK.md) · [DEPENDABOT_TRIAGE.md](DEPENDABOT_TRIAGE.md)
 
-## Safe Hybrid work (Experimental B1/B2/Phase3 closed; B3 ADR 0021 next on sibling)
+## Safe Hybrid work (Exp→pin honesty CLOSED at `adc8547` / docs tip `d8da83b`)
 
-Experimental owns libp2p / Long-Range R&D. **B1** (libp2p 48h) is **PASS** on Experimental — that is **not** a Hybrid transport cutover. On **this** pin, prefer:
+Experimental owns libp2p / Long-Range R&D. **B1** (libp2p 48h) is **PASS** on Experimental — that is **not** a Hybrid transport cutover. Honesty Exp→pin merge is **CLOSED** (units + `industrial_gate`; **not** a new 48h soak). On **this** pin, prefer:
 
-1. External audit engagement prep ([AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md), [AUDIT_PACK_CHECKLIST.md](AUDIT_PACK_CHECKLIST.md), regenerate audit pack)
+1. External audit engagement prep ([AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md), [AUDIT_PACK_CHECKLIST.md](AUDIT_PACK_CHECKLIST.md), regenerate audit pack) — **Phase 6 / org**
 2. Ops dry-runs (DR / ceremony / bridge-OFF) — no prod secret `-Force` unless cutover day
 3. Actions-only Dependabot when CI green (see [DEPENDABOT_TRIAGE](DEPENDABOT_TRIAGE.md)) — **hold** pyo3 / socket2 majors
 4. Sprout profiles **off** `778888` (staging / L2 / shard lab compose)
