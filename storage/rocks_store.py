@@ -479,10 +479,16 @@ class RocksChainStore:
     # ── blocks ────────────────────────────────────────────────────────────
 
     def _insert_block(self, block: Dict) -> None:
+        from runtime.amount import money_abs, to_satoshi
+
         height = int(block.get("height", block.get("number", 0)) or 0)
         block_hash = block.get("hash", block.get("block_hash", "")) or ""
+        stored = dict(block)
+        burned = money_abs(block.get("total_burned", 0.0), field="total_burned")
+        stored["total_burned"] = burned
+        stored["total_burned_satoshi"] = int(to_satoshi(burned))
         # v1.3.149: typed ABLK value when native pack_block_row is available.
-        payload = self._pack_block_blob(block)
+        payload = self._pack_block_blob(stored)
         self._raw_put(kc.key_block_height(height), payload)
         if block_hash:
             self._raw_put(kc.key_block_hash_to_height(block_hash), kc.pack_u64(height))
@@ -490,7 +496,7 @@ class RocksChainStore:
         self._raw_put(kc.key_meta("chain_tip"), str(height).encode("utf-8"))
         if block_hash:
             self._raw_put(kc.key_meta("chain_tip_hash"), block_hash.encode("utf-8"))
-        self._insert_proposer_audit(block)
+        self._insert_proposer_audit(stored)
 
     def get_chain_tip(self) -> int:
         meta = self.get_meta("chain_tip")
@@ -524,13 +530,15 @@ class RocksChainStore:
         return None
 
     def _insert_proposer_audit(self, block: Dict) -> None:
-        from runtime.amount import from_satoshi_float, to_satoshi
+        from runtime.amount import money_abs, to_satoshi
 
         height = int(block.get("height", block.get("number", 0)) or 0)
-        if block.get("total_burned_satoshi") is not None:
-            burned_sat = int(block["total_burned_satoshi"])
-        else:
-            burned_sat = int(to_satoshi(block.get("total_burned", 0) or 0))
+        burned = money_abs(block.get("total_burned", 0.0), field="total_burned")
+        burned_sat = (
+            int(block["total_burned_satoshi"])
+            if block.get("total_burned_satoshi") is not None
+            else int(to_satoshi(burned))
+        )
         audit = {
             "height": height,
             "block_hash": block.get("hash", block.get("block_hash", "")) or "",
@@ -538,7 +546,7 @@ class RocksChainStore:
                 block.get("miner", block.get("proposer", "genesis")) or "genesis"
             ),
             "tx_count": int(block.get("tx_count", len(block.get("transactions", []))) or 0),
-            "total_burned": from_satoshi_float(burned_sat),
+            "total_burned": burned,
             "total_burned_satoshi": burned_sat,
             "block_ts": int(block.get("timestamp", int(time.time())) or 0),
             "recorded_at": int(time.time()),
