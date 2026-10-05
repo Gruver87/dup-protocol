@@ -181,6 +181,9 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
     )
     shared_keys = (
         "p2p_max_messages_per_sec",
+        "p2p_attest_messages_per_sec",
+        "p2p_tx_messages_per_sec",
+        "p2p_block_announce_messages_per_sec",
         "p2p_max_message_bytes",
         "p2p_ban_seconds",
         "p2p_rate_limit_strikes",
@@ -212,6 +215,14 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         rate = int(prod_cfg.get("p2p_max_messages_per_sec", 0) or 0)
         if rate <= 0:
             errors.append(f"{rel}: p2p_max_messages_per_sec must be > 0")
+        for class_key in (
+            "p2p_attest_messages_per_sec",
+            "p2p_tx_messages_per_sec",
+            "p2p_block_announce_messages_per_sec",
+        ):
+            cap = int(prod_cfg.get(class_key, 0) or 0)
+            if cap <= 0:
+                errors.append(f"{rel}: {class_key} must be > 0")
         max_bytes = int(prod_cfg.get("p2p_max_message_bytes", 0) or 0)
         if max_bytes and max_bytes < DEFAULT_MAX_P2P_LINE_BYTES // 2:
             errors.append(
@@ -3404,6 +3415,16 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("p2p must expose native_mempool_cheap_refuse (v1.3.143)")
         if "MSG_NEW_TX," in p2p_py.split("RATE_LIMIT_EXEMPT_TYPES")[1].split("})")[0]:
             errors.append("RATE_LIMIT_EXEMPT_TYPES must not list MSG_NEW_TX (v1.3.143)")
+        if "def _class_rate_ok" not in p2p_py:
+            errors.append("P2P must enforce per-class rate quotas (attest/tx/block)")
+        if "rate_limit_class_exceeded" not in p2p_py:
+            errors.append("P2P class quota must soft-refuse rate_limit_class_exceeded")
+        if "_send_ctrl_q" not in p2p_py:
+            errors.append("priority P2P send must enqueue on ctrl queue, not take write lock on caller")
+        if "_send_root_q" not in p2p_py:
+            errors.append("state_root must have its own send queue ahead of BLOCK/STATUS")
+        if "state_root enqueue does not wait the write Future" not in p2p_py:
+            errors.append("state_root send must not wait the write Future (solicit waiter owns RTT)")
         tx_pipe_py = (ROOT / "core" / "components" / "tx_pipeline.py").read_text(
             encoding="utf-8", errors="replace"
         )

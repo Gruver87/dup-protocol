@@ -453,9 +453,9 @@ async def test_catch_up_status_send_fail_increments_counter():
     peer.height = 0
     p2p.peers[peer.peer_id] = peer
 
-    # Run one iteration of catch-up body
+    # wait=True reports the write result to the caller (reconnect / handshake path).
     our_status = {"height": 1, "head_hash": "aa" * 32}
-    ok_send = await peer.send("status", our_status)
+    ok_send = await peer.send("status", our_status, wait=True)
     assert ok_send is False
     if not ok_send:
         p2p._peer_status_send_fail = int(p2p._peer_status_send_fail or 0) + 1
@@ -515,9 +515,19 @@ async def test_peer_send_fail_increments_ops_counter():
     peer = PeerConnection(_FakeReader(b""), _BoomWriter())
     p2p._attach_peer_hooks(peer)
     peer.peer_id = "send-fail"
+    # Default wait=False: enqueue succeeds; the worker reports the broken pipe
+    # asynchronously through _on_send_fail.
     ok = await peer.send("ping", {"ts": 1.0})
-    assert ok is False
+    assert ok is True
+    deadline = time.monotonic() + 1.5
+    while time.monotonic() < deadline:
+        if p2p.get_p2p_security_status()["ops_errors"]["peer_send_fail"] >= 1:
+            break
+        await asyncio.sleep(0.05)
     assert p2p.get_p2p_security_status()["ops_errors"]["peer_send_fail"] >= 1
+
+    ok_wait = await peer.send("ping", {"ts": 2.0}, wait=True)
+    assert ok_wait is False
 
 
 @pytest.mark.asyncio

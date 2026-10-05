@@ -13,6 +13,7 @@ Canonical language for this repository is **English**. Older entries below may s
 ### Exp→pin integration wave (post ADR 0020, soak deferred)
 
 - **STRICT mesh P2P hardenings:** late `state_root` stash/consume, wire-probe gate + coalesced gather, native write SO_SNDTIMEO bound, PathA catch-up lock, `note_local_forge` before broadcast, under-mesh soft-refuse / catch-up redial. Units `test_state_root_probe_coalesce.py`, soft-refuse mesh tests. **Not** Long-Range / ws_checkpoint.
+- **Outbound send-queue split + class rate limits:** `_send_ctrl_q` / `_send_root_q` / `_next_outbound` (state_root → ctrl → gossip); `_class_rate_ok` for attest/tx/block announce quotas; soft-refuse `rate_limit_class_exceeded`. Config keys `p2p_attest_messages_per_sec` / `p2p_tx_messages_per_sec` / `p2p_block_announce_messages_per_sec`. Units `test_p2p_send_queue_split.py`, `test_p2p_class_rate.py`.
 - **ADR 0021 diligence surface:** `test_mempool_port.py`, industrial_gate mempool_store needles, `verify_global_rd_audit.ps1` (Host). `verify_adr0021_phase1.py --skip-mesh` PASS.
 - **EVM depth labs (host):** ported `evm_*_lab.py` + `EVM_COMPAT_MATRIX.md` + `verify_evm_depth_lab.ps1`; block RPC passes `query=` for logsBloom reconstruction; missing `extraData` stays null (no invent `0x`). **RESULT: PASS** host verify (`--skip-mesh`). **Not** EVM 48h / not mesh probe this wave.
 - **Honesty:** 48h libp2p soak deferred by operator — do not claim soak PASS.

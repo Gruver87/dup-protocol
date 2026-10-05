@@ -169,6 +169,13 @@ RATE_LIMIT_EXEMPT_TYPES = frozenset({
     MSG_MEMPOOL,
 })
 
+# Per-peer class quotas (STRICT hardening): attestation / new_tx / new_block announce
+# floods must not share one token window with each other or hide inside the exempt
+# ceiling. Soft DoS only — a cap of 0 disables that class.
+RATE_LIMIT_CLASS_ATTEST = "attest"
+RATE_LIMIT_CLASS_TX = "tx"
+RATE_LIMIT_CLASS_BLOCK = "block_announce"
+
 
 def _housekeeping_payload_ok(msg_type: str, data: Any) -> bool:
     """Fail-closed payload rules for rate-exempt housekeeping messages."""
@@ -359,9 +366,16 @@ class PeerConnection:
         # v1.3.66/72: bounded outbound queue (config-driven size + drain timeout)
         qmax = max(8, int(send_queue_max or 256))
         self._send_q: asyncio.Queue = asyncio.Queue(maxsize=qmax)
+        # Control-plane / solicit: own queue so gossip cannot HOL and the caller
+        # never takes ``_send_io_lock`` (holding it on the caller starved recv).
+        self._send_ctrl_q: asyncio.Queue = asyncio.Queue(maxsize=max(32, qmax))
+        # state_root jumps BLOCK/STATUS on the ctrl queue: those frames hold
+        # ``_native_io_lock`` long enough that a caller-side send Future timeout
+        # would cancel the solicit waiter while the request was still queued.
+        self._send_root_q: asyncio.Queue = asyncio.Queue(maxsize=max(32, qmax))
+        self._send_wake: Optional[asyncio.Event] = None
         self._send_worker: Optional[asyncio.Task] = None
-        # Serializes native/TCP writes: priority control-plane bypasses the gossip
-        # queue but must not interleave with the send worker mid-batch.
+        # Serializes native/TCP writes inside the send worker only.
         self._send_io_lock: Optional[asyncio.Lock] = None
         self._send_drops: int = 0
         self._drain_timeout_sec: float = max(0.5, float(drain_timeout_sec or 5.0))
@@ -688,9 +702,10 @@ class PeerConnection:
         libp2p_ad = getattr(self, "_libp2p_adapter", None)
         libp2p_pid = str(getattr(self, "_libp2p_peer_id", "") or "").strip()
         if libp2p_ad is not None and libp2p_pid:
-            return [await self._write_message(msg_type, data) for msg_type, data, _fut in batch]
+            return [await self._write_message(e[0], e[1]) for e in batch]
         if len(batch) == 1:
-            msg_type, data, _fut = batch[0]
+            # Entries are (msg_type, data, fut[, tries]); tries is set on root retry.
+            msg_type, data = batch[0][0], batch[0][1]
             return [await self._write_message(msg_type, data)]
 
         use_native = self._native_conn is not None
@@ -708,7 +723,8 @@ class PeerConnection:
         ):
             payloads: list = []
             results = [False] * len(batch)
-            for i, (msg_type, data, _fut) in enumerate(batch):
+            for i, entry in enumerate(batch):
+                msg_type, data = entry[0], entry[1]
                 payload = self._prepare_outbound(msg_type, data)
                 if payload is None:
                     results[i] = False
@@ -744,7 +760,8 @@ class PeerConnection:
             import json
 
             items = []
-            for msg_type, data, _fut in batch:
+            for entry in batch:
+                msg_type, data = entry[0], entry[1]
                 data_json = (
                     "null"
                     if data is None
@@ -773,8 +790,8 @@ class PeerConnection:
 
         # Fallback: one-by-one.
         results = []
-        for msg_type, data, _fut in batch:
-            results.append(await self._write_message(msg_type, data))
+        for entry in batch:
+            results.append(await self._write_message(entry[0], entry[1]))
         return results
 
     def _egress_peer_key(self) -> str:
@@ -917,14 +934,61 @@ class PeerConnection:
             return
         if self._send_io_lock is None:
             self._send_io_lock = asyncio.Lock()
+        if self._send_wake is None:
+            self._send_wake = asyncio.Event()
         if self._send_worker is not None and not self._send_worker.done():
             return
         self._send_worker = loop.create_task(self._send_loop())
 
+    def _wake_send(self) -> None:
+        """Wake the send worker after an enqueue (or close sentinel)."""
+        ev = self._send_wake
+        if ev is not None and not ev.is_set():
+            ev.set()
+
+    def _outbound_queues(self):
+        """Drain order: state_root, then ctrl (status/blocks/handshake), then gossip."""
+        return (self._send_root_q, self._send_ctrl_q, self._send_q)
+
+    async def _next_outbound(self):
+        """Pop the next frame by priority; never block the caller on the write lock."""
+        while True:
+            for q in self._outbound_queues():
+                try:
+                    return q.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
+            if self._send_wake is None:
+                self._send_wake = asyncio.Event()
+            # Clear, then re-scan once: an enqueue between the scan above and
+            # clear() would otherwise be lost until the next wake.
+            self._send_wake.clear()
+            for q in self._outbound_queues():
+                try:
+                    return q.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
+            await self._send_wake.wait()
+
+    def _invoke_peer_hook(self, cb: Optional[Callable[[], None]], *, name: str) -> None:
+        """Run send/drop counters without letting a hook abort the wire path."""
+        if cb is None:
+            return
+        try:
+            cb()
+        except Exception as exc:
+            logger.warning(
+                "[P2P] %s hook failed to %s: %s",
+                name,
+                self.peer_id or self.host,
+                exc,
+            )
+
     async def _send_loop(self) -> None:
+        root_types = {MSG_STATE_ROOT_REQUEST, MSG_STATE_ROOT_RESPONSE}
         while True:
             try:
-                item = await self._send_q.get()
+                item = await self._next_outbound()
             except asyncio.CancelledError:
                 break
             if item is None:
@@ -932,16 +996,28 @@ class PeerConnection:
             batch = [item]
             # v1.3.95: drain additional pending items for one native write hop.
             max_batch = max(1, int(getattr(self, "_native_write_batch", 8) or 8))
-            while len(batch) < max_batch:
-                try:
-                    nxt = self._send_q.get_nowait()
-                except asyncio.QueueEmpty:
-                    break
-                if nxt is None:
-                    # Re-queue sentinel by finishing after this batch.
-                    self._send_q.put_nowait(None)
-                    break
-                batch.append(nxt)
+            first_type = str(batch[0][0] or "") if batch else ""
+            root_waiting = not self._send_root_q.empty()
+            # Singleton flush for state_root; yield if a root frame is waiting so
+            # BLOCK/STATUS cannot head-of-line block the probe inside the batch.
+            if first_type not in root_types and not root_waiting:
+                while len(batch) < max_batch:
+                    try:
+                        nxt = self._send_ctrl_q.get_nowait()
+                    except asyncio.QueueEmpty:
+                        try:
+                            nxt = self._send_q.get_nowait()
+                        except asyncio.QueueEmpty:
+                            break
+                    if nxt is None:
+                        # Re-queue sentinel so the worker exits after this batch.
+                        try:
+                            self._send_ctrl_q.put_nowait(None)
+                        except asyncio.QueueFull:
+                            logger.debug("[P2P] send_ctrl_q full on sentinel requeue")
+                        self._wake_send()
+                        break
+                    batch.append(nxt)
             lock = self._send_io_lock
             try:
                 if lock is not None:
@@ -955,36 +1031,57 @@ class PeerConnection:
                     self.peer_id or self.host,
                     len(batch),
                 )
-                cb = self._on_send_fail
-                if cb is not None:
-                    try:
-                        cb()
-                    except Exception:
-                        pass
+                self._invoke_peer_hook(self._on_send_fail, name="send_fail")
                 results = [False] * len(batch)
+                # state_root frames are solicit-critical: re-queue a timed-out
+                # frame at most twice (bounded) instead of silently dropping it.
+                for entry in batch:
+                    kind = str(entry[0] or "") if entry else ""
+                    tries = int(entry[3]) if entry is not None and len(entry) > 3 else 0
+                    if kind in root_types and tries < 2:
+                        try:
+                            self._send_root_q.put_nowait(
+                                (entry[0], entry[1], entry[2], tries + 1)
+                            )
+                            self._wake_send()
+                        except asyncio.QueueFull:
+                            logger.warning(
+                                "[P2P] send_root_q full on retry to %s type=%s",
+                                self.peer_id or self.host,
+                                kind,
+                            )
             except Exception as e:
                 logger.warning(
                     "[P2P] send error to %s: %s",
                     self.peer_id or self.host,
                     e or type(e).__name__,
                 )
-                cb = self._on_send_fail
-                if cb is not None:
-                    try:
-                        cb()
-                    except Exception:
-                        pass
+                self._invoke_peer_hook(self._on_send_fail, name="send_fail")
                 results = [False] * len(batch)
-            for (_msg_type, _data, fut), ok in zip(batch, results):
+            for entry, ok in zip(batch, results):
+                fut = entry[2] if entry is not None and len(entry) > 2 else None
                 if fut is not None and not fut.done():
                     fut.set_result(bool(ok))
 
-    async def send(self, msg_type: str, data: Any = None) -> bool:
-        """Отправляет JSON-сообщение пиру. Returns False on write failure / queue full."""
+    async def send(self, msg_type: str, data: Any = None, *, wait: bool = False) -> bool:
+        """Enqueue a frame. Returns False on queue full, or on write fail if wait=True.
+
+        Default wait=False: the message loop must not await the write Future.
+        Awaiting send() while the worker holds ``_native_io_lock`` stopped recv
+        and stuck both TCP windows (empty wire probe). Write failures are then
+        reported asynchronously via ``_on_send_fail``. Handshake / reconnect pass
+        wait=True when they need the write result.
+
+        Routing: state_root -> root queue, control plane / solicit / tip announce
+        -> ctrl queue (never soft-dropped as gossip), everything else -> gossip
+        queue (soft-dropped under saturation, ``_on_send_drop``).
+        """
         self._ensure_send_worker()
-        # High-priority control plane + solicit requests: never drop under load
-        # (dropping get_block / state_root_request breaks follower genesis + wire probe).
-        priority = str(msg_type or "") in {
+        kind = str(msg_type or "")
+        if kind in (MSG_STATE_ROOT_REQUEST, MSG_STATE_ROOT_RESPONSE):
+            q = self._send_root_q
+            drop_cb = False
+        elif kind in {
             MSG_STATUS,
             MSG_PING,
             MSG_PONG,
@@ -993,76 +1090,59 @@ class PeerConnection:
             MSG_GET_BLOCK,
             MSG_GET_BLOCK_BY_HASH,
             MSG_GET_BLOCKS,
-            MSG_STATE_ROOT_REQUEST,
-            MSG_STATE_ROOT_RESPONSE,
             MSG_GET_PEERS,
             MSG_PEERS,
             MSG_BLOCK,
             MSG_BLOCKS,
-        }
-        # Control-plane / solicit: bypass gossip queue so attestations cannot
-        # starve state_root_request (was causing wire-probe timeout → ready red).
-        if priority:
-            try:
-                lock = self._send_io_lock
-                if lock is None:
-                    return await self._write_message(msg_type, data)
-                async with lock:
-                    return await self._write_message(msg_type, data)
-            except asyncio.TimeoutError:
+            # Tip announces must not soft-drop under head-of-line pressure.
+            MSG_NEW_BLOCK,
+        }:
+            q = self._send_ctrl_q
+            drop_cb = False
+        else:
+            q = self._send_q
+            drop_cb = True
+        fut: Optional[asyncio.Future] = None
+        if wait:
+            fut = asyncio.get_running_loop().create_future()
+        try:
+            q.put_nowait((msg_type, data, fut))
+        except asyncio.QueueFull:
+            self._send_drops += 1
+            if drop_cb:
+                self._invoke_peer_hook(self._on_send_drop, name="send_drop")
+            else:
                 logger.warning(
-                    "[P2P] send timeout to %s type=%s",
+                    "[P2P] send queue full to %s type=%s",
                     self.peer_id or self.host,
                     msg_type,
                 )
-                cb = self._on_send_fail
-                if cb is not None:
-                    try:
-                        cb()
-                    except Exception:
-                        pass
-                return False
-            except Exception as e:
-                logger.warning(
-                    "[P2P] send error to %s: %s",
-                    self.peer_id or self.host,
-                    e or type(e).__name__,
-                )
-                cb = self._on_send_fail
-                if cb is not None:
-                    try:
-                        cb()
-                    except Exception:
-                        pass
-                return False
-
-        fut: asyncio.Future = asyncio.get_running_loop().create_future()
-        send_wait = float(self._drain_timeout_sec or 5.0) + 1.0
-        try:
-            self._send_q.put_nowait((msg_type, data, fut))
-        except asyncio.QueueFull:
-            self._send_drops += 1
-            cb = self._on_send_drop
-            if cb is not None:
-                try:
-                    cb()
-                except Exception:
-                    pass
-            # Drop low-priority gossip under saturation
             return False
         except Exception as e:
             logger.warning("[P2P] send enqueue error to %s: %s", self.peer_id or self.host, e)
             return False
+        self._wake_send()
+        # state_root enqueue does not wait the write Future — the solicit
+        # waiter owns the RTT. Waiting here aborted the waiter while the
+        # frame was still queued, so replies landed unsolicited/empty.
+        if not wait or fut is None:
+            return True
+        send_wait = float(self._drain_timeout_sec or 5.0) + 1.0
         try:
             return bool(await asyncio.wait_for(fut, timeout=send_wait))
         except asyncio.TimeoutError:
             logger.warning(
-                "[P2P] send queue wait timeout to %s type=%s",
+                "[P2P] send timeout to %s type=%s",
                 self.peer_id or self.host,
                 msg_type,
             )
             return False
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "[P2P] send error to %s: %s",
+                self.peer_id or self.host,
+                e or type(e).__name__,
+            )
             return False
 
     async def _read_wire_line(self, limit: int):
@@ -1556,14 +1636,18 @@ class PeerConnection:
             except Exception:
                 pass
         try:
-            q = getattr(self, "_send_q", None)
-            if q is not None:
+            # Sentinel on every outbound queue so the worker wakes and exits.
+            for attr in ("_send_q", "_send_ctrl_q", "_send_root_q"):
+                q = getattr(self, attr, None)
+                if q is None:
+                    continue
                 try:
                     q.put_nowait(None)
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as exc:
+                    logger.debug("[P2P] close %s wake failed: %s", attr.lstrip("_"), exc)
+            self._wake_send()
+        except Exception as exc:
+            logger.debug("[P2P] close send queues failed: %s", exc)
         lp_q = getattr(self, "_libp2p_inbound", None)
         if lp_q is not None:
             try:
@@ -1610,6 +1694,7 @@ class P2PNode:
         # Alias `_sync_waiters` is assigned after hub construction below.
         self._peer_sync_locks: Dict[str, asyncio.Lock] = {}
         self._peer_msg_windows: Dict[str, tuple[int, float]] = {}
+        self._peer_class_windows: Dict[str, tuple[int, float]] = {}
         self._peer_strikes: Dict[str, int] = {}
         self._peer_bans: Dict[str, float] = {}
         self._known_addrs: List[str] = []
@@ -2595,6 +2680,7 @@ class P2PNode:
             await peer.send(
                 MSG_HANDSHAKE_ACK,
                 {"accepted": False, "reason": admit.reason or "max_peers"},
+                wait=True,
             )
             self._release_libp2p_session(peer)
             peer.close()
@@ -2671,7 +2757,9 @@ class P2PNode:
         if not admit.allowed:
             self._handshake_rejects = int(self._handshake_rejects or 0) + 1
             await peer.send(
-                MSG_HANDSHAKE_ACK, {"accepted": False, "reason": admit.reason or "max_peers"}
+                MSG_HANDSHAKE_ACK,
+                {"accepted": False, "reason": admit.reason or "max_peers"},
+                wait=True,
             )
             peer.close()
             return
@@ -2820,7 +2908,9 @@ class P2PNode:
         if not admit.allowed:
             self._handshake_rejects = int(self._handshake_rejects or 0) + 1
             await peer.send(
-                MSG_HANDSHAKE_ACK, {"accepted": False, "reason": admit.reason or "max_peers"}
+                MSG_HANDSHAKE_ACK,
+                {"accepted": False, "reason": admit.reason or "max_peers"},
+                wait=True,
             )
             peer.close()
             return
@@ -3146,7 +3236,7 @@ class P2PNode:
             ack = out.get("data", {})
             native_policy_applied = True
         elif initiator:
-            await peer.send(MSG_HANDSHAKE, our_info)
+            await peer.send(MSG_HANDSHAKE, our_info, wait=True)
             msg = await self._recv_handshake_reply(peer)
             if not msg or msg.get("type") != MSG_HANDSHAKE_ACK:
                 return False
@@ -3156,7 +3246,7 @@ class P2PNode:
             if not msg or msg.get("type") != MSG_HANDSHAKE:
                 return False
             ack = msg.get("data", {})
-            await peer.send(MSG_HANDSHAKE_ACK, our_info)
+            await peer.send(MSG_HANDSHAKE_ACK, our_info, wait=True)
 
         hs = native.validate_p2p_handshake_payload(ack)
         if not hs:
@@ -3415,7 +3505,18 @@ class P2PNode:
                             self._native_message_loop_dispatch_total = int(
                                 self._native_message_loop_dispatch_total or 0
                             ) + 1
-                            if not use_ingress and not self._rate_limit_ok(
+                            if use_ingress:
+                                # Native ingress already applied primary + exempt
+                                # budgets; class quotas still run (soft-refuse).
+                                if not self._class_rate_ok(
+                                    peer.peer_id, msg.get("type")
+                                ):
+                                    if self._strike_peer_sync(
+                                        peer, "rate_limit_class_exceeded"
+                                    ):
+                                        return
+                                    continue
+                            elif not self._rate_limit_ok(
                                 peer.peer_id, msg.get("type")
                             ):
                                 if self._strike_peer_sync(peer, "rate_limit_exceeded"):
@@ -3452,8 +3553,14 @@ class P2PNode:
                 if msg.get("type") == MSG_IDLE:
                     continue
                 peer.touch()
-                # Native ingress already applied primary + exempt rate budgets.
-                if not use_ingress and not self._rate_limit_ok(peer.peer_id, msg.get("type")):
+                # Native ingress already applied primary + exempt rate budgets. Class
+                # quotas still run so attest/tx/header floods cannot share one window.
+                if use_ingress:
+                    if not self._class_rate_ok(peer.peer_id, msg.get("type")):
+                        if self._strike_peer_sync(peer, "rate_limit_class_exceeded"):
+                            break
+                        continue
+                elif not self._rate_limit_ok(peer.peer_id, msg.get("type")):
                     if self._strike_peer_sync(peer, "rate_limit_exceeded"):
                         break
                     continue
@@ -3495,6 +3602,7 @@ class P2PNode:
                     "attestation_local_height_mismatch",
                     # Sync/catch-up bursts trip the token bucket; drop msgs, do not ban mesh.
                     "rate_limit_exceeded",
+                    "rate_limit_class_exceeded",
                     "exempt_rate_exceeded",
                     "bandwidth_exceeded",
                     "rate_limited",
@@ -3620,10 +3728,67 @@ class P2PNode:
             return False
         return True
 
+    def _rate_limit_class_limit(self, msg_type: Optional[str]) -> tuple[str, int]:
+        """Map wire type to class name + per-sec cap. Empty class = no class quota."""
+        kind = str(msg_type or "")
+        if kind == MSG_ATTESTATION:
+            return (
+                RATE_LIMIT_CLASS_ATTEST,
+                int(getattr(self.config, "p2p_attest_messages_per_sec", 0) or 0),
+            )
+        if kind == MSG_NEW_TX:
+            return (
+                RATE_LIMIT_CLASS_TX,
+                int(getattr(self.config, "p2p_tx_messages_per_sec", 0) or 0),
+            )
+        if kind == MSG_NEW_BLOCK:
+            return (
+                RATE_LIMIT_CLASS_BLOCK,
+                int(
+                    getattr(self.config, "p2p_block_announce_messages_per_sec", 0)
+                    or 0
+                ),
+            )
+        return ("", 0)
+
+    def _class_rate_ok(self, peer_id: str, msg_type: Optional[str] = None) -> bool:
+        """Per-peer class token bucket. Runs even when native ingress already admitted.
+
+        Fail-closed drop (caller soft-refuses ``rate_limit_class_exceeded``); a cap
+        of 0 or an empty peer id disables the quota for that class.
+        """
+        cls, limit = self._rate_limit_class_limit(msg_type)
+        if not cls or limit <= 0 or not peer_id:
+            return True
+        now = time.time()
+        windows = self._peer_class_windows
+        if len(windows) > 4096:
+            # Bound memory under peer-id churn: drop windows idle for > 60s.
+            for stale in [k for k, (_c, s) in windows.items() if now - s > 60.0]:
+                windows.pop(stale, None)
+        key = f"{peer_id}\0{cls}"
+        count, start = windows.get(key, (0, now))
+        if now - start >= 1.0:
+            count, start = 0, now
+        count += 1
+        windows[key] = (count, start)
+        if count > limit:
+            logger.warning(
+                "[P2P] class rate exceeded for %s class=%s (%s/s)",
+                peer_id,
+                cls,
+                limit,
+            )
+            return False
+        return True
+
     def _rate_limit_ok(self, peer_id: str, msg_type: Optional[str] = None) -> bool:
         """Per-peer message rate limit (0 = disabled). Sync/housekeeping types exempt
         from primary budget; still subject to p2p_exempt_messages_per_sec (v1.3.72).
+        Class quotas (attest/tx/block announce) apply first.
         """
+        if not self._class_rate_ok(peer_id, msg_type):
+            return False
         if msg_type in RATE_LIMIT_EXEMPT_TYPES and not self._exempt_rate_ok(peer_id):
             return False
         if self._rl_table is not None:
@@ -6573,10 +6738,14 @@ class P2PNode:
                 None,
             )
             if already_peer:
-                ok_send = await already_peer.send(MSG_STATUS, {
-                    "height": self.blockchain.get_height(),
-                    "head_hash": self.head() or "",
-                })
+                ok_send = await already_peer.send(
+                    MSG_STATUS,
+                    {
+                        "height": self.blockchain.get_height(),
+                        "head_hash": self.head() or "",
+                    },
+                    wait=True,
+                )
                 if not ok_send:
                     self._peer_status_send_fail = int(self._peer_status_send_fail or 0) + 1
                     logger.warning("[P2P] status refresh to %s failed", addr)
@@ -8324,6 +8493,9 @@ class P2PNode:
             "rate_limit_drops": int(
                 self._shape_reject_counts.get("rate_limit_exceeded", 0) or 0
             ),
+            "rate_limit_class_drops": int(
+                self._shape_reject_counts.get("rate_limit_class_exceeded", 0) or 0
+            ),
             "ops_errors": {
                 "propagation_log_fail": int(self._propagation_log_fail),
                 "peer_connect_task_fail": int(self._peer_connect_task_fail),
@@ -8355,6 +8527,15 @@ class P2PNode:
             ),
             "exempt_messages_per_sec": int(
                 getattr(self.config, "p2p_exempt_messages_per_sec", 0) or 0
+            ),
+            "attest_messages_per_sec": int(
+                getattr(self.config, "p2p_attest_messages_per_sec", 0) or 0
+            ),
+            "tx_messages_per_sec": int(
+                getattr(self.config, "p2p_tx_messages_per_sec", 0) or 0
+            ),
+            "block_announce_messages_per_sec": int(
+                getattr(self.config, "p2p_block_announce_messages_per_sec", 0) or 0
             ),
             "tls": p2p_tls_status(self.config),
         }

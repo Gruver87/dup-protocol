@@ -1,0 +1,5 @@
+﻿checked_at: 2026-10-05T19:35:41.0288695+02:00
+wave: outbound-queue + class-rate + STRICT hardenings
+probe: RESULT OK (h854 peers=2 libp2p active/rust)
+industrial_gate: OK
+soak: DEFERRED by operator — not claimed

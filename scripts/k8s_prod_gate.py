@@ -43,6 +43,9 @@ def main() -> int:
         for key in (
             "p2p_max_message_bytes",
             "p2p_max_messages_per_sec",
+            "p2p_attest_messages_per_sec",
+            "p2p_tx_messages_per_sec",
+            "p2p_block_announce_messages_per_sec",
             "p2p_ban_seconds",
             "p2p_rate_limit_strikes",
         ):
