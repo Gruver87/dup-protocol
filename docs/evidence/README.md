@@ -25,4 +25,4 @@ python scripts/package_mesh_evidence.py \
 
 Historical Jul 2026 soak/failover claims in [EVIDENCE_MATRIX.md](../EVIDENCE_MATRIX.md) remain **operator-local** until a package for that SHA is committed or released as a GitHub Actions artifact.
 
-ADR 0020 pin libp2p cutover: placeholder [`runs/pin-libp2p-cutover-pending/README.md`](runs/pin-libp2p-cutover-pending/README.md) — **soak NOT RUN** until operator fills the pack.
+ADR 0020 pin libp2p cutover: [`runs/pin-libp2p-cutover-pending/README.md`](runs/pin-libp2p-cutover-pending/README.md) — **Quick probe PASS packaged**; **48h soak deferred** (claim PASS only with `hard_fails=0`).

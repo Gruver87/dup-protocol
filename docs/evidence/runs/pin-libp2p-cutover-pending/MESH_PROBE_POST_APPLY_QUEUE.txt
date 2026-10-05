@@ -1,0 +1,5 @@
+﻿checked_at: 2026-10-05T19:07:10.443899+00:00
+wave: ChainApplyQueue wrap_future async wait + docs honesty sync
+probe: RESULT OK (h1141 peers=2)
+industrial_gate: OK
+soak: DEFERRED by operator — not claimed

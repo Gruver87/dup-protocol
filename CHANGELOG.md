@@ -10,6 +10,11 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin ChainApplyQueue async wait (wrap_future)
+
+- **`_await_job`:** async submit awaits `asyncio.wrap_future` (not `to_thread(self.submit_*)`) so import flood cannot pin default-executor workers for `timeout_sec`.
+- Units + industrial_gate needles. **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** post-rebuild (h1141); pack `MESH_PROBE_POST_APPLY_QUEUE.txt`. **Soak deferred.**
+
 ### Exp→pin Rocks O(1) honesty cluster (live RPC/metrics must not prefix-scan growing CFs)
 
 - **`RocksChainStore`:** `get_latest_blocks` tip point-reads; `get_total_burned` via `prefix_last`; `count_transactions_by_address` / `count_address_transactions` and `count_proposer_audit` from meta counters (`addr_tx_counts_v1` / `proposer_counts_v1`, enabled on empty stores only; legacy volumes stay honest-unknown); `get_proposer_audit_log` height-walk; `get_proposer_stats` / `get_proposer_detail` from counters; `get_address_activity` uses `_max_indexed_tx_height`; `_rocks_runtime_core` + `get_rocks_runtime_stats` (no tx/account scan); reorg rolls counters back.

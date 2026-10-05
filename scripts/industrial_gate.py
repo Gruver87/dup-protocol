@@ -2617,6 +2617,10 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         apply_q = (ROOT / "core" / "chain_apply_queue.py").read_text(encoding="utf-8")
         if "expired_total" not in apply_q or "deadline_monotonic" not in apply_q:
             errors.append("chain_apply_queue must expire stale jobs (v1.3.66)")
+        if "asyncio.wrap_future" not in apply_q:
+            errors.append("async apply submit must wrap_future (not to_thread wait)")
+        if "asyncio.to_thread(self.submit_import" in apply_q:
+            errors.append("submit_import_async must not block a thread-pool worker")
         if "drop mempool txs only after successful import" not in p2p_py:
             errors.append("p2p must remove mempool only after successful import (v1.3.66)")
         if "_schedule_sync" not in p2p_py or "_schedule_connect" not in p2p_py:

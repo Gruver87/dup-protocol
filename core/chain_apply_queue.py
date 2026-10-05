@@ -158,6 +158,11 @@ class ChainApplyQueue:
             fut.set_result(("rejected", None))
         return fut
 
+    def _fail_outcome(self, out: Any) -> bool:
+        return bool(
+            isinstance(out, tuple) and out and out[0] in ("rejected", "error", "expired")
+        )
+
     def _result_or_timeout(self, fut: Future) -> Any:
         try:
             return fut.result(timeout=self.timeout_sec)
@@ -165,12 +170,33 @@ class ChainApplyQueue:
             self.timeout_total += 1
             return ("error", exc)
 
+    async def _await_job(self, fut: Future) -> Any:
+        """Wait on the apply worker Future without occupying a thread-pool slot.
+
+        Overflow rejects are already done — this returns immediately. A to_thread
+        wait would pin a default-executor worker for timeout_sec (120s) and stall
+        HTTP / harness under import flood.
+        """
+        if fut.done():
+            try:
+                return fut.result()
+            except Exception as exc:
+                return ("error", exc)
+        try:
+            return await asyncio.wait_for(
+                asyncio.wrap_future(fut),
+                timeout=self.timeout_sec,
+            )
+        except asyncio.TimeoutError:
+            self.timeout_total += 1
+            return ("error", TimeoutError("apply wait timeout"))
+
     def submit_import(self, block_data: Dict) -> bool:
         started = time.perf_counter()
         fut = self._enqueue(ApplyOpKind.IMPORT, block_data)
         out = self._result_or_timeout(fut)
         self.wait_seconds_total += time.perf_counter() - started
-        if isinstance(out, tuple) and out and out[0] in ("rejected", "error", "expired"):
+        if self._fail_outcome(out):
             return False
         return bool(out)
 
@@ -179,7 +205,7 @@ class ChainApplyQueue:
         fut = self._enqueue(ApplyOpKind.ADD, block)
         out = self._result_or_timeout(fut)
         self.wait_seconds_total += time.perf_counter() - started
-        if isinstance(out, tuple) and out and out[0] in ("rejected", "error", "expired"):
+        if self._fail_outcome(out):
             return False
         return bool(out)
 
@@ -193,7 +219,7 @@ class ChainApplyQueue:
         fut = self._enqueue(ApplyOpKind.FORGE_AND_APPLY, (txs, proposer, sign_fn))
         out = self._result_or_timeout(fut)
         self.wait_seconds_total += time.perf_counter() - started
-        if isinstance(out, tuple) and out and out[0] in ("rejected", "error", "expired"):
+        if self._fail_outcome(out):
             return False, None
         if not isinstance(out, tuple) or len(out) != 2:
             return False, None
@@ -205,7 +231,7 @@ class ChainApplyQueue:
         fut = self._enqueue(ApplyOpKind.REORG_AND_IMPORT, (int(rollback_to), peer_block))
         out = self._result_or_timeout(fut)
         self.wait_seconds_total += time.perf_counter() - started
-        if isinstance(out, tuple) and out and out[0] in ("rejected", "error", "expired"):
+        if self._fail_outcome(out):
             return False
         return bool(out)
 
@@ -214,12 +240,18 @@ class ChainApplyQueue:
         fut = self._enqueue(ApplyOpKind.REORG, int(rollback_to))
         out = self._result_or_timeout(fut)
         self.wait_seconds_total += time.perf_counter() - started
-        if isinstance(out, tuple) and out and out[0] in ("rejected", "error", "expired"):
+        if self._fail_outcome(out):
             return False
         return bool(out)
 
     async def submit_import_async(self, block_data: Dict) -> bool:
-        return await asyncio.to_thread(self.submit_import, block_data)
+        started = time.perf_counter()
+        fut = self._enqueue(ApplyOpKind.IMPORT, block_data)
+        out = await self._await_job(fut)
+        self.wait_seconds_total += time.perf_counter() - started
+        if self._fail_outcome(out):
+            return False
+        return bool(out)
 
     async def submit_forge_and_apply_async(
         self,
@@ -227,17 +259,36 @@ class ChainApplyQueue:
         proposer: str,
         sign_fn: Optional[Callable[[Any], None]] = None,
     ) -> Tuple[bool, Any]:
-        return await asyncio.to_thread(self.submit_forge_and_apply, txs, proposer, sign_fn)
+        started = time.perf_counter()
+        fut = self._enqueue(ApplyOpKind.FORGE_AND_APPLY, (txs, proposer, sign_fn))
+        out = await self._await_job(fut)
+        self.wait_seconds_total += time.perf_counter() - started
+        if self._fail_outcome(out):
+            return False, None
+        if not isinstance(out, tuple) or len(out) != 2:
+            return False, None
+        ok, block = out
+        return bool(ok), block
 
     async def submit_reorg_and_import_async(
         self, rollback_to: int, peer_block: Dict
     ) -> bool:
-        return await asyncio.to_thread(
-            self.submit_reorg_and_import, int(rollback_to), peer_block
-        )
+        started = time.perf_counter()
+        fut = self._enqueue(ApplyOpKind.REORG_AND_IMPORT, (int(rollback_to), peer_block))
+        out = await self._await_job(fut)
+        self.wait_seconds_total += time.perf_counter() - started
+        if self._fail_outcome(out):
+            return False
+        return bool(out)
 
     async def submit_reorg_async(self, rollback_to: int) -> bool:
-        return await asyncio.to_thread(self.submit_reorg, int(rollback_to))
+        started = time.perf_counter()
+        fut = self._enqueue(ApplyOpKind.REORG, int(rollback_to))
+        out = await self._await_job(fut)
+        self.wait_seconds_total += time.perf_counter() - started
+        if self._fail_outcome(out):
+            return False
+        return bool(out)
 
     def _run(self) -> None:
         while self._running:

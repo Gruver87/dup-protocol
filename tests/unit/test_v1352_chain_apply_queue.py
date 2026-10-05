@@ -106,3 +106,40 @@ def test_wiring():
     assert "apply_queue" in p2p
     assert "submit_import_async" in p2p or "submit_import" in p2p
     assert Path("core/chain_apply_queue.py").is_file()
+
+
+def test_async_reject_does_not_block_event_loop():
+    """Overflow reject must return without pinning a to_thread worker for timeout_sec."""
+    import asyncio
+
+    class SlowBC:
+        def import_block(self, data):
+            time.sleep(0.4)
+            return True
+
+    async def _run() -> None:
+        q = ChainApplyQueue(SlowBC(), maxsize=1, timeout_sec=30.0, name="tasync")
+        try:
+            t0 = time.perf_counter()
+            first = asyncio.create_task(q.submit_import_async({"i": 1}))
+            await asyncio.sleep(0.05)
+            second = asyncio.create_task(q.submit_import_async({"i": 2}))
+            await asyncio.sleep(0.05)
+            third = await q.submit_import_async({"i": 3})
+            elapsed = time.perf_counter() - t0
+            assert third is False
+            assert elapsed < 1.0
+            assert q.reject_total >= 1
+            await first
+            await second
+        finally:
+            q.stop()
+
+    asyncio.run(_run())
+
+
+def test_async_submit_uses_wrap_future_not_to_thread():
+    src = Path("core/chain_apply_queue.py").read_text(encoding="utf-8")
+    assert "asyncio.wrap_future" in src
+    assert "asyncio.to_thread(self.submit_import" not in src
+    assert "async def _await_job" in src

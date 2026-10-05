@@ -2,7 +2,7 @@
 
 **Scope:** industrial pin ([`dup-protocol`](https://github.com/Gruver87/dup-protocol)) prod profile `778888` — **default 3-node mesh JSON:** rust-libp2p (ADR 0020, `feature_libp2p=true`, `p2p_tls_enabled=false`). **Alternate:** TCP+TLS via `docker/node.prod.json` / ceremony (`feature_libp2p=false`). Experimental ([`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)) is a separate tree; `feature_long_range=false`, bridge OFF on prod.
 
-**Honesty:** Freeze tag `v1.3.1339-tip-v2-industrial` + `375d14f` = **TCP+TLS** soak evidence. Pin libp2p mesh soak/probe **pending** (`pin-libp2p-cutover-pending`). Do **not** cite Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`) as pin proof.
+**Honesty:** Freeze tag `v1.3.1339-tip-v2-industrial` + `375d14f` = **TCP+TLS** soak evidence. Working-tip prod mesh = **rust-libp2p** (ADR 0020); **Quick probe PASS** packaged (`pin-libp2p-cutover-pending`); **48h libp2p soak deferred**. Do **not** cite Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`) as pin proof.
 
 This is **not** a mainnet readiness claim. Parallel R&D paths (libp2p, Long-Range, Beacon/Casper demos) exist in-tree but are **off** / lab-only unless an ADR flips them.
 

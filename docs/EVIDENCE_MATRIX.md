@@ -112,6 +112,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 | **STRICT P2P hardenings (post-0020)** | late_state_root + wire_probe_gate + coalesced roots + write bound + under-mesh soft-refuse + **outbound queue split** + **class rate limits**; units + industrial_gate needles; **Quick probe PASS** post-rebuild (h~854) | Soak still deferred |
 | **Own-forge + solicit + PathA (post-0020)** | `own_forge_echo` / tip_safety `note_local_forge`; SyncSolicitHub `_kind_waiters`; PathA duplicate-canonical + parent==tip no-reorg; units + gate needles; **Quick probe PASS** (h908) | Soak still deferred |
 | **Attest echo + SyncEngine probes + parent FC** | attestation own-echo/fingerprint dedup; SyncEngine tip/peer-head probes + EngineIO refuses; `_try_expected_parent` fail-closed; units + gate needles; **Quick probe PASS** (h989) | Soak still deferred |
+| **ChainApplyQueue wrap_future** | async submit awaits `asyncio.wrap_future` (not `to_thread` wait) so import flood cannot pin executor workers; **Quick probe PASS** (h1141) | Soak still deferred |
 | **ADR 0021 diligence (pin)** | `test_mempool_port` + gate needles + `verify_adr0021_phase1 --skip-mesh` PASS; no pin mempool 48h pack | Host evidence only |
 | **EVM depth labs (pin host)** | `verify_evm_depth_lab.ps1` **PASS** (`--skip-mesh`); COMPAT matrix on disk | Not EVM-only 48h; mesh optional `-WithMesh` |
 | **External audit** | README and `external_audit_tracker.py` checklist incomplete | Third-party audit report + tracker items closed |

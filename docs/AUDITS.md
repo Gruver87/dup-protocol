@@ -32,7 +32,7 @@ Related: [SECURITY.md](../SECURITY.md) · [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_
 
 ## Safe Hybrid work (Exp→pin honesty CLOSED — code tip `adc8547`)
 
-**ADR 0020:** working-tip prod 3-node mesh JSON on this pin is **rust-libp2p** (`feature_libp2p=true`). Freeze tag `v1.3.1339-tip-v2-industrial` remains **TCP+TLS** sealed evidence. **Pin libp2p 48h soak + post-cutover mesh probe: not completed** — placeholder `docs/evidence/runs/pin-libp2p-cutover-pending/`.
+**ADR 0020:** working-tip prod 3-node mesh JSON on this pin is **rust-libp2p** (`feature_libp2p=true`). Freeze tag `v1.3.1339-tip-v2-industrial` remains **TCP+TLS** sealed evidence. **Post-cutover Quick probe PASS** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/`. **Pin libp2p 48h soak deferred** by operator — claim PASS only with `hard_fails=0`.
 
 Experimental owns Long-Range R&D and completed libp2p soaks on **its** tree (**B1 PASS** there) — **do not** cite `3c801b87`, `lp2pstrict1`, or `0a7932c4` as pin libp2p proof. Honesty Exp→pin merge is **CLOSED** (units + `industrial_gate`; **not** pin libp2p soak). Working tip: `git rev-parse --short HEAD`. On **this** pin, prefer:
 

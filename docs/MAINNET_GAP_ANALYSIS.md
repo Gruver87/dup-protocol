@@ -9,7 +9,7 @@
 
 **Wave C tip+apply (2026-08-02):** ceremony-armed tip encoding v2 uses integer `b_satoshi` (`SATOSHI_MULTIPLIER=1e6`) on fresh prod mesh; StateService fees/gas/reward are satoshi-int. Float tip `"b"` remains legacy/offline only. See [STATE_ROOT_ENCODING_MIGRATION.md](STATE_ROOT_ENCODING_MIGRATION.md) + evidence `docs/evidence/runs/79472a111cd5/`. **Phase 2 tip-v2 48h soak PASS** 2026-08-05→07 — `docs/evidence/runs/375d14f/` + `logs/soak_report_tipv2_48h_rerun.json` (**TCP+TLS**; freeze tag evidence).
 
-**ADR 0020 (2026-10):** working-tip prod 3-node mesh JSON is **rust-libp2p** (`feature_libp2p=true`, `p2p_tls_enabled=false`). **Gap:** post-cutover `probe_prod_mesh.ps1 -Quick` evidence pack and **48h pin libp2p soak** (`hard_fails=0`) are **not completed** — operator placeholder `docs/evidence/runs/pin-libp2p-cutover-pending/`. Do not cite Experimental libp2p soaks as pin proof. Suggested tag after PASS: `v1.3.1340-libp2p-industrial-mesh` (document only until tagged).
+**ADR 0020 (2026-10):** working-tip prod 3-node mesh JSON is **rust-libp2p** (`feature_libp2p=true`, `p2p_tls_enabled=false`). **Quick probe PASS** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/`. **Gap:** **48h pin libp2p soak** (`hard_fails=0`) still **deferred** by operator. Do not cite Experimental libp2p soaks as pin proof. Suggested tag after soak PASS: `v1.3.1340-libp2p-industrial-mesh` (document only until tagged).
 
 This document is the honest engineering checklist after a full repository scan.  
 Automated gates (`mainnet_readiness`, `prod_gate`, `industrial_gate`, `post_soak_verify`) enforce code-level fail-closed rules; **they do not replace** external audit, validator operations, or legal review.
