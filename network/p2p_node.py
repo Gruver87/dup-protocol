@@ -2275,6 +2275,17 @@ class P2PNode:
             tip_h = int(self.blockchain.get_height() or 0) if self.blockchain else 0
         except (TypeError, ValueError, AttributeError):
             tip_h = 0
+        last_forge = int(getattr(self, "_last_local_forge_height", 0) or 0)
+        # Only the just-forged height and the next pipeline height. Never
+        # ``cand <= last_forge`` — that would skip tip-safety for the whole
+        # history on the miner.
+        if last_forge > 0 and cand_h in (last_forge, last_forge + 1):
+            logger.info(
+                "[P2P] tip_safety defer own-forge echo height=%s last_forge=%s",
+                cand_h,
+                last_forge,
+            )
+            return True
         if should_defer_tip_safety_skip_ahead(
             apply_busy=bool(q is not None and getattr(q, "busy", False)),
             candidate_height=cand_h,
@@ -6204,16 +6215,17 @@ class P2PNode:
                 found = data
         return found
 
-    def _solicit_lock_for(self, peer_id: str) -> asyncio.Lock:
+    def _solicit_lock_for(self, peer_id: str, kind: str = "") -> asyncio.Lock:
+        """Per-(peer, kind) arm lock — state_root must not queue behind mempool."""
         locks = getattr(self, "_solicit_peer_locks", None)
         if locks is None:
             self._solicit_peer_locks = {}
             locks = self._solicit_peer_locks
-        pid = str(peer_id or "")
-        lock = locks.get(pid)
+        key = f"{str(peer_id or '')}\x1f{kind or '_'}"
+        lock = locks.get(key)
         if lock is None:
             lock = asyncio.Lock()
-            locks[pid] = lock
+            locks[key] = lock
         return lock
 
     async def _wait_peer_response(
@@ -6230,48 +6242,58 @@ class P2PNode:
         loop = asyncio.get_running_loop()
         fut = loop.create_future()
         want_root = MSG_STATE_ROOT_RESPONSE in tuple(expected_types or ())
-        async with self._solicit_lock_for(peer.peer_id):
+        kind = ""
+        if isinstance(request_ctx, dict):
+            kind = str(request_ctx.get("kind") or "")
+        pid = str(peer.peer_id or "")
+        async with self._solicit_lock_for(pid, kind):
             hub.arm(peer.peer_id, expected_types, fut, request_ctx)
-            try:
-                sent = True
-                if presend:
-                    sent = await presend()
-                if sent is False:
-                    # Response may already have landed while send() awaited the
-                    # write. Do not time out a completed waiter.
-                    if fut.done() and not fut.cancelled():
-                        return fut.result()
-                    late = self._consume_late_state_root(peer) if want_root else None
-                    if late:
-                        return {"type": MSG_STATE_ROOT_RESPONSE, "data": late}
-                    hub.timeout(peer.peer_id, result=None)
-                    return None
-                # shield: transport timeout must not cancel the Future so the hub
-                # can fulfill it with None via timeout() (owned waiter semantics).
-                return await asyncio.wait_for(asyncio.shield(fut), timeout=timeout)
-            except asyncio.TimeoutError:
-                if want_root:
-                    now = time.monotonic()
-                    timeout_at = self._state_root_timeout_at
-                    for k in self._peer_solicit_keys(peer):
-                        timeout_at[k] = now
-                    # Bound the mark tables (departed peers must not leak keys).
-                    for k in [
-                        key for key, ts in timeout_at.items() if (now - float(ts)) > 60.0
-                    ]:
-                        timeout_at.pop(k, None)
-                # Hub-side timeout: fulfill future (if still pending) + drop waiter.
-                hub.timeout(peer.peer_id, result=None)
-                if want_root:
-                    # Reply is often already in the native buffer (miner HOL):
-                    # `_handle_message` stashes it once the waiter is gone.
-                    await asyncio.sleep(0.4)
-                    late = self._consume_late_state_root(peer)
-                    if late:
-                        return {"type": MSG_STATE_ROOT_RESPONSE, "data": late}
+        try:
+            sent = True
+            if presend:
+                sent = await presend()
+            if sent is False:
+                # Response may already have landed while send() awaited the
+                # write. Do not time out a completed waiter.
+                if fut.done() and not fut.cancelled():
+                    return fut.result()
+                late = self._consume_late_state_root(peer) if want_root else None
+                if late:
+                    return {"type": MSG_STATE_ROOT_RESPONSE, "data": late}
+                hub.timeout(pid, result=None, kind=kind, fut=fut)
                 return None
-            finally:
-                hub.clear(peer.peer_id)
+            if pid and self.peers.get(pid) is not peer:
+                # Peer already dropped: fail fast instead of burning the timeout.
+                hub.timeout(pid, result=None, kind=kind, fut=fut)
+                return None
+            # Wait outside the lock so mempool/catch-up cannot block HTTP 8s.
+            # shield: transport timeout must not cancel the Future so the hub
+            # can fulfill it with None via timeout() (owned waiter semantics).
+            return await asyncio.wait_for(asyncio.shield(fut), timeout=timeout)
+        except asyncio.TimeoutError:
+            if want_root:
+                now = time.monotonic()
+                timeout_at = self._state_root_timeout_at
+                for k in self._peer_solicit_keys(peer):
+                    timeout_at[k] = now
+                # Bound the mark tables (departed peers must not leak keys).
+                for k in [
+                    key for key, ts in timeout_at.items() if (now - float(ts)) > 60.0
+                ]:
+                    timeout_at.pop(k, None)
+            # Hub-side timeout scoped to this future: must not steal a parked
+            # same-kind waiter armed by another caller on the same peer.
+            hub.timeout(pid, result=None, kind=kind, fut=fut)
+            if want_root:
+                # Reply is often already in the native buffer (miner HOL):
+                # `_handle_message` stashes it once the waiter is gone.
+                await asyncio.sleep(0.4)
+                late = self._consume_late_state_root(peer)
+                if late:
+                    return {"type": MSG_STATE_ROOT_RESPONSE, "data": late}
+            return None
+        finally:
+            hub.clear(peer.peer_id, kind=kind, fut=fut)
 
     def _expected_parent_for_height(self, height: int) -> str:
         """Parent digest expected for the first block at `height`."""
@@ -6823,7 +6845,10 @@ class P2PNode:
 
         A probe started right after a local forge races the broadcast / apply
         pipeline and can return empty with live peers. Delay, do not skip.
-        ``height`` is the just-forged tip (monotonic record only).
+
+        ``height`` is the just-forged tip. Echo of that block (or tip+1 still
+        in the pipeline) must not hit tip_unknown_parent against a stale
+        ``get_chain_tip`` read from another thread.
         """
         hold = max(0.0, min(2.0, float(hold_sec)))
         self._wire_probe_hold_until = time.monotonic() + hold
@@ -6835,6 +6860,10 @@ class P2PNode:
             prev = int(getattr(self, "_last_local_forge_height", 0) or 0)
             if h > prev:
                 self._last_local_forge_height = h
+            shadow = getattr(self, "tip_safety_shadow", None)
+            note_shadow = getattr(shadow, "note_local_forge", None)
+            if callable(note_shadow):
+                note_shadow(h)
 
     async def _wait_wire_probe_gate(self, timeout: float = 1.2) -> float:
         """Wait until apply-queue idle and post-forge hold expires.
@@ -7474,7 +7503,11 @@ class P2PNode:
         while self._running:
             # Redial fast while the mesh is empty (libp2p initiator is the smaller
             # PeerId; a passive dial attempt must not wait 20s for the next round).
-            delay = 5.0 if not self.peers else 20.0
+            try:
+                mesh_empty = not bool(self.peers)
+            except Exception:
+                mesh_empty = True
+            delay = 5.0 if mesh_empty else 20.0
             await asyncio.sleep(delay)
             try:
                 if not self.config.bootstrap_peers:

@@ -122,6 +122,7 @@ class TipSafetyShadowObserver:
         "enforce_refuse_total",
         "observe_errors",
         "sync_errors",
+        "last_local_forge_height",
     )
 
     def __init__(self, enabled: bool = False, enforce: bool = False) -> None:
@@ -139,6 +140,24 @@ class TipSafetyShadowObserver:
         self.enforce_refuse_total = 0
         self.observe_errors = 0
         self.sync_errors = 0
+        self.last_local_forge_height = 0
+
+    def note_local_forge(self, height: int) -> None:
+        """Record the height just applied on the local mining path.
+
+        NEW_BLOCK echo of that height (or the next pipeline height) must not
+        be treated as a skip-ahead / unknown parent against a stale window.
+        Monotonic: lower heights never rewind the record.
+        """
+        try:
+            h = int(height or 0)
+        except (TypeError, ValueError):
+            return
+        if h <= 0:
+            return
+        with self._lock:
+            if h > int(self.last_local_forge_height or 0):
+                self.last_local_forge_height = h
 
     @property
     def enabled(self) -> bool:

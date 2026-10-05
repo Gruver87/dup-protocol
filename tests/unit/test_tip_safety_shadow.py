@@ -267,3 +267,47 @@ def test_prod_validate_requires_tip_safety_enforce() -> None:
     cfg.tip_safety_enforce = False
     errors = cfg.validate()
     assert any("tip_safety_enforce" in e for e in errors)
+
+
+def _p2p_enforce_node(chain: _FakeChain) -> P2PNode:
+    cfg = Config()
+    cfg.p2p_native_transport = False
+    cfg.require_native_crypto = False
+    cfg.deployment_mode = "dev"
+    cfg.bootstrap_peers = []
+    node = P2PNode(cfg, chain, MagicMock())
+    node.tip_safety_shadow = TipSafetyShadowObserver(enabled=True, enforce=True)
+    return node
+
+
+def test_shadow_note_local_forge_monotonic_and_ignores_junk() -> None:
+    obs = TipSafetyShadowObserver(enabled=True, enforce=True)
+    assert obs.last_local_forge_height == 0
+    obs.note_local_forge(9567)
+    assert obs.last_local_forge_height == 9567
+    obs.note_local_forge(9560)
+    assert obs.last_local_forge_height == 9567
+    obs.note_local_forge(0)
+    obs.note_local_forge(-5)
+    obs.note_local_forge("junk")  # type: ignore[arg-type]
+    assert obs.last_local_forge_height == 9567
+
+
+def test_p2p_precheck_defers_own_forge_when_chain_tip_lags() -> None:
+    """Miner restart race: get_height=9565 while gossip echo of forged 9567 arrives.
+
+    apply_queue is idle (busy=False), so skip-ahead defer does not fire.
+    note_local_forge(height=9567) must still skip tip_unknown_parent.
+    """
+    chain = _FakeChain(9565)
+    node = _p2p_enforce_node(chain)
+    assert node.tip_safety_shadow.sync_from_chain(chain) is True
+    node.note_local_forge(0.0, height=9567)
+    assert node.tip_safety_shadow.last_local_forge_height == 9567
+    echo = _block_dict(9567, n=0xEE)
+    echo["parent_hash"] = (
+        chain.get_block(9566)["hash"] if chain.get_block(9566) else _h(9566)
+    )
+    assert node._tip_safety_precheck(echo) is True
+    # Deep history is not exempt: a gap candidate is still refused under enforce.
+    assert node._tip_safety_precheck(_block_dict(99)) is False

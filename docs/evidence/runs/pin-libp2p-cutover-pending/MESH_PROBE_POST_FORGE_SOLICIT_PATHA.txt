@@ -1,0 +1,6 @@
+﻿checked_at: 2026-10-05T17:51:54.948052+00:00
+wave: own-forge-echo + solicit _kind_waiters + PathA duplicate guards
+probe: RESULT OK (h908 peers=2 aligned tip 5df6c8615489...)
+industrial_gate: OK (external_audit warnings expected)
+reconnect soak unit: peers property fail-closed (empty mesh if peer_manager missing)
+soak: DEFERRED by operator — not claimed

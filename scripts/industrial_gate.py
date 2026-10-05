@@ -486,6 +486,30 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append("p2p_node must route waiters via solicit_hub.fulfill_or_reject")
     if "from sync.solicit import SyncSolicitHub" not in p2p_src:
         errors.append("p2p_node must import SyncSolicitHub")
+    solicit_src = (ROOT / "sync" / "solicit.py").read_text(encoding="utf-8")
+    if "_kind_waiters" not in solicit_src:
+        errors.append(
+            "solicit hub must park per-kind waiters so state_root is not blocked by mempool"
+        )
+    if "Park even when kinds match" not in solicit_src:
+        errors.append("solicit hub must park a second same-kind state_root waiter")
+    if "_collect_state_root_waiters" not in solicit_src:
+        errors.append("solicit hub must fan state_root replies to primary + parked waiters")
+    if "self._solicit_lock_for(pid, kind)" not in p2p_src:
+        errors.append("state_root solicit lock must be per-kind, not per-peer")
+    if "Wait outside the lock" not in p2p_src:
+        errors.append("solicit wait must not hold per-kind lock for the full timeout")
+    if "if pid and self.peers.get(pid) is not peer" not in p2p_src:
+        errors.append("solicit wait must fail-fast when the peer has already dropped")
+    if "hub.timeout(pid, result=None, kind=kind, fut=fut)" not in p2p_src:
+        errors.append("solicit timeout must be fut-scoped so it cannot steal a parked waiter")
+    if "hub.clear(peer.peer_id, kind=kind, fut=fut)" not in p2p_src:
+        errors.append("solicit clear must be fut-scoped so it cannot steal a parked waiter")
+    path_a_src = (ROOT / "sync" / "catchup" / "path_a.py").read_text(encoding="utf-8")
+    if "already canonical, skip reorg" not in path_a_src:
+        errors.append("PathA _import_one must skip reorg for an already-canonical duplicate")
+    if "Failed +1 extend (parent is the current tip) is not a fork" not in path_a_src:
+        errors.append("PathA _import_one must not reorg when parent==tip (failed extend)")
     if "ConsistencyService" not in sync_src:
         errors.append("SyncEngine must use ConsistencyService")
     if "def force_inconsistent" not in p2p_src:
@@ -4960,6 +4984,39 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append(
                 "P2PNode must defer tip-safety skip-ahead while apply_queue is busy"
             )
+        # Own-forge echo: tip-safety must not refuse the miner's NEW_BLOCK echo
+        # against a stale AncestryWindow (tip_unknown_parent). Bounded to
+        # last_forge / last_forge+1 — never the whole history.
+        if "note_local_forge" not in p2p_py:
+            errors.append("P2PNode must expose note_local_forge (post-forge hold + height)")
+        if "tip_safety defer own-forge echo" not in p2p_py:
+            errors.append("P2PNode must defer tip-safety for last locally forged height")
+        if "cand_h in (last_forge, last_forge + 1)" not in p2p_py:
+            errors.append(
+                "tip-safety own-forge defer must be bounded to last_forge/last_forge+1"
+            )
+        if 'getattr(shadow, "note_local_forge", None)' not in p2p_py:
+            errors.append("P2PNode.note_local_forge must propagate height to tip_safety shadow")
+        shadow_py = (ROOT / "consensus" / "tip_safety" / "shadow.py").read_text(
+            encoding="utf-8"
+        )
+        if "def note_local_forge" not in shadow_py or "last_local_forge_height" not in shadow_py:
+            errors.append(
+                "TipSafetyShadowObserver must record last_local_forge_height via note_local_forge"
+            )
+        tip_evidence_py = (
+            ROOT / "network" / "p2p_dispatch" / "tip_evidence.py"
+        ).read_text(encoding="utf-8")
+        if "own_forge_echo" not in tip_evidence_py:
+            errors.append("dispatcher tip-evidence must allow own-forge NEW_BLOCK echo")
+        if "last_local_forge_height" not in tip_evidence_py:
+            errors.append("dispatcher tip-evidence must read shadow.last_local_forge_height")
+        main_forge_py = (ROOT / "main.py").read_text(encoding="utf-8")
+        _note_at = main_forge_py.find("note(1.0, height=")
+        if _note_at < 0:
+            errors.append("mining must pass forged height into note_local_forge")
+        elif _note_at > main_forge_py.find("await self.p2p._broadcast_block"):
+            errors.append("mining must note_local_forge before NEW_BLOCK broadcast")
         if "def busy" not in (
             ROOT / "core" / "chain_apply_queue.py"
         ).read_text(encoding="utf-8"):

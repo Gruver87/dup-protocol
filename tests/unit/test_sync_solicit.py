@@ -321,6 +321,251 @@ def test_p2p_handle_message_only_forwards_to_hub() -> None:
     assert "solicit_hub.fulfill_or_reject" in src
     # At most back-compat alias assignment.
     assert src.count("self._sync_waiters = self.solicit_hub.waiters") == 1
+    assert "Wait outside the lock" in src
+    assert "self._solicit_lock_for(pid, kind)" in src
+    assert "if pid and self.peers.get(pid) is not peer" in src
+    assert "hub.timeout(pid, result=None, kind=kind, fut=fut)" in src
+    assert "hub.clear(peer.peer_id, kind=kind, fut=fut)" in src
+    assert "_consume_late_state_root" in src
+    solicit = (ROOT / "sync" / "solicit.py").read_text(encoding="utf-8")
+    assert "Park even when kinds match" in solicit
+    assert "_kind_waiters" in solicit
+    assert "_collect_state_root_waiters" in solicit
+
+
+def test_second_state_root_arm_parks_does_not_overwrite() -> None:
+    hub = SyncSolicitHub(verify_state_root=lambda *_a, **_k: None)
+    first = _Fut()
+    second = _Fut()
+    ctx = {"kind": "state_root", "height": 1, "expected_head": ""}
+    hub.arm("peer-1", (MSG_STATE_ROOT_RESPONSE,), first, ctx)
+    hub.arm("peer-1", (MSG_STATE_ROOT_RESPONSE,), second, ctx)
+    assert hub.armed_count == 2
+    msg = {
+        "type": MSG_STATE_ROOT_RESPONSE,
+        "data": {"height": 1, "state_root": "aa" * 32},
+    }
+    r = hub.fulfill_or_reject(
+        _Peer(),
+        MSG_STATE_ROOT_RESPONSE,
+        msg["data"],
+        msg,
+        strike=lambda *_a: False,
+    )
+    assert r.consumed is True
+    assert first.result is msg
+    assert second.result is msg
+
+
+def test_timeout_fut_does_not_steal_other_state_root() -> None:
+    hub = SyncSolicitHub()
+    keep = _Fut()
+    drop = _Fut()
+    ctx = {"kind": "state_root", "height": 1}
+    hub.arm("peer-1", (MSG_STATE_ROOT_RESPONSE,), keep, ctx)
+    hub.arm("peer-1", (MSG_STATE_ROOT_RESPONSE,), drop, ctx)
+    assert hub.timeout("peer-1", result=None, kind="state_root", fut=drop) is True
+    assert drop.done() is True
+    assert keep.done() is False
+    assert hub.armed_count == 1
+    assert hub.get("peer-1", kind="state_root") is not None
+
+
+def test_timeout_fut_primary_keeps_parked_state_root() -> None:
+    """Timing out the primary future must not drop the parked same-kind waiter."""
+    hub = SyncSolicitHub()
+    primary = _Fut()
+    parked = _Fut()
+    ctx = {"kind": "state_root", "height": 1}
+    hub.arm("peer-1", (MSG_STATE_ROOT_RESPONSE,), primary, ctx)
+    hub.arm("peer-1", (MSG_STATE_ROOT_RESPONSE,), parked, ctx)
+    assert hub.timeout("peer-1", result=None, kind="state_root", fut=primary) is True
+    assert primary.done() is True
+    assert parked.done() is False
+    assert hub.armed_count == 1
+    hub.clear("peer-1", kind="state_root", fut=parked)
+    assert hub.armed_count == 0
+
+
+def test_clear_fut_scoped_is_noop_for_foreign_future() -> None:
+    hub = SyncSolicitHub()
+    owner = _Fut()
+    hub.arm("peer-1", (MSG_STATE_ROOT_RESPONSE,), owner, {"kind": "state_root"})
+    hub.clear("peer-1", kind="state_root", fut=_Fut())
+    assert hub.armed_count == 1
+    assert hub.timeout("peer-1", result=None, kind="state_root", fut=_Fut()) is False
+    assert owner.done() is False
+
+
+def test_state_root_and_mempool_waiters_concurrent() -> None:
+    hub = SyncSolicitHub(verify_state_root=lambda *_a, **_k: None)
+    mem_fut = _Fut()
+    root_fut = _Fut()
+    hub.arm("peer-1", (MSG_MEMPOOL,), mem_fut, {"kind": "mempool"})
+    hub.arm(
+        "peer-1",
+        (MSG_STATE_ROOT_RESPONSE,),
+        root_fut,
+        {"kind": "state_root", "height": 1, "expected_head": ""},
+    )
+    assert hub.armed_count == 2
+    root_msg = {
+        "type": MSG_STATE_ROOT_RESPONSE,
+        "data": {"height": 1, "state_root": "aa" * 32},
+    }
+    r_root = hub.fulfill_or_reject(
+        _Peer(),
+        MSG_STATE_ROOT_RESPONSE,
+        root_msg["data"],
+        root_msg,
+        strike=lambda *_a: False,
+    )
+    assert r_root.consumed is True
+    assert root_fut.result is root_msg
+    assert mem_fut.result is None
+    mem_msg = {"type": MSG_MEMPOOL, "data": [{"hash": "x"}]}
+    r_mem = hub.fulfill_or_reject(
+        _Peer(),
+        MSG_MEMPOOL,
+        mem_msg["data"],
+        mem_msg,
+        strike=lambda *_a: False,
+    )
+    assert r_mem.consumed is True
+    assert mem_fut.result is mem_msg
+    hub.clear("peer-1", kind="state_root")
+    hub.clear("peer-1", kind="mempool")
+    assert hub.armed_count == 0
+
+
+def test_mempool_reply_with_parked_state_root_primary_mempool() -> None:
+    """state_root armed first (primary) + mempool parked: both replies route by kind."""
+    hub = SyncSolicitHub(verify_state_root=lambda *_a, **_k: None)
+    root_fut = _Fut()
+    mem_fut = _Fut()
+    hub.arm(
+        "peer-1",
+        (MSG_STATE_ROOT_RESPONSE,),
+        root_fut,
+        {"kind": "state_root", "height": 1, "expected_head": ""},
+    )
+    hub.arm("peer-1", (MSG_MEMPOOL,), mem_fut, {"kind": "mempool"})
+    assert hub.mempool_solicit_armed("peer-1") is True
+    mem_msg = {"type": MSG_MEMPOOL, "data": []}
+    r = hub.fulfill_or_reject(
+        _Peer(), MSG_MEMPOOL, [], mem_msg, strike=lambda *_a: False
+    )
+    assert r.consumed is True
+    assert mem_fut.result is mem_msg
+    assert root_fut.done() is False
+
+
+def test_clear_state_root_kind_keeps_mempool() -> None:
+    hub = SyncSolicitHub()
+    hub.arm("peer-1", (MSG_MEMPOOL,), _Fut(), {"kind": "mempool"})
+    hub.arm(
+        "peer-1",
+        (MSG_STATE_ROOT_RESPONSE,),
+        _Fut(),
+        {"kind": "state_root", "height": 1},
+    )
+    hub.clear("peer-1", kind="state_root")
+    assert hub.mempool_solicit_armed("peer-1") is True
+    assert hub.armed_count == 1
+
+
+def test_state_root_with_only_non_state_root_waiter_is_not_consumed() -> None:
+    """Armed mempool waiter must not be killed by an unsolicited state_root reply."""
+    hub = SyncSolicitHub()
+    mem_fut = _Fut()
+    hub.arm("peer-1", (MSG_MEMPOOL,), mem_fut, {"kind": "mempool"})
+    msg = {"type": MSG_STATE_ROOT_RESPONSE, "data": {"height": 1}}
+    strikes: list[str] = []
+    r = hub.fulfill_or_reject(
+        _Peer(),
+        MSG_STATE_ROOT_RESPONSE,
+        msg["data"],
+        msg,
+        strike=lambda p, reason: strikes.append(reason) or False,
+    )
+    assert r.consumed is False
+    assert r.detail == "no_waiter"
+    assert mem_fut.done() is False
+    assert strikes == []
+
+
+def test_state_root_bad_reply_strikes_once_for_parked_waiters() -> None:
+    hub = SyncSolicitHub(verify_state_root=lambda *_a, **_k: "bad_state_root_response_height")
+    first = _Fut()
+    second = _Fut()
+    ctx = {"kind": "state_root", "height": 10, "expected_head": ""}
+    hub.arm("peer-1", (MSG_STATE_ROOT_RESPONSE,), first, ctx)
+    hub.arm("peer-1", (MSG_STATE_ROOT_RESPONSE,), second, ctx)
+    msg = {"type": MSG_STATE_ROOT_RESPONSE, "data": {"height": 11}}
+    strikes: list[str] = []
+    r = hub.fulfill_or_reject(
+        _Peer(),
+        MSG_STATE_ROOT_RESPONSE,
+        msg["data"],
+        msg,
+        strike=lambda p, reason: strikes.append(reason) or False,
+    )
+    assert r.consumed is True
+    assert first.result is None and first.done()
+    assert second.result is None and second.done()
+    assert strikes == ["bad_state_root_response_height"]
+
+
+def test_expire_stale_sweeps_parked_kind_waiters_fut_scoped() -> None:
+    hub = SyncSolicitHub()
+    now = time.monotonic()
+    old_primary = _Fut()
+    old_parked = _Fut()
+    ctx = {"kind": "state_root", "height": 1}
+    hub.arm("p", (MSG_STATE_ROOT_RESPONSE,), old_primary, ctx, armed_at=now - 60.0)
+    hub.arm("p", (MSG_STATE_ROOT_RESPONSE,), old_parked, ctx, armed_at=now - 60.0)
+    assert hub.armed_count == 2
+    assert hub.expire_stale(30.0, now=now) == 2
+    assert old_primary.done() and old_parked.done()
+    assert hub.armed_count == 0
+
+
+def test_clear_all_with_timeout_futures_includes_kind_waiters() -> None:
+    hub = SyncSolicitHub()
+    a, b = _Fut(), _Fut()
+    ctx = {"kind": "state_root", "height": 1}
+    hub.arm("p", (MSG_STATE_ROOT_RESPONSE,), a, ctx)
+    hub.arm("p", (MSG_STATE_ROOT_RESPONSE,), b, ctx)
+    assert hub.clear_all(timeout_futures=True) == 2
+    assert a.done() and b.done()
+    assert hub.armed_count == 0
+
+
+def test_fulfill_state_root_via_libp2p_peer_id() -> None:
+    hub = SyncSolicitHub(verify_state_root=lambda *_a, **_k: None)
+    fut = _Fut()
+    rust_id = "12D3KooWtestpeer"
+    hub.arm(
+        rust_id,
+        (MSG_STATE_ROOT_RESPONSE,),
+        fut,
+        {"kind": "state_root", "height": 1, "expected_head": ""},
+    )
+    peer = _Peer("docker-prod-mesh-2")
+    peer._libp2p_peer_id = rust_id
+    msg = {
+        "type": MSG_STATE_ROOT_RESPONSE,
+        "data": {"height": 1, "state_root": "aa" * 32},
+    }
+    r = hub.fulfill_or_reject(
+        peer,
+        MSG_STATE_ROOT_RESPONSE,
+        msg["data"],
+        msg,
+        strike=lambda *_a: False,
+    )
+    assert r.consumed is True
+    assert fut.result is msg
 
 
 def test_no_network_import_in_solicit_domain() -> None:

@@ -734,3 +734,68 @@ def test_verify_p2p_security_mesh_detects_mismatch(monkeypatch):
     monkeypatch.setattr(mod, "_api", fake_api)
     assert mod.verify_p2p_security_mesh(["http://127.0.0.1:8080"]) == 15
 
+
+
+def test_note_local_forge_records_height_monotonic():
+    from network.p2p_node import P2PNode
+
+    node = P2PNode.__new__(P2PNode)
+    node._wire_probe_hold_until = 0.0
+    node._last_local_forge_height = 0
+    node.note_local_forge(0.5, height=9566)
+    assert node._last_local_forge_height == 9566
+    node.note_local_forge(0.5, height=9567)
+    assert node._last_local_forge_height == 9567
+    node.note_local_forge(0.5, height=9560)
+    assert node._last_local_forge_height == 9567
+
+
+def test_note_local_forge_propagates_height_to_tip_safety_shadow():
+    from consensus.tip_safety.shadow import TipSafetyShadowObserver
+    from network.p2p_node import P2PNode
+
+    node = P2PNode.__new__(P2PNode)
+    node._wire_probe_hold_until = 0.0
+    node._last_local_forge_height = 0
+    node.tip_safety_shadow = TipSafetyShadowObserver(enabled=True, enforce=True)
+    node.note_local_forge(0.0, height=9567)
+    assert node.tip_safety_shadow.last_local_forge_height == 9567
+    node.note_local_forge(0.0, height=9560)
+    assert node.tip_safety_shadow.last_local_forge_height == 9567
+    # height <= 0 must not touch the shadow record.
+    node.note_local_forge(0.0, height=0)
+    assert node.tip_safety_shadow.last_local_forge_height == 9567
+
+
+def test_tip_safety_precheck_defers_own_forge_echo_not_history():
+    from network.p2p_node import P2PNode
+
+    class _Chain:
+        def get_height(self):
+            return 9565
+
+    node = P2PNode.__new__(P2PNode)
+    node.blockchain = _Chain()
+    node.apply_queue = None
+    node.tip_safety_shadow = object()
+    node._last_local_forge_height = 9567
+    assert node._tip_safety_precheck({"height": 9567}) is True
+    assert node._tip_safety_precheck({"height": 9568}) is True
+
+    # Deep history must still go through observe/enforce.
+    class _Refuse:
+        enforce = True
+
+        def observe_before_import(self, *_a, **_k):
+            return MagicMock(accepted=False, reason_code="tip_unknown_parent")
+
+        def allows_import(self, _d):
+            return False
+
+        def record_enforce_refuse(self, _d):
+            return "tip_unknown_parent"
+
+    node.tip_safety_shadow = _Refuse()
+    node._import_block_fail = 0
+    assert node._tip_safety_precheck({"height": 9000}) is False
+    assert node._tip_safety_precheck({"height": 9569}) is False

@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin tip/sync correctness (own-forge + solicit + PathA)
+
+- **Own-forge echo:** `_tip_safety_precheck` defers `last_forge` / `last_forge+1`; `note_local_forge` → tip_safety shadow (no Long-Range/WS).
+- **SyncSolicitHub `_kind_waiters`:** park same-kind waiters; fut-scoped timeout/clear; wait outside lock.
+- **PathA:** duplicate-canonical / parent==tip import fail without reorg; competing child still reorgs.
+- Units + industrial_gate needles. **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** post-rebuild (h908 peers=2); pack note `MESH_PROBE_POST_FORGE_SOLICIT_PATHA.txt`. **Soak deferred.**
+
 ### Exp→pin integration wave (post ADR 0020, soak deferred)
 
 - **STRICT mesh P2P hardenings:** late `state_root` stash/consume, wire-probe gate + coalesced gather, native write SO_SNDTIMEO bound, PathA catch-up lock, `note_local_forge` before broadcast, under-mesh soft-refuse / catch-up redial. Units `test_state_root_probe_coalesce.py`, soft-refuse mesh tests. **Not** Long-Range / ws_checkpoint.

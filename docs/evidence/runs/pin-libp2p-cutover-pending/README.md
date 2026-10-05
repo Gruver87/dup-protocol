@@ -33,6 +33,10 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `status_snapshot.jsonl` | Live `/status` from 18180–18182 |
 | `industrial_gate.json` | Gate snapshot |
 | `NEGATIVE_REFUSE.txt` | TLS+libp2p / `-P2pTls` / missing-swarm refuse |
+| `MESH_PROBE_POST_STRICT.txt` | Outbound/class-rate Quick probe stamp |
+| `MESH_PROBE_POST_FORGE_SOLICIT_PATHA.txt` | Own-forge + solicit + PathA Quick probe (h908) |
+| `probe_prod_mesh_quick_forge_solicit_patha.json` | Probe JSON for forge/solicit/PathA wave |
+| `industrial_gate_forge_solicit_patha.json` | Gate snapshot for that wave |
 | `README.md` | This honesty stamp |
 
 ## Still missing for industrial soak claim

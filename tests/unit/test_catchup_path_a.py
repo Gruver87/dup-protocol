@@ -104,10 +104,10 @@ def test_height_continuity_refuse_aborts_batch() -> None:
     assert io.imported == []
 
 
-def test_import_fail_reorg_resume() -> None:
+def test_import_fail_extend_does_not_reorg() -> None:
+    """Parent==tip is a failed extend, not a fork. Do not roll back."""
     tip2 = "aa" * 32
     h4 = "h4" * 32
-    # Contiguous parent cites tip; ancestors map forces deeper reorg target.
     b5 = _blk(5, h4, "b5" * 32)
     io = FakeCatchUpIO(
         height=4,
@@ -123,9 +123,63 @@ def test_import_fail_reorg_resume() -> None:
     )
     peer = CatchUpPeerView(peer_id="p1", height=5, head_hash="b5" * 32)
     out = _svc(io).run_ahead(peer)
-    assert "Fork resolved" in " ".join(io.progress)
-    assert io.height() == 2
+    assert "Fork resolved" not in " ".join(io.progress)
+    assert io.height() == 4
     assert out.status in (CatchUpStatus.STALLED, CatchUpStatus.INCOMPLETE)
+
+
+def test_duplicate_canonical_import_fail_does_not_reorg() -> None:
+    """Concurrent PathA of an already-canonical #340 must not reorg to #339."""
+    h339 = "a9" * 32
+    h340 = "b0" * 32
+    io = FakeCatchUpIO(
+        height=340,
+        head=h340,
+        blocks_by_height={
+            339: _blk(339, "a8" * 32, h339),
+            340: _blk(340, h339, h340),
+        },
+        fail_import_heights=[340],
+    )
+    peer = CatchUpPeerView(peer_id="p1", height=342, head_hash="zz" * 32)
+    cfg = CatchUpConfig(contiguous_parent_bind=False, tip_head_bind=False)
+    out = _svc(io)._import_one(
+        peer=peer,
+        cfg=cfg,
+        block_data=_blk(340, h339, h340),
+        expected_height=340,
+    )
+    assert out == "fail"
+    assert io.height() == 340
+    assert "Duplicate #340 already canonical, skip reorg" in " ".join(io.progress)
+    assert "Fork resolved" not in " ".join(io.progress)
+
+
+def test_competing_child_import_fail_does_reorg() -> None:
+    """Different hash at the same height whose parent is below tip is a real fork."""
+    h339 = "a9" * 32
+    local340 = "b0" * 32
+    peer340 = "c0" * 32
+    io = FakeCatchUpIO(
+        height=340,
+        head=local340,
+        blocks_by_height={
+            339: _blk(339, "a8" * 32, h339),
+            340: _blk(340, h339, local340),
+        },
+        fail_import_heights=[340],
+    )
+    peer = CatchUpPeerView(peer_id="p1", height=342, head_hash="zz" * 32)
+    cfg = CatchUpConfig(contiguous_parent_bind=False, tip_head_bind=False)
+    out = _svc(io)._import_one(
+        peer=peer,
+        cfg=cfg,
+        block_data=_blk(340, h339, peer340),
+        expected_height=340,
+    )
+    assert out == "reorg"
+    assert io.height() == 339
+    assert "Fork resolved" in " ".join(io.progress)
 
 
 def test_stall_on_none_fetch() -> None:

@@ -350,6 +350,30 @@ class CatchUpPathAService:
 
         self._side.note_import_fail(peer.peer_id)
         parent_hash = str(block_data.get("parent_hash") or "").strip()
+        cand_hash = _block_hash(block_data)
+        local_head = str(self._chain.head() or "").strip()
+        # Failed +1 extend (parent is the current tip) is not a fork.
+        if parent_hash and local_head and parent_hash.lower() == local_head.lower():
+            fail_h = body_h if body_h >= 0 else expected_height
+            self._side.on_progress(f"Import failed at #{fail_h}, aborting batch")
+            return "fail"
+        # Concurrent catch-up of a block we already have — do not roll back.
+        if body_h >= 0:
+            existing = None
+            try:
+                existing = self._chain.get_block(int(body_h))
+            except Exception as exc:
+                logger.warning(
+                    "[PathA] get_block(%s) during import-fail check: %s", body_h, exc
+                )
+                existing = None
+            if isinstance(existing, Mapping):
+                exist_h = _block_hash(existing)
+                if cand_hash and exist_h and cand_hash.lower() == exist_h.lower():
+                    self._side.on_progress(
+                        f"Duplicate #{body_h} already canonical, skip reorg"
+                    )
+                    return "fail"
         ancestor = None
         if parent_hash:
             try:

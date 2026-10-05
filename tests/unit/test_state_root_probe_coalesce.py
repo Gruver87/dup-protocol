@@ -157,6 +157,7 @@ async def test_wait_peer_response_timeout_returns_late_reply_from_grace_window()
     hub = SyncSolicitHub()
     node = _msg_node(hub)
     peer = SimpleNamespace(peer_id="p")
+    node.peer_manager = SimpleNamespace(peers={"p": peer})
     data = {"height": 7, "state_root": "cc" * 32, "head_hash": "dd" * 32}
 
     async def _presend():
@@ -188,6 +189,7 @@ async def test_wait_peer_response_timeout_without_reply_is_none_and_clears_hub()
     hub = SyncSolicitHub()
     node = _msg_node(hub)
     peer = SimpleNamespace(peer_id="p")
+    node.peer_manager = SimpleNamespace(peers={"p": peer})
     out = await node._wait_peer_response(
         peer,
         (MSG_STATE_ROOT_RESPONSE,),

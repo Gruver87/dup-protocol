@@ -236,6 +236,67 @@ def test_tip_evidence_disabled_allows() -> None:
     assert d.enforce_refuse is False
 
 
+class _LaggingTipChain:
+    def get_height(self):
+        return 9583
+
+    def get_block(self, height: int):
+        return {
+            "height": 9583,
+            "hash": "aa" * 32,
+            "parent_hash": "bb" * 32,
+        }
+
+
+def test_tip_evidence_own_forge_echo_allows_under_enforce() -> None:
+    from consensus.tip_safety.shadow import TipSafetyShadowObserver
+
+    shadow = TipSafetyShadowObserver(enabled=True, enforce=True)
+    shadow.note_local_forge(9585)
+    bridge = TipSafetyEvidenceBridge(shadow_provider=lambda: shadow)
+    d = bridge.evaluate_block_candidate(
+        {"height": 9585, "hash": "cc" * 32, "parent_hash": "dd" * 32},
+        _LaggingTipChain(),
+    )
+    assert d.ok is True
+    assert d.enforce_refuse is False
+    assert d.reason_code == "own_forge_echo"
+
+
+def test_tip_evidence_own_forge_echo_does_not_cover_history() -> None:
+    """Only last_forge and last_forge+1 are exempt — never ``cand <= last_forge``."""
+    from consensus.tip_safety.shadow import TipSafetyShadowObserver
+
+    shadow = TipSafetyShadowObserver(enabled=True, enforce=True)
+    shadow.note_local_forge(9585)
+    bridge = TipSafetyEvidenceBridge(shadow_provider=lambda: shadow)
+    d = bridge.evaluate_block_candidate(
+        {"height": 9000, "hash": "cc" * 32, "parent_hash": "dd" * 32},
+        _LaggingTipChain(),
+    )
+    assert d.reason_code != "own_forge_echo"
+    assert d.ok is False
+    assert d.enforce_refuse is True
+
+
+@pytest.mark.asyncio
+async def test_dispatch_new_block_own_forge_echo_not_refused() -> None:
+    from consensus.tip_safety.shadow import TipSafetyShadowObserver
+
+    shadow = TipSafetyShadowObserver(enabled=True, enforce=True)
+    shadow.note_local_forge(9585)
+    bridge = TipSafetyEvidenceBridge(shadow_provider=lambda: shadow)
+    disp = build_default_dispatcher(tip_evidence=bridge)
+    host = _FakeHost()
+    host.blockchain = _LaggingTipChain()
+    peer = _FakePeer()
+    payload = {"height": 9585, "hash": "cc" * 32, "parent_hash": "dd" * 32}
+    out = await disp.dispatch(host, peer, MSG_NEW_BLOCK, payload)
+    assert out is DispatchOutcome.HANDLED
+    assert host.new_block_calls == [payload]
+    assert "tip_unknown_parent" not in host.strikes
+
+
 def test_node_wires_dispatcher() -> None:
     from network.p2p_node import P2PNode
     from runtime.config import Config
