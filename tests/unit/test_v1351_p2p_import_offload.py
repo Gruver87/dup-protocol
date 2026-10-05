@@ -30,6 +30,9 @@ def test_hot_paths_do_not_call_blockchain_import_synchronously():
     handle = src.split("async def _handle_new_block", 1)[1].split(
         "async def _handle_get_blocks", 1
     )[0]
+    get_blocks = src.split("async def _handle_get_blocks", 1)[1].split(
+        "def _get_blocks_future_refuse_reason", 1
+    )[0]
     sync = src.split("async def _sync_with_peer", 1)[1].split(
         "async def _reconcile_to_head_hash", 1
     )[0]
@@ -38,6 +41,10 @@ def test_hot_paths_do_not_call_blockchain_import_synchronously():
     )[0]
     assert "blockchain.import_block(" not in handle
     assert "_import_block_async" in handle
+    # Rocks range read must not run on the asyncio loop (GET_BLOCKS HOL).
+    assert "asyncio.to_thread(_load_range)" in get_blocks
+    assert "bc.get_block(h)" in get_blocks
+    assert "self.blockchain.get_block(" not in get_blocks
     # ADR 0004: ahead catch-up is CatchUpPathAService via asyncio.to_thread
     # (imports run off the event loop inside the worker thread).
     assert "blockchain.import_block(" not in sync
@@ -92,3 +99,111 @@ def test_import_offload_keeps_event_loop_responsive():
         assert int(node._import_offload_total) >= 1
 
     asyncio.run(_run())
+
+
+def test_get_blocks_range_fetch_keeps_event_loop_responsive():
+    async def _run():
+        from crypto import native
+        from network.p2p_node import MSG_BLOCKS, PeerConnection
+        from runtime.config import Config
+        from unittest.mock import AsyncMock
+
+        class _FakeWriter:
+            def write(self, _data):
+                return None
+
+            async def drain(self):
+                return None
+
+            def close(self):
+                return None
+
+            def get_extra_info(self, _name, default=None):
+                return default
+
+            def is_closing(self):
+                return False
+
+        class _FakeReader:
+            async def read(self, _n):
+                await asyncio.sleep(0)
+                return b""
+
+        cfg = Config()
+        cfg.p2p_native_transport = False
+        cfg.require_native_crypto = False
+        cfg.deployment_mode = "dev"
+        cfg.bootstrap_peers = []
+        cfg.sync_batch_size = 8
+        bc = MagicMock()
+        bc.get_height.return_value = 3
+
+        def slow_get(h):
+            time.sleep(0.05)
+            return {"height": int(h), "hash": "aa" * 32}
+
+        bc.get_block.side_effect = slow_get
+        node = P2PNode(cfg, bc, MagicMock(), bus=None)
+        peer = PeerConnection(_FakeReader(), _FakeWriter())
+        peer.peer_id = "p1"
+        peer.send = AsyncMock(return_value=True)  # type: ignore
+        orig = native.validate_p2p_get_blocks_payload
+        started = time.perf_counter()
+        ticks = 0
+
+        async def ticker():
+            nonlocal ticks
+            while time.perf_counter() - started < 0.15:
+                ticks += 1
+                await asyncio.sleep(0)
+
+        try:
+            native.validate_p2p_get_blocks_payload = (  # type: ignore
+                lambda _d: {"from_height": 1, "to_height": 3}
+            )
+            fetch_task = asyncio.create_task(
+                node._handle_get_blocks(peer, {"from_height": 1, "to_height": 3})
+            )
+            tick_task = asyncio.create_task(ticker())
+            await asyncio.gather(fetch_task, tick_task)
+        finally:
+            native.validate_p2p_get_blocks_payload = orig  # type: ignore
+        assert ticks >= 5
+        peer.send.assert_called()
+        assert peer.send.call_args[0][0] == MSG_BLOCKS
+        assert len(peer.send.call_args[0][1]) == 3
+
+    asyncio.run(_run())
+
+
+def test_remove_peer_schedules_immediate_redial_when_under_min_peers():
+    """Disconnect must redial known addrs now, not wait for the ping loop."""
+    from network.p2p_node import PeerConnection
+    from runtime.config import Config
+
+    cfg = Config()
+    cfg.p2p_native_transport = False
+    cfg.require_native_crypto = False
+    cfg.deployment_mode = "dev"
+    cfg.bootstrap_peers = []
+    cfg.testnet_expected_peers = 1
+    node = P2PNode(cfg, MagicMock(), MagicMock(), bus=None)
+    node._running = True
+    node._loop = object()
+    node._known_addrs[:] = ["10.0.0.9:5000", "12D3KooWabcdef:5000"]
+    node._use_libp2p_transport = True
+    dialed: list = []
+    node._schedule_connect = lambda h, p: dialed.append((h, p))  # type: ignore
+
+    sentinel = MagicMock(spec=PeerConnection)
+    sentinel._libp2p_peer_id = ""
+    node.peer_manager.unregister = lambda *_a, **_k: sentinel  # type: ignore
+    node._remove_peer("peer-gone")
+    # libp2p PeerId-as-host rows are never dialed.
+    assert dialed == [("10.0.0.9", 5000)]
+
+    # Mesh satisfied: no redial.
+    dialed.clear()
+    node.peers["x"] = MagicMock()  # type: ignore[index]
+    node._remove_peer("peer-gone-2")
+    assert dialed == []

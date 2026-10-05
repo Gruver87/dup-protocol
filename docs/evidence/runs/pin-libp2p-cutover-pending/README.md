@@ -49,6 +49,9 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `MESH_PROBE_POST_APPLY_QUEUE.txt` | ChainApplyQueue wrap_future Quick probe (h1141) |
 | `probe_prod_mesh_quick_apply_queue.json` | Probe JSON for apply-queue wave |
 | `industrial_gate_apply_queue.json` | Gate snapshot for that wave |
+| `MESH_PROBE_POST_MERGE_TIP_SOLICIT_BLOCKS.txt` | Tip-rebind + solicit lag + get_blocks + redial Quick probe (h1244) |
+| `probe_prod_mesh_quick_merge_tip_solicit_blocks.json` | Probe JSON for tip/solicit/blocks/redial wave |
+| `industrial_gate_merge_tip_solicit_blocks.json` | Gate snapshot for that wave |
 | `README.md` | This honesty stamp |
 
 ## Still missing for industrial soak claim

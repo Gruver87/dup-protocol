@@ -4442,6 +4442,55 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append(
                 "metrics must export abs_p2p_native_get_blocks_past_tip_clamp (v1.3.182)"
             )
+        # Exp→pin merge wave (non-LR): GET_BLOCKS offload, disconnect redial,
+        # tip-safety tip anchor/rebind, solicit state_root lag. No soak implied.
+        get_blocks_fn = p2p_py.split("async def _handle_get_blocks", 1)[-1].split(
+            "def _get_blocks_future_refuse_reason", 1
+        )[0]
+        if "asyncio.to_thread(_load_range)" not in get_blocks_fn:
+            errors.append(
+                "_handle_get_blocks offloads via to_thread(_load_range) "
+                "(Rocks range read must not block the asyncio loop)"
+            )
+        remove_peer_fn = p2p_py.split("def _remove_peer", 1)[-1].split(
+            "def _host_looks_like_libp2p_peer_id", 1
+        )[0]
+        if (
+            "Immediate bootstrap redial" not in remove_peer_fn
+            or "_redial_known_addrs_after_disconnect" not in remove_peer_fn
+            or "def _redial_known_addrs_after_disconnect" not in p2p_py
+        ):
+            errors.append(
+                "_remove_peer immediate-redial: schedule connect to known addrs "
+                "after unregister when under testnet_expected_peers"
+            )
+        shadow_src = (ROOT / "consensus" / "tip_safety" / "shadow.py").read_text(
+            encoding="utf-8"
+        )
+        if "Canonical tip is get_height()" not in shadow_src:
+            errors.append(
+                "tip_state_from_chain anchors get_height (not stale get_last_block)"
+            )
+        if "tip height mismatch" not in shadow_src:
+            errors.append(
+                "tip_state_from_chain must refuse get_height/last_block mismatch"
+            )
+        if (
+            "Bind to live tip before evaluate" not in shadow_src
+            or "_tip_window_stale" not in shadow_src
+        ):
+            errors.append(
+                "tip-safety observe rebinds stale window to live tip before evaluate"
+            )
+        solicit_gate_src = (ROOT / "sync" / "solicit.py").read_text(encoding="utf-8")
+        if (
+            "state_root_lag" not in solicit_gate_src
+            or "state_root_lag_replies_total" not in solicit_gate_src
+        ):
+            errors.append(
+                "solicit accepts lower-height state_root as lag "
+                "(state_root_lag / state_root_lag_replies_total, no strike)"
+            )
         # v1.3.183 — mempool max-calldata refuse before validate
         if "calldata_too_large" not in p2p_py:
             errors.append(

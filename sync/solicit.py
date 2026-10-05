@@ -390,6 +390,25 @@ class SyncSolicitHub:
                 str(request_ctx.get("expected_head") or ""),
             )
             if reason:
+                got_h = 0
+                if isinstance(data, dict):
+                    try:
+                        got_h = int(data.get("height", 0) or 0)
+                    except (TypeError, ValueError):
+                        got_h = 0
+                expect_h = int(request_ctx.get("height", 0) or 0)
+                if (
+                    str(reason) == "bad_state_root_response_height"
+                    and 0 < got_h < expect_h
+                ):
+                    # Peer is honestly behind our expected height: lag, not a
+                    # forged/inflated reply. Fulfill (caller re-compares tips);
+                    # do not strike. Inflation (got_h > expect_h) stays struck.
+                    bump("state_root_lag_replies_total", 1)
+                    if fut is not None and not fut.done():
+                        fut.set_result(full_msg)
+                    self._fulfills_total = int(self._fulfills_total or 0) + 1
+                    return SolicitResult(True, "state_root_lag")
                 bump("state_root_response_request_rejects_total", 1)
                 self._rejects_total = int(self._rejects_total or 0) + 1
                 strike(peer, str(reason))

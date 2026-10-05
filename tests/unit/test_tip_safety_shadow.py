@@ -311,3 +311,95 @@ def test_p2p_precheck_defers_own_forge_when_chain_tip_lags() -> None:
     assert node._tip_safety_precheck(echo) is True
     # Deep history is not exempt: a gap candidate is still refused under enforce.
     assert node._tip_safety_precheck(_block_dict(99)) is False
+
+
+def test_tip_state_from_chain_prefers_get_block_at_height() -> None:
+    """Stale last_block ahead of get_height must not become TipState head."""
+
+    class _Split(_FakeChain):
+        def get_height(self) -> int:
+            return 339
+
+        def get_last_block(self):
+            return self._blocks[341]
+
+    chain = _Split(341)
+    state = tip_state_from_chain(chain)
+    assert state.head.height == 339
+    assert state.head.block_hash == chain.get_block(339)["hash"]
+
+
+def test_tip_state_from_chain_refuses_height_mismatch_without_get_block() -> None:
+    class _LastOnly:
+        GENESIS_HASH = "0" * 64
+
+        def get_height(self) -> int:
+            return 339
+
+        def get_last_block(self):
+            return _block_dict(341)
+
+    with pytest.raises(TipValidationError, match="tip height mismatch"):
+        tip_state_from_chain(_LastOnly())
+
+
+def test_observe_resyncs_stale_window_for_catch_up_extend() -> None:
+    """Catch-up of local_height+1 must extend the chain tip, not a stale window.
+
+    get_height=339 while the bound window head=341: #340 would false-refuse as
+    a deep reorg. Rebind the window to the live tip before evaluate.
+    """
+    chain = _FakeChain(341)
+    obs = TipSafetyShadowObserver(enabled=True, enforce=True)
+    assert obs.sync_from_chain(chain) is True
+    assert obs.status()["tip_safety_shadow_head_height"] == 341
+
+    chain._height = 339
+    nxt = _block_dict(340, n=0xBEEF)
+    nxt["parent_hash"] = chain.get_block(339)["hash"]
+    decision = obs.observe_before_import(nxt, chain)
+    assert decision is not None
+    assert decision.accepted is True
+    assert decision.reason_code == "ok"
+    assert obs.status()["tip_safety_shadow_head_height"] == 339
+
+
+def test_observe_still_refuses_true_deep_reorg_when_heights_match() -> None:
+    chain = _FakeChain(341)
+    obs = TipSafetyShadowObserver(enabled=True, enforce=True)
+    assert obs.sync_from_chain(chain) is True
+    nxt = _block_dict(340, n=0xCAFE)
+    nxt["parent_hash"] = chain.get_block(339)["hash"]
+    decision = obs.observe_before_import(nxt, chain)
+    assert decision is not None
+    assert decision.accepted is False
+    assert decision.reason_code == "tip_unknown_parent"
+
+
+def test_observe_failed_rebind_is_fail_closed() -> None:
+    """Stale window + unreadable live tip must not evaluate the stale window."""
+    chain = _FakeChain(341)
+    obs = TipSafetyShadowObserver(enabled=True, enforce=True)
+    assert obs.sync_from_chain(chain) is True
+
+    class _Broken(_FakeChain):
+        def get_height(self) -> int:
+            raise RuntimeError("rocks unavailable")
+
+    broken = _Broken(341)
+    nxt = _block_dict(342, n=0xD00D)
+    nxt["parent_hash"] = chain.get_block(341)["hash"]
+    assert obs.observe_before_import(nxt, broken) is None
+    assert obs.allows_import(None) is False
+    assert obs.observe_errors >= 1
+
+
+def test_p2p_import_catch_up_after_stale_tip_window() -> None:
+    chain = _FakeChain(341)
+    node = _p2p_enforce_node(chain)
+    assert node.tip_safety_shadow.sync_from_chain(chain) is True
+    chain._height = 339
+    nxt = _block_dict(340, n=0xF00)
+    nxt["parent_hash"] = chain.get_block(339)["hash"]
+    assert node.import_block(nxt) is True
+    assert chain.get_height() == 340

@@ -77,12 +77,29 @@ def tip_state_from_chain(blockchain: Any) -> TipState:
 
     genesis = str(getattr(blockchain, "GENESIS_HASH", _GENESIS_HASH) or _GENESIS_HASH)
 
+    # Canonical tip is get_height(), not a stale get_last_block() that can sit
+    # ahead of persisted height after a queued import or a failed catch-up.
     block: Optional[Mapping[str, Any]] = None
     try:
-        if hasattr(blockchain, "get_last_block"):
-            block = blockchain.get_last_block()
-        if block is None and height >= 0 and hasattr(blockchain, "get_block"):
+        if height >= 0 and hasattr(blockchain, "get_block"):
             block = blockchain.get_block(height)
+        if not isinstance(block, Mapping) and hasattr(blockchain, "get_last_block"):
+            last = blockchain.get_last_block()
+            if isinstance(last, Mapping):
+                try:
+                    last_h = int(last.get("height", -1) or -1)
+                except (TypeError, ValueError) as exc:
+                    raise TipValidationError(
+                        f"last_block height is not an int: {exc}"
+                    ) from exc
+                if height < 0 or last_h == height:
+                    block = last
+                else:
+                    raise TipValidationError(
+                        f"tip height mismatch get_height={height} last_block={last_h}"
+                    )
+    except TipValidationError:
+        raise
     except Exception as exc:
         raise TipValidationError(f"tip block lookup failed: {exc}") from exc
 
@@ -226,6 +243,43 @@ class TipSafetyShadowObserver:
             _LOG.warning("tip_safety sync failed: %s", exc)
             return False
 
+    def _tip_window_stale(self, blockchain: Any) -> bool:
+        """Return True when the bound window head differs from the live tip.
+
+        Compares ``get_height()`` (canonical) and the tip hash at that height.
+        Unreadable height / missing service is treated as stale (fail-closed:
+        caller rebinds or refuses).
+        """
+        svc = self._service
+        if svc is None:
+            return True
+        try:
+            raw_h = blockchain.get_height()
+            chain_h = int(raw_h) if raw_h is not None else -1
+        except Exception as exc:
+            _LOG.warning("[TipSafety] get_height failed during rebind check: %s", exc)
+            return True
+        if chain_h < 0:
+            return True
+        try:
+            head = svc.state.snapshot().head
+            tip_h = int(head.height)
+            tip_hash = str(head.block_hash or "")
+        except Exception:
+            return True
+        if tip_h != chain_h:
+            return True
+        if hasattr(blockchain, "get_block"):
+            try:
+                blk = blockchain.get_block(chain_h)
+            except Exception:
+                return True
+            if isinstance(blk, Mapping):
+                chain_hash = str(blk.get("hash") or blk.get("block_hash") or "")
+                if chain_hash and chain_hash != tip_hash:
+                    return True
+        return False
+
     def observe_before_import(
         self,
         block_data: Mapping[str, Any],
@@ -245,6 +299,15 @@ class TipSafetyShadowObserver:
         try:
             if self._service is None:
                 self.sync_from_chain(blockchain)
+            elif self._tip_window_stale(blockchain):
+                # Bind to live tip before evaluate. A stale head while the chain
+                # moved turns catch-up into a false deep-reorg refuse.
+                # Fail-closed: a failed rebind must not evaluate a stale window.
+                if not self.sync_from_chain(blockchain):
+                    with self._lock:
+                        self.observe_errors += 1
+                        self._last_decision = None
+                    return None
             if self._service is None:
                 with self._lock:
                     self.observe_errors += 1

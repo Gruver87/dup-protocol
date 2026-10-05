@@ -1,0 +1,5 @@
+﻿checked_at: 2026-10-05T19:36:33.974173+00:00
+wave: tip-rebind + solicit lag + get_blocks offload + disconnect redial
+probe: RESULT OK (h1244 peers=2)
+industrial_gate: OK
+soak: DEFERRED by operator — not claimed

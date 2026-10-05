@@ -397,6 +397,72 @@ def test_clear_fut_scoped_is_noop_for_foreign_future() -> None:
     assert owner.done() is False
 
 
+def test_state_root_lag_below_expected_fulfills() -> None:
+    hub = SyncSolicitHub(
+        verify_state_root=lambda *_a, **_k: "bad_state_root_response_height"
+    )
+    fut = _Fut()
+    hub.arm(
+        "peer-1",
+        (MSG_STATE_ROOT_RESPONSE,),
+        fut,
+        {
+            "kind": "state_root",
+            "height": 10,
+            "expected_head": "",
+            "expected_state_root": "aa" * 32,
+        },
+    )
+    msg = {
+        "type": MSG_STATE_ROOT_RESPONSE,
+        "data": {"height": 9, "state_root": "bb" * 32, "head_hash": "cc" * 32},
+    }
+    strikes: list[str] = []
+    bumps: list[str] = []
+    r = hub.fulfill_or_reject(
+        _Peer(),
+        MSG_STATE_ROOT_RESPONSE,
+        msg["data"],
+        msg,
+        strike=lambda p, reason: strikes.append(reason) or False,
+        bump=lambda name, n: bumps.append(name),
+    )
+    assert r.consumed is True
+    assert r.detail == "state_root_lag"
+    assert fut.result is msg
+    assert strikes == []
+    assert "state_root_lag_replies_total" in bumps
+
+
+def test_state_root_height_inflation_still_struck() -> None:
+    hub = SyncSolicitHub(
+        verify_state_root=lambda *_a, **_k: "bad_state_root_response_height"
+    )
+    fut = _Fut()
+    hub.arm(
+        "peer-1",
+        (MSG_STATE_ROOT_RESPONSE,),
+        fut,
+        {"kind": "state_root", "height": 10, "expected_head": ""},
+    )
+    msg = {
+        "type": MSG_STATE_ROOT_RESPONSE,
+        "data": {"height": 11, "state_root": "aa" * 32},
+    }
+    strikes: list[str] = []
+    r = hub.fulfill_or_reject(
+        _Peer(),
+        MSG_STATE_ROOT_RESPONSE,
+        msg["data"],
+        msg,
+        strike=lambda p, reason: strikes.append(reason) or False,
+    )
+    assert r.consumed is True
+    assert r.detail == "bad_state_root_response_height"
+    assert fut.result is None
+    assert strikes == ["bad_state_root_response_height"]
+
+
 def test_state_root_and_mempool_waiters_concurrent() -> None:
     hub = SyncSolicitHub(verify_state_root=lambda *_a, **_k: None)
     mem_fut = _Fut()

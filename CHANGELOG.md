@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — tip rebind / solicit lag / get_blocks offload / disconnect redial
+
+- `tip_state_from_chain` anchors at `get_height()` (`get_block(height)`); refuses `get_last_block` height mismatch. `observe_before_import` rebinds a stale window to the live tip before evaluate (fail-closed if rebind fails).
+- `SyncSolicitHub`: lower-height `state_root` reply (`0 < got_h < expect_h`) fulfills as `state_root_lag` (`state_root_lag_replies_total`), no strike; inflation (`got_h > expect_h`) still struck.
+- `_handle_get_blocks`: Rocks range read via `asyncio.to_thread(_load_range)`; `_remove_peer` schedules immediate known-addr redial when under `testnet_expected_peers`.
+- `industrial_gate` needles + unit tests added. **Non-LR only** (no ws_service / backfill / FEATURE_LONG_RANGE). **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** post-rebuild (h1244 peers=2); pack `MESH_PROBE_POST_MERGE_TIP_SOLICIT_BLOCKS.txt`. **Soak deferred.**
+
 ### Pin libp2p 48h soak — premature start STOPPED (not PASS)
 
 - **Error:** soak restarted 2026-10-05 21:11 tip `bd500c1` without operator declaring Exp→pin merge complete. Operator order: soaks only after full integration merge + operator test verify.

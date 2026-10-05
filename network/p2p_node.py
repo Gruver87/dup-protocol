@@ -4497,11 +4497,23 @@ class P2PNode:
                 end,
                 self.blockchain.get_height() if self.blockchain else 0,
             )
-        blocks = []
-        for h in range(start, min(end + 1, start + self.config.sync_batch_size)):
-            blk = self.blockchain.get_block(h)
-            if blk:
-                blocks.append(blk)
+        batch = int(getattr(self.config, "sync_batch_size", 0) or 0)
+        if batch <= 0:
+            batch = 64
+        limit = min(end + 1, start + batch)
+        bc = self.blockchain
+
+        def _load_range() -> list:
+            out = []
+            for h in range(start, limit):
+                blk = bc.get_block(h)
+                if blk:
+                    out.append(blk)
+            return out
+
+        # RocksDB range read must not head-of-line block the asyncio loop
+        # (ping / handshake / gossip) while a peer pulls a sync batch.
+        blocks = await asyncio.to_thread(_load_range)
         await peer.send(MSG_BLOCKS, blocks)
 
     def _get_blocks_future_refuse_reason(self, from_height: int) -> str:
@@ -7857,6 +7869,48 @@ class P2PNode:
             if lp and self._libp2p_sessions.get(lp) is peer:
                 self._libp2p_sessions.pop(lp, None)
             print(f"[P2P] Disconnected: {peer_id[:12]}")
+            # Immediate bootstrap redial — do not wait for the 30s ping loop /
+            # 5-20s bootstrap retry round. Follower stuck at peers=0 while the
+            # miner keeps forging widens height delta (Exp lab soak lr48fail1).
+            self._redial_known_addrs_after_disconnect()
+
+    def _redial_known_addrs_after_disconnect(self) -> int:
+        """Schedule connects to known addrs when the mesh is under-min peers.
+
+        Soft path only (no strike / ban): same ``_schedule_connect`` coalescing as
+        discovery. Skips libp2p PeerId-as-host rows and non-running nodes.
+
+        Returns:
+            Number of connect tasks scheduled (0 when mesh satisfied / not running).
+        """
+        try:
+            target = max(
+                1, int(getattr(self.config, "testnet_expected_peers", 1) or 1)
+            )
+        except (TypeError, ValueError):
+            target = 1
+        if not self._running or not self._loop or len(self.peers) >= target:
+            return 0
+        scheduled = 0
+        for addr in list(self._known_addrs or []):
+            parts = str(addr).rsplit(":", 1)
+            if len(parts) != 2:
+                continue
+            if self._use_libp2p_transport and self._host_looks_like_libp2p_peer_id(
+                parts[0]
+            ):
+                continue
+            try:
+                self._schedule_connect(parts[0], int(parts[1]))
+                scheduled += 1
+            except Exception as exc:
+                self._peer_connect_task_fail = int(
+                    getattr(self, "_peer_connect_task_fail", 0) or 0
+                ) + 1
+                logger.warning(
+                    "[P2P] disconnect redial failed for %s: %s", addr, exc
+                )
+        return scheduled
 
     @staticmethod
     def _host_looks_like_libp2p_peer_id(host: str) -> bool:
