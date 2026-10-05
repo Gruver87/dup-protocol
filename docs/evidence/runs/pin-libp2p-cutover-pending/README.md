@@ -61,6 +61,10 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `MESH_PROBE_POST_MERGE_BURN_RPC.txt` | Rocks money_abs burn + RPC gas_limit Quick probe (h1336) |
 | `probe_prod_mesh_quick_merge_burn_rpc.json` | Probe JSON for burn/RPC wave |
 | `industrial_gate_merge_burn_rpc.json` | Gate snapshot for that wave |
+| `MESH_PROBE_POST_MERGE_STRICT_OPS.txt` | Strict health_watch + soak starters + FC leftovers Quick probe (h1380) |
+| `probe_prod_mesh_quick_merge_strict_ops.json` | Probe JSON for Strict ops wave |
+| `industrial_gate_merge_strict_ops.json` | Gate snapshot for that wave |
+| `hw_strict_smoke_1m.log` | 1m `health_watch -Strict` smoke (EXIT=0) |
 | `README.md` | This honesty stamp |
 
 ## Still missing for industrial soak claim

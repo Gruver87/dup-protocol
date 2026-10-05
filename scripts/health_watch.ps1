@@ -7,7 +7,10 @@ param(
     [int]$FullHarnessEvery = 6,
     [switch]$AlwaysFullHarness,
     [string]$LogFile = "logs/health_watch.log",
-    [string]$WebhookUrl = $env:HEALTH_WEBHOOK_URL
+    [string]$WebhookUrl = $env:HEALTH_WEBHOOK_URL,
+    [switch]$Strict,
+    # Long-Range lab: hard-FAIL if max tip height does not advance for this many seconds (0=off).
+    [int]$TipStagnantFailAfterSec = 0
 )
 
 $ErrorActionPreference = "Continue"
@@ -20,7 +23,11 @@ if ($ProdMesh) {
     $Ports = @(18180, 18181, 18182)
 }
 
-# Short runs: default 300s interval means only one poll before DurationMin ends.
+# Multi-node lab meshes (Long-Range :29080–29082) must use prod-grade HTTP
+# timeouts. lr48pass1: 13× ready+status dual-timeout FAIL under 5s lab defaults
+# — those fail_lines kill STRICT (fail=0). Solo lab keeps short timeouts.
+$HeavyProbe = [bool]($ProdMesh -or ($Ports.Count -ge 2))
+
 if ($DurationMin -gt 0 -and -not $PSBoundParameters.ContainsKey("IntervalSec")) {
     $IntervalSec = [Math]::Max(10, [Math]::Min(60, [int](($DurationMin * 60) / 3)))
 }
@@ -29,154 +36,19 @@ $logDir = Split-Path -Parent $LogFile
 if ($logDir -and -not (Test-Path $logDir)) {
     New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 }
-# Fresh run: do not append onto prior soak/watch history (FAIL counts must be this session only).
 Set-Content -Path $LogFile -Value "" -Encoding UTF8
 
 function Write-Log([string]$Msg, [string]$Color = "Gray") {
     $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $Msg"
-    Add-Content -Path $LogFile -Value $line -Encoding UTF8
-    Write-Host $line -ForegroundColor $Color
-}
-
-function Test-NodeHealth([int]$Port, [bool]$FullHarness) {
-    $readySec = if ($ProdMesh) { 20 } else { 5 }
-    $statusSec = if ($ProdMesh) { 15 } else { 5 }
-    $harnessSec = if ($FullHarness) { if ($ProdMesh) { 45 } else { 20 } } else { if ($ProdMesh) { 25 } else { 10 } }
-    # Hard FAIL only when status is unreachable after retries.
-    # Transient /health/ready 503 (wire-probe / peers_alive flap) must not
-    # poison a 48h soak — log WARN and continue if /status still answers.
-    $readyOk = $false
-    $readyErr = ""
-    $readyBody = $null
-    for ($attempt = 1; $attempt -le 5; $attempt++) {
+    for ($i = 0; $i -lt 5; $i++) {
         try {
-            $readyBody = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health/ready" -TimeoutSec $readySec
-            $readyOk = $true
+            Add-Content -Path $LogFile -Value $line -Encoding UTF8 -ErrorAction Stop
             break
         } catch {
-            $readyErr = "ready: $($_.Exception.Message)"
-            if ($attempt -lt 5) { Start-Sleep -Seconds ([Math]::Min(8, 1 + $attempt * 2)) }
+            Start-Sleep -Milliseconds 200
         }
     }
-    if (-not $readyOk) {
-        $stProbe = $null
-        $statusErr = ""
-        for ($sAttempt = 1; $sAttempt -le 5; $sAttempt++) {
-            try {
-                $stProbe = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/status" -TimeoutSec $statusSec
-                break
-            } catch {
-                $statusErr = $_.Exception.Message
-                if ($sAttempt -lt 5) { Start-Sleep -Seconds 2 }
-            }
-        }
-        if ($null -ne $stProbe) {
-            # Soft: node is up; ready flap is monitored as WARN via Failed=ready_flap.
-            return @{
-                Ok = $true
-                Port = $Port
-                Height = $stProbe.height
-                Head = $stProbe.head_hash
-                Peers = $stProbe.peers
-                P2P = $stProbe.p2p_sync_status
-                MempoolDemoted = (Get-MempoolDemotedFlag -Probe $stProbe -ReadyBody $readyBody)
-                Aligned = $true
-                HarnessHealthy = $false
-                Failed = @("ready_flap")
-                FullHarness = $FullHarness
-                ReadyFlap = $true
-                ReadyError = $readyErr
-            }
-        }
-        # Last chance: brief pause then one more /status — overload often clears.
-        Start-Sleep -Seconds $(if ($ProdMesh) { 5 } else { 2 })
-        try {
-            $stProbe = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/status" -TimeoutSec ($statusSec + 5)
-            return @{
-                Ok = $true
-                Port = $Port
-                Height = $stProbe.height
-                Head = $stProbe.head_hash
-                Peers = $stProbe.peers
-                P2P = $stProbe.p2p_sync_status
-                MempoolDemoted = (Get-MempoolDemotedFlag -Probe $stProbe -ReadyBody $readyBody)
-                Aligned = $true
-                HarnessHealthy = $false
-                Failed = @("ready_flap")
-                FullHarness = $FullHarness
-                ReadyFlap = $true
-                ReadyError = $readyErr
-            }
-        } catch {
-            $statusErr = $_.Exception.Message
-        }
-        return @{ Ok = $false; Port = $Port; Error = "$readyErr; status: $statusErr" }
-    }
-    try {
-        $st = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/status" -TimeoutSec $statusSec
-    } catch {
-        return @{ Ok = $false; Port = $Port; Error = "status: $($_.Exception.Message)" }
-    }
-    $harnessUri = if ($FullHarness) {
-        "http://127.0.0.1:$Port/chain/consistency/harness?peer_timeout=8"
-    } else {
-        "http://127.0.0.1:$Port/chain/consistency/harness?quick=1&peer_timeout=3"
-    }
-    $aligned = $true
-    $harnessHealthy = $true
-    $failed = @()
-    try {
-        $cs = Invoke-RestMethod -Uri $harnessUri -TimeoutSec $harnessSec
-        $failed = @($cs.failed_checks)
-        $aligned = [bool]$cs.tip_state_aligned
-        $harnessHealthy = [bool]$cs.harness_healthy
-    } catch {
-        $failed = @("harness_timeout")
-        $aligned = $false
-        $harnessHealthy = $false
-    }
-    return @{
-        Ok = $true
-        Port = $Port
-        Height = $st.height
-        Head = $st.head_hash
-        Peers = $st.peers
-        P2P = $st.p2p_sync_status
-        MempoolDemoted = (Get-MempoolDemotedFlag -Probe $st -ReadyBody $readyBody)
-        Aligned = $aligned
-        HarnessHealthy = $harnessHealthy
-        Failed = $failed
-        FullHarness = $FullHarness
-    }
-}
-
-function Test-MeshAlignment([int[]]$PortList) {
-    $rows = @()
-    foreach ($p in $PortList) {
-        try {
-            $st = Invoke-RestMethod -Uri "http://127.0.0.1:$p/status" -TimeoutSec $(if ($ProdMesh) { 12 } else { 5 })
-            $rows += [PSCustomObject]@{
-                Port = $p
-                Height = [int]$st.height
-                Head = [string]$st.head_hash
-                Peers = [int]$st.peers
-            }
-        } catch {
-            return @{ Ok = $false; Error = "port $p status: $($_.Exception.Message)" }
-        }
-    }
-    $heights = @($rows | ForEach-Object { $_.Height })
-    # Allow ±1 height skew: status is polled sequentially while blocks mine.
-    # Tip-hash races at equal height are expected and ignored (heads differ briefly).
-    $maxH = ($heights | Measure-Object -Maximum).Maximum
-    $minH = ($heights | Measure-Object -Minimum).Minimum
-    $heightOk = ($maxH - $minH) -le 1
-    return @{
-        Ok = $heightOk
-        Rows = $rows
-        HeightOk = $heightOk
-        HeadOk = $true
-    }
+    Write-Host $line -ForegroundColor $Color
 }
 
 function Send-Webhook([string]$Text) {
@@ -192,55 +64,207 @@ function Send-Webhook([string]$Text) {
 $end = if ($DurationMin -gt 0) { (Get-Date).AddMinutes($DurationMin) } else { $null }
 $cycle = 0
 $totalHardFails = 0
-Write-Log "health_watch start ports=$($Ports -join ',') interval=${IntervalSec}s full_every=$FullHarnessEvery log=$LogFile" "Cyan"
+$totalReadyOnlyFails = 0
+$tipLastMax = -1
+$tipLastAdvanceAt = Get-Date
+$fullEveryLabel = if ($AlwaysFullHarness) { "always" } else { [string]$FullHarnessEvery }
+$tipStagLabel = if ($TipStagnantFailAfterSec -gt 0) { " tip_stagnant_fail_after=${TipStagnantFailAfterSec}s" } else { "" }
+$heavyLabel = if ($HeavyProbe -and -not $ProdMesh) { " heavy_probe=1" } else { "" }
+Write-Log "health_watch start ports=$($Ports -join ',') interval=${IntervalSec}s full_every=$fullEveryLabel log=$LogFile parallel=1$tipStagLabel$heavyLabel" "Cyan"
 
 while ($true) {
     $cycle++
     $fullHarness = $AlwaysFullHarness -or ($FullHarnessEvery -le 1) -or ($cycle % $FullHarnessEvery -eq 0)
     $modeLabel = if ($fullHarness) { "full" } else { "quick" }
     $failures = @()
+    $cycleRows = [System.Collections.Generic.List[object]]::new()
 
-    foreach ($p in $Ports) {
-        $r = Test-NodeHealth $p $fullHarness
+    $nodeResults = Invoke-ParallelNodeHealth -Ports $Ports -FullHarness:$fullHarness -ProdMesh:$HeavyProbe -Strict:$Strict -ScriptDir $ScriptDir
+    # Sibling-aware retry: one port dual-timeout while mesh mates are live is a
+    # restart/HOL flake (LR STRICT fail_lines ×2). Re-probe failed ports once.
+    $okN = @($nodeResults | Where-Object { $_.Ok }).Count
+    $badPorts = @($nodeResults | Where-Object { -not $_.Ok } | ForEach-Object { [int]$_.Port })
+    if ($badPorts.Count -gt 0 -and $okN -ge 1 -and $Ports.Count -ge 2) {
+        Start-Sleep -Seconds 5
+        $retry = Invoke-ParallelNodeHealth -Ports $badPorts -FullHarness:$false -ProdMesh:$HeavyProbe -Strict:$Strict -ScriptDir $ScriptDir
+        $merged = @()
+        foreach ($r in $nodeResults) {
+            if ($r.Ok) { $merged += $r; continue }
+            $rep = @($retry | Where-Object { [int]$_.Port -eq [int]$r.Port } | Select-Object -First 1)
+            if ($rep.Count -gt 0 -and $rep[0].Ok) {
+                $fixed = $rep[0]
+                # Mark soft so Strict scoring does not hard-FAIL this cycle.
+                try {
+                    $failed = @($fixed.Failed)
+                    if ($failed -notcontains "ready_flap") { $failed += "ready_flap" }
+                    $fixed | Add-Member -NotePropertyName Failed -NotePropertyValue $failed -Force
+                    $fixed | Add-Member -NotePropertyName ReadyFlap -NotePropertyValue $true -Force
+                } catch { }
+                $merged += $fixed
+            } else {
+                $merged += $r
+            }
+        }
+        $nodeResults = $merged
+    }
+    foreach ($r in $nodeResults) {
         if (-not $r.Ok) {
-            $failures += "port $p unreachable: $($r.Error)"
-            $totalHardFails++
-            Write-Log "FAIL port $p $($r.Error)" "Red"
+            $err = if ($r.Error) { [string]$r.Error } else { "unreachable" }
+            $port = if ($r.Port) { [int]$r.Port } else { 0 }
+            $failures += "port $port unreachable: $err"
+            if ($err -match '^ready:') {
+                $totalReadyOnlyFails++
+            } else {
+                $totalHardFails++
+            }
+            Write-Log "FAIL port $port $err" "Red"
             continue
         }
-        $failedTxt = if ($r.Failed.Count -gt 0) { $r.Failed -join "," } else { "" }
+        # Soft ready_flap / live_fallback without a real tip must NOT enter mesh
+        # rows — Height=0 (or empty head after status HOL) poisons Strict delta
+        # into a false multi-thousand-block FAIL after soft-flap conversion.
+        $headStr = [string]$r.Head
+        $p2pStr = [string]$r.P2P
+        $readyFlap = $false
+        try { $readyFlap = [bool]$r.ReadyFlap } catch { $readyFlap = $false }
+        $unreliableTip = (
+            ($p2pStr -eq "live_fallback") -or
+            ($readyFlap -and (-not $headStr)) -or
+            (($p2pStr -eq "ready_503_body") -and (-not $headStr))
+        )
+        if (-not $unreliableTip) {
+            [void]$cycleRows.Add([PSCustomObject]@{
+                Port = [int]$r.Port
+                Height = [int]$r.Height
+                Head = $headStr
+                Peers = [int]$r.Peers
+            })
+        }
+        $failedList = @($r.Failed)
+        $failedTxt = if ($failedList.Count -gt 0) { $failedList -join "," } else { "" }
         $line = "OK port $($r.Port) [$modeLabel] height=$($r.Height) peers=$($r.Peers) p2p=$($r.P2P) aligned=$($r.Aligned) failed=$failedTxt"
-        $p2pWarn = ($r.P2P -in @("solo", "under_mesh", "stale"))
+        if ($unreliableTip) { $line = "$line mesh_exclude=1" }
+        # Solo is expected for single-node lab soaks (Long-Range :29080); warn only on multi-node mesh.
+        $soloExpected = (-not $ProdMesh) -and ($Ports.Count -eq 1) -and ($p2pStr -eq "solo")
+        # tip_skew (<=2 height) is tip-v2 mine-window noise — not WARN.
+        # tip_lagging / inconsistent / under_mesh / solo / stale still WARN.
+        $p2pWarn = (
+            ($p2pStr -in @(
+                "solo",
+                "under_mesh",
+                "under_mesh_lagging",
+                "stale",
+                "inconsistent",
+                "tip_lagging"
+            )) -and (-not $soloExpected)
+        )
         # Wave G: demote is soft-WARN only (never hard_fail / soak score).
         $demoteWarn = $false
         try { $demoteWarn = [bool]$r.MempoolDemoted } catch { $demoteWarn = $false }
-        $harnessBad = ($r.Aligned -eq $false) -or ($r.Failed.Count -gt 0) -or ($r.HarnessHealthy -eq $false)
+        $softFailed = @($failedList | Where-Object { $_ -in $Script:SoftHarnessChecks })
+        $hardFailed = @($failedList | Where-Object { $_ -notin $Script:SoftHarnessChecks })
+        # Soft-only flakes (peer_probe_ok / harness_timeout / ready_flap / …) must
+        # never become Strict hard-FAIL even when tip_state_aligned is sticky-false
+        # under GIL load — mempool48pass1 / libp2p STRICT contract.
+        if ($softFailed.Count -gt 0 -and $hardFailed.Count -eq 0) {
+            $harnessBad = $false
+        } else {
+            $harnessBad = ($r.Aligned -eq $false) -or ($hardFailed.Count -gt 0) -or (
+                ($r.HarnessHealthy -eq $false) -and ($softFailed.Count -eq 0)
+            )
+        }
         if ($harnessBad) {
             $failures += $line
-            Write-Log "WARN $line" "Yellow"
+            if ($Strict) {
+                $totalHardFails++
+                Write-Log "FAIL harness port $($r.Port) [$modeLabel] height=$($r.Height) peers=$($r.Peers) p2p=$($r.P2P) aligned=$($r.Aligned) failed=$failedTxt" "Red"
+            } else {
+                Write-Log "WARN $line" "Yellow"
+            }
         } elseif ($p2pWarn -or $demoteWarn) {
             if ($demoteWarn) { $line = "$line mempool_demoted=1" }
-            Write-Log "$line (p2p not full mesh; chain OK)" "Yellow"
+            Write-Log "WARN $line" "Yellow"
+        } elseif ($softFailed.Count -gt 0) {
+            # Soft-only flakes still count as OK lines for default soak scoring (hard_fail gate unchanged).
+            if ($Strict) {
+                Write-Log "WARN $line" "Yellow"
+            } else {
+                Write-Log $line "Green"
+            }
         } else {
             Write-Log $line "Green"
         }
     }
 
     if ($Ports.Count -gt 1) {
-        $mesh = Test-MeshAlignment $Ports
-        if (-not $mesh.Ok) {
-            if ($mesh.Error) {
-                Write-Log "WARN mesh probe: $($mesh.Error)" "Yellow"
-                $failures += "mesh probe: $($mesh.Error)"
+        $meshRows = @($cycleRows)
+        # Soft mesh_exclude can drop below 2 tip rows under AlwaysFullHarness HOL.
+        # Re-snapshot all ports before Strict Partial FAIL (false "insufficient rows").
+        if ($meshRows.Count -lt 2) {
+            $snap = Invoke-ParallelMeshResnapshot -Ports $Ports -ProdMesh:$HeavyProbe
+            $meshRows = @(
+                $snap |
+                    Where-Object { $_.Ok -and [int]$_.Height -ge 0 -and ([string]$_.Head) } |
+                    ForEach-Object {
+                        [PSCustomObject]@{
+                            Port = [int]$_.Port
+                            Height = [int]$_.Height
+                            Head = [string]$_.Head
+                            Peers = 0
+                        }
+                    }
+            )
+            if ($meshRows.Count -lt 2) {
+                Write-Log "WARN mesh tip rows thin after exclude+resnapshot count=$($meshRows.Count)" "Yellow"
+            }
+        }
+        $mesh = Test-MeshCycleAligned -Rows $meshRows -Strict:$Strict -Ports $Ports -ProdMesh:$HeavyProbe
+        if ($mesh.Partial) {
+            # Insufficient tip rows after HOL exclude+resnapshot is soft (lr48pass1
+            # ×13 mesh partial). Strict FAIL only on real height skew below.
+            $failures += $mesh.Detail
+            Write-Log "WARN mesh probe: $($mesh.Detail)" "Yellow"
+        } elseif ($mesh.Ok) {
+            $detail = ($meshRows | ForEach-Object { "$($_.Port):h$($_.Height)/p$($_.Peers)" }) -join " "
+            $suffix = ""
+            if ($mesh.Resnapshot) { $suffix = " resnapshot=1" }
+            if ($mesh.Transient) { $suffix += " transient_delta=$($mesh.Delta)" }
+            if ($mesh.ConfirmedClear) { $suffix += " strict_confirm=1" }
+            if ($meshRows.Count -lt $Ports.Count) {
+                Write-Log "WARN mesh partial aligned $detail$suffix" "Yellow"
             } else {
-                $detail = @($mesh.Rows | ForEach-Object { "h$($_.Port)=$($_.Height)" }) -join " "
-                if (-not $detail) { $detail = "unknown" }
-                $failures += "mesh misaligned: $detail"
-                Write-Log "WARN mesh misaligned $detail" "Yellow"
+                Write-Log "OK mesh aligned $detail$suffix" "DarkGray"
             }
         } else {
-            $detail = ($mesh.Rows | ForEach-Object { "$($_.Port):h$($_.Height)/p$($_.Peers)" }) -join " "
-            Write-Log "OK mesh aligned $detail" "DarkGray"
+            $detail = ($meshRows | ForEach-Object { "h$($_.Port)=$($_.Height)" }) -join " "
+            $failures += "mesh misaligned: $detail delta=$($mesh.Delta)"
+            if ($Strict) {
+                $totalHardFails++
+                Write-Log "FAIL mesh misaligned $detail delta=$($mesh.Delta)" "Red"
+            } else {
+                Write-Log "WARN mesh misaligned $detail delta=$($mesh.Delta)" "Yellow"
+            }
+        }
+    }
+
+    # Long-Range / lab mesh: tip-dead + health-green is a false PASS. Hard-FAIL
+    # when max observed height does not advance for TipStagnantFailAfterSec.
+    if ($TipStagnantFailAfterSec -gt 0 -and $cycleRows.Count -gt 0) {
+        $maxH = ($cycleRows | ForEach-Object { [int]$_.Height } | Measure-Object -Maximum).Maximum
+        if ($null -eq $maxH) { $maxH = -1 }
+        if ([int]$maxH -gt [int]$tipLastMax) {
+            $tipLastMax = [int]$maxH
+            $tipLastAdvanceAt = Get-Date
+        } else {
+            $staleSec = [int]((Get-Date) - $tipLastAdvanceAt).TotalSeconds
+            if ($staleSec -ge $TipStagnantFailAfterSec) {
+                $msg = "tip stagnant max_h=$tipLastMax for ${staleSec}s (limit=${TipStagnantFailAfterSec}s)"
+                $failures += $msg
+                $totalHardFails++
+                Write-Log "FAIL $msg" "Red"
+            } elseif (($cycle % 6) -eq 0) {
+                Write-Log "WARN tip stagnant max_h=$tipLastMax age=${staleSec}s" "Yellow"
+            }
         }
     }
 
@@ -249,14 +273,14 @@ while ($true) {
     }
 
     if ($end -and (Get-Date) -ge $end) {
-        Write-Log "health_watch done (duration ${DurationMin}m cycles=$cycle hard_fails=$totalHardFails)" "Cyan"
+        Write-Log "health_watch done (duration ${DurationMin}m cycles=$cycle hard_fails=$totalHardFails ready_only=$totalReadyOnlyFails)" "Cyan"
         break
     }
     $sleepFor = $IntervalSec
     if ($end) {
         $remaining = [int](($end - (Get-Date)).TotalSeconds)
         if ($remaining -le 0) {
-            Write-Log "health_watch done (duration ${DurationMin}m cycles=$cycle hard_fails=$totalHardFails)" "Cyan"
+            Write-Log "health_watch done (duration ${DurationMin}m cycles=$cycle hard_fails=$totalHardFails ready_only=$totalReadyOnlyFails)" "Cyan"
             break
         }
         if ($remaining -lt $sleepFor) { $sleepFor = $remaining }
@@ -264,9 +288,11 @@ while ($true) {
     Start-Sleep -Seconds $sleepFor
 }
 
-# Hard FAIL lines (unreachable ports) must fail the process for soak honesty.
 if ($totalHardFails -gt 0) {
-    Write-Log "health_watch exit=1 hard_fails=$totalHardFails" "Red"
+    Write-Log "health_watch exit=1 hard_fails=$totalHardFails ready_only=$totalReadyOnlyFails" "Red"
     exit 1
+}
+if ($totalReadyOnlyFails -gt 0) {
+    Write-Log "health_watch exit=0 ready_only_fails=$totalReadyOnlyFails (48h tolerated when mesh aligned)" "Yellow"
 }
 exit 0

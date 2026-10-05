@@ -4509,23 +4509,72 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append(
                 "48h soak_monitor must set FullHarnessEvery=6 (not AlwaysFullHarness)"
             )
-        if "DAO_VOTE_BPS" not in (
-            ROOT / "runtime" / "pool_locks.py"
-        ).read_text(encoding="utf-8"):
-            errors.append("pool_locks DAO must use integer BPS quorum (Wave O)")
+        if "$hwArgs.Strict = $true" not in soak_mon:
+            errors.append("soak_monitor must pass -Strict through to health_watch")
+        hw_ps1 = (ROOT / "scripts" / "health_watch.ps1").read_text(encoding="utf-8")
+        if "[switch]$Strict" not in hw_ps1:
+            errors.append("health_watch.ps1 must expose -Strict")
+        hw_core = (ROOT / "scripts" / "health_watch_core.ps1").read_text(encoding="utf-8")
+        if "Invoke-ParallelNodeHealth" not in hw_core:
+            errors.append("health_watch_core must provide Invoke-ParallelNodeHealth")
+        if not (ROOT / "scripts" / "start_soak_prod_mesh_48h.ps1").is_file():
+            errors.append("scripts/start_soak_prod_mesh_48h.ps1 missing")
+        start48 = (ROOT / "scripts" / "start_soak_prod_mesh_48h.ps1").read_text(
+            encoding="utf-8"
+        )
+        if "-FullHarness" not in start48:
+            errors.append("48h start script must pass -FullHarness (not Strict)")
+        if "-Strict" in start48:
+            errors.append("48h start script must not pass -Strict (that is the 5h bar)")
+        if not (ROOT / "scripts" / "start_soak_prod_mesh_48h_strict.ps1").is_file():
+            errors.append(
+                "scripts/start_soak_prod_mesh_48h_strict.ps1 missing (pin STRICT)"
+            )
+        start48s = (ROOT / "scripts" / "start_soak_prod_mesh_48h_strict.ps1").read_text(
+            encoding="utf-8"
+        )
+        if "-Strict" not in start48s or "IntervalSec = 60" not in start48s:
+            errors.append(
+                "48h STRICT start must default IntervalSec=60 and pass -Strict"
+            )
+        if not (ROOT / "scripts" / "start_soak_prod_mesh_5h_strict.ps1").is_file():
+            errors.append("scripts/start_soak_prod_mesh_5h_strict.ps1 missing")
+        if not (ROOT / "scripts" / "start_soak_evm_mesh_48h_strict.ps1").is_file():
+            errors.append("scripts/start_soak_evm_mesh_48h_strict.ps1 missing")
+        else:
+            evm_strict = (
+                ROOT / "scripts" / "start_soak_evm_mesh_48h_strict.ps1"
+            ).read_text(encoding="utf-8")
+            if "start_soak_prod_mesh_48h_strict.ps1" not in evm_strict:
+                errors.append(
+                    "EVM STRICT must delegate to start_soak_prod_mesh_48h_strict.ps1"
+                )
         rocks_ad = (ROOT / "storage" / "adapters" / "rocks_adapter.py").read_text(
             encoding="utf-8"
         )
         if 'money_abs(raw, field="burned")' not in rocks_ad:
             errors.append("rocks_adapter _block_burn_fields must use money_abs (no float burn)")
-        rpc_src = (ROOT / "api" / "rpc_service.py").read_text(encoding="utf-8")
-        if 'gas_limit=getattr(cfg, "evm_gas_limit", None)' not in rpc_src:
-            errors.append("RPC eth_getBlock* must pass cfg.evm_gas_limit into format_block")
+        if 'reason_code="persist_failed"' not in rocks_ad or "save_block returned False" not in rocks_ad:
+            errors.append("rocks_adapter save_block must raise persist_failed on False")
+        bridge_ad = (ROOT / "bridge" / "adapter.py").read_text(encoding="utf-8")
+        if "bridge_result_not_boolean" not in bridge_ad:
+            errors.append("normalize_bridge_http_result must refuse non-boolean success paint")
         bc_init = (ROOT / "core" / "blockchain.py").read_text(encoding="utf-8")
         if "bind_tip_encoding_config failed" not in bc_init:
             errors.append(
                 "Blockchain.__init__ must log/raise bind_tip_encoding_config failures"
             )
+        if "genesis_founder meta write failed" not in bc_init:
+            errors.append(
+                "artifact genesis_founder meta write must log/raise in production"
+            )
+        if "DAO_VOTE_BPS" not in (
+            ROOT / "runtime" / "pool_locks.py"
+        ).read_text(encoding="utf-8"):
+            errors.append("pool_locks DAO must use integer BPS quorum (Wave O)")
+        rpc_src = (ROOT / "api" / "rpc_service.py").read_text(encoding="utf-8")
+        if 'gas_limit=getattr(cfg, "evm_gas_limit", None)' not in rpc_src:
+            errors.append("RPC eth_getBlock* must pass cfg.evm_gas_limit into format_block")
         # v1.3.183 — mempool max-calldata refuse before validate
         if "calldata_too_large" not in p2p_py:
             errors.append(

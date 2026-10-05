@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — Strict health_watch + soak starters + fail-closed leftovers
+
+- `health_watch.ps1` / `health_watch_core.ps1`: full `-Strict` stack (parallel probes, mesh align/resnapshot).
+- `soak_monitor.ps1`: pass `-Strict` + `TipStagnantFailAfterSec` through to health_watch.
+- Starters: `start_soak_prod_mesh_48h.ps1`, `_48h_strict`, `_5h_strict`, `start_soak_evm_mesh_48h_strict.ps1` (pin branding; 5h does not require TLS).
+- Fail-closed: `rocks_adapter.save_block` → `persist_failed`; `normalize_bridge_http_result` non-boolean refuse; artifact `genesis_founder` meta prod re-raise; `PeerManager._safe_close`.
+- industrial_gate needles. **Non-LR.** **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** after docker rebuild (h1380 peers=2); `health_watch -Strict -DurationMin 1` EXIT=0; pack `MESH_PROBE_POST_MERGE_STRICT_OPS.txt`. **Soak deferred / not started.**
+
 ### Exp→pin merge wave — Rocks burn money_abs / RPC eth_getBlock gas_limit
 
 - `rocks_adapter._block_burn_fields` + persist paths: `money_abs(..., field="burned")` (no IEEE float burn on UoW).

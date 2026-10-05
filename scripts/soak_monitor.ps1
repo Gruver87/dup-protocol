@@ -10,13 +10,14 @@ param(
     # Rebuild report from an existing soak log (no health_watch run).
     [switch]$RescoreOnly,
     [int]$HealthWatchExit = -1,
-    # Strict: no mesh_warn / ready-flap tolerance in soak_monitor scoring.
-    # Pin health_watch has no -Strict yet — scoring only; harness cadence still applied.
+    # Strict: mesh_warn=0 / fail=0 scoring; pass -Strict through to health_watch.
     [switch]$Strict,
     # Full harness every 6th cycle without Strict FAIL-on-harness (48h: WARN, not soak FAIL).
     [switch]$FullHarness,
     # Intensify short runs: full harness every cycle (still non-Strict mesh delta).
-    [switch]$AlwaysFullHarness
+    [switch]$AlwaysFullHarness,
+    # Pass-through to health_watch (tip-growth honesty; 0=off).
+    [int]$TipStagnantFailAfterSec = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -65,7 +66,7 @@ if (-not $RescoreOnly) {
     if ($ProdMesh) { $hwArgs.ProdMesh = $true }
     elseif ($Ports -and $Ports.Count -gt 0) { $hwArgs.Ports = $Ports }
     if ($Strict) {
-        # Pin health_watch has no -Strict yet (Exp port deferred). Cadence only:
+        $hwArgs.Strict = $true
         # Short STRICT (5h bar): full harness every cycle.
         # Long STRICT (>=12h / 48h): AlwaysFullHarness HOL-stalls
         # /health/ready + harness → false ready_flap / harness_timeout FAILs.
@@ -80,6 +81,9 @@ if (-not $RescoreOnly) {
         # 48h: full harness every 6th cycle (health_watch default). Always-on
         # full harness HOL-stalls GET /status and paints hard FAILs on a live mesh.
         $hwArgs.FullHarnessEvery = 6
+    }
+    if ($TipStagnantFailAfterSec -gt 0) {
+        $hwArgs.TipStagnantFailAfterSec = $TipStagnantFailAfterSec
     }
 
     try {
@@ -200,7 +204,7 @@ $report = @{
     pass_notes = $(
         $notes = @()
         if ($Strict) {
-            $notes += "STRICT: fail=0 mesh_warn=0 (soak_monitor scoring; health_watch -Strict deferred)"
+            $notes += "STRICT: fail=0 mesh_warn=0 (soak_monitor + health_watch -Strict)"
             if ($fail -gt 0) { $notes += "fail_lines=$fail" }
             if ($meshWarn -gt 0) { $notes += "mesh_warn=$meshWarn (not tolerated)" }
             if ($readyOnlyFail -gt 0) { $notes += "ready_only_fail=$readyOnlyFail (not tolerated)" }

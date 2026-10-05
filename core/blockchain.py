@@ -592,12 +592,14 @@ class Blockchain:
             if founder:
                 try:
                     self.config.founder_address = founder
-                except Exception:
-                    pass
+                except Exception as exc:
+                    print(f"[Blockchain] founder_address bind failed: {exc}")
                 try:
                     self.storage.set_meta("genesis_founder", founder)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    print(f"[Blockchain] genesis_founder meta write failed: {exc}")
+                    if getattr(self.config, "is_production", False):
+                        raise
             print(f"[Blockchain] importing genesis from artifact {path}")
             return bool(self.import_block(art["block"]))
         except Exception as exc:

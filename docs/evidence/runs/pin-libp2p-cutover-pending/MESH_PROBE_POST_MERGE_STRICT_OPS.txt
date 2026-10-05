@@ -1,0 +1,6 @@
+﻿checked_at: 2026-10-05T20:22:49.9995891Z
+wave: Strict health_watch + soak starters + fail-closed leftovers
+probe: RESULT OK (h1380 peers=2) after docker rebuild
+health_watch -Strict -DurationMin 1: EXIT=0 hard_fails=0
+industrial_gate: OK
+soak: DEFERRED by operator — starters present but soak NOT started

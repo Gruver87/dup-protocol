@@ -1,0 +1,19 @@
+﻿
+2026-10-05 22:21:30 health_watch start ports=18180,18181,18182 interval=20s full_every=6 log=logs\hw_strict_smoke.log parallel=1
+2026-10-05 22:21:32 OK port 18180 [quick] height=1380 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:21:32 OK port 18181 [quick] height=1380 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:21:32 OK port 18182 [quick] height=1380 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:21:32 OK mesh aligned 18180:h1380/p2 18181:h1380/p2 18182:h1380/p2
+2026-10-05 22:21:53 OK port 18180 [quick] height=1381 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:21:53 OK port 18181 [quick] height=1381 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:21:53 OK port 18182 [quick] height=1381 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:21:53 OK mesh aligned 18180:h1381/p2 18181:h1381/p2 18182:h1381/p2
+2026-10-05 22:22:14 OK port 18180 [quick] height=1382 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:22:14 OK port 18181 [quick] height=1382 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:22:14 OK port 18182 [quick] height=1382 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:22:14 OK mesh aligned 18180:h1382/p2 18181:h1382/p2 18182:h1382/p2
+2026-10-05 22:22:35 OK port 18180 [quick] height=1383 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:22:35 OK port 18181 [quick] height=1383 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:22:35 OK port 18182 [quick] height=1384 peers=2 p2p=aligned aligned=True failed=
+2026-10-05 22:22:39 OK mesh aligned 18180:h1383/p2 18181:h1383/p2 18182:h1384/p2 resnapshot=1 transient_delta=0 strict_confirm=1
+2026-10-05 22:22:39 health_watch done (duration 1m cycles=4 hard_fails=0 ready_only=0)
