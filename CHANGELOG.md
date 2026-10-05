@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — Rocks burn money_abs / RPC eth_getBlock gas_limit
+
+- `rocks_adapter._block_burn_fields` + persist paths: `money_abs(..., field="burned")` (no IEEE float burn on UoW).
+- `rpc_service` `eth_getBlockByNumber` / `ByHash`: pass `gas_limit=cfg.evm_gas_limit` into `format_block` (parity with REST).
+- industrial_gate needles. **Non-LR.** **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** after docker rebuild (h1336 peers=2); pack `MESH_PROBE_POST_MERGE_BURN_RPC.txt`. **Soak deferred.**
+
 ### Exp→pin merge wave — nested CALL OOG gas / tip-encoding FC / DAO BPS quorum
 
 - `charge_nested_call_gas`: nested OOG burns all forwarded gas + clears returndata (Yellow Paper); REVERT still refunds unused.

@@ -102,11 +102,13 @@ def _normalize_accounts(
 
 
 def _block_burn_fields(blk: BlockRecord) -> tuple[float, str]:
+    from runtime.amount import money_abs
+
     payload = blk.payload or {}
-    try:
-        burned = float(payload.get("total_burned") or payload.get("burned_amount") or 0.0)
-    except (TypeError, ValueError):
-        burned = 0.0
+    raw = payload.get("total_burned")
+    if raw is None:
+        raw = payload.get("burned_amount") or 0.0
+    burned = money_abs(raw, field="burned")
     burn_addr = str(payload.get("burn_address") or "")
     return burned, burn_addr
 
@@ -333,6 +335,8 @@ class RocksDBStorageAdapter:
         burn_address: str,
         tip: Optional[TipMeta],
     ) -> None:
+        from runtime.amount import money_abs
+
         store = self._store
         if not hasattr(store, "_persist_block_locked"):
             raise StorageUnavailableError(
@@ -343,7 +347,7 @@ class RocksDBStorageAdapter:
         store._persist_block_locked(
             dict(block),
             list(transactions),
-            float(burned_amount or 0.0),
+            money_abs(burned_amount, field="burned"),
             str(burn_address or ""),
         )
         if accounts:
@@ -365,6 +369,8 @@ class RocksDBStorageAdapter:
         tip: Optional[TipMeta],
     ) -> None:
         """Persist block (+ optional accounts) with best-effort single-batch atomicity."""
+        from runtime.amount import money_abs
+
         store = self._store
 
         # Join outer Blockchain.db.atomic() / Hybrid→Rocks batch — no nested WriteBatch.
@@ -402,7 +408,7 @@ class RocksDBStorageAdapter:
                 store.persist_block_atomic(
                     dict(block),
                     list(transactions),
-                    burned_amount=float(burned_amount or 0.0),
+                    burned_amount=money_abs(burned_amount or 0.0, field="burned"),
                     burn_address=str(burn_address or ""),
                 )
             )

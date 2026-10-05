@@ -4513,6 +4513,14 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             ROOT / "runtime" / "pool_locks.py"
         ).read_text(encoding="utf-8"):
             errors.append("pool_locks DAO must use integer BPS quorum (Wave O)")
+        rocks_ad = (ROOT / "storage" / "adapters" / "rocks_adapter.py").read_text(
+            encoding="utf-8"
+        )
+        if 'money_abs(raw, field="burned")' not in rocks_ad:
+            errors.append("rocks_adapter _block_burn_fields must use money_abs (no float burn)")
+        rpc_src = (ROOT / "api" / "rpc_service.py").read_text(encoding="utf-8")
+        if 'gas_limit=getattr(cfg, "evm_gas_limit", None)' not in rpc_src:
+            errors.append("RPC eth_getBlock* must pass cfg.evm_gas_limit into format_block")
         bc_init = (ROOT / "core" / "blockchain.py").read_text(encoding="utf-8")
         if "bind_tip_encoding_config failed" not in bc_init:
             errors.append(
