@@ -141,6 +141,60 @@ async def test_local_mismatch_not_applied(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_own_attestation_echo_is_not_reapplied(monkeypatch):
+    node = _node()
+    our = "0x" + ("11" * 20)
+    node.validator_keys.get_address.return_value = our
+    peer = PeerConnection(_FakeReader(), _FakeWriter())
+    peer.peer_id = "echo"
+    node.peers[peer.peer_id] = peer
+    node._relay_attestation = AsyncMock()
+    monkeypatch.setattr(
+        "network.p2p_node.native.validate_p2p_attestation_payload",
+        lambda _d: True,
+    )
+    payload = {
+        "validator": our,
+        "target_hash": DIGEST,
+        "target_height": 7,
+        "slot": 7,
+        "signature": "cd" * 32,
+        "public_key": "ef" * 33,
+    }
+    await node._handle_attestation(peer, payload)
+    node._consensus.attest.assert_not_called()
+    node._relay_attestation.assert_not_called()
+    assert node._attestation_echo_drops_total >= 1
+
+
+@pytest.mark.asyncio
+async def test_duplicate_attestation_is_not_relayed_twice(monkeypatch):
+    node = _node()
+    node.validator_keys.get_address.return_value = "0x" + ("22" * 20)
+    peer = PeerConnection(_FakeReader(), _FakeWriter())
+    peer.peer_id = "att"
+    node.peers[peer.peer_id] = peer
+    node._relay_attestation = AsyncMock()
+    monkeypatch.setattr(
+        "network.p2p_node.native.validate_p2p_attestation_payload",
+        lambda _d: True,
+    )
+    payload = {
+        "validator": "0x" + ("11" * 20),
+        "target_hash": DIGEST,
+        "target_height": 7,
+        "slot": 7,
+        "signature": "cd" * 32,
+        "public_key": "ef" * 33,
+    }
+    await node._handle_attestation(peer, payload)
+    await node._handle_attestation(peer, payload)
+    assert node._consensus.attest.call_count == 1
+    assert node._relay_attestation.await_count == 1
+    assert node._attestation_dup_drops_total >= 1
+
+
+@pytest.mark.asyncio
 async def test_unsolicited_blocks_struck():
     node = _node()
     peer = PeerConnection(_FakeReader(), _FakeWriter())

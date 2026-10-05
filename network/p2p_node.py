@@ -1904,6 +1904,9 @@ class P2PNode:
         self._state_root_local_rejects_total: int = 0
         self._attestation_slot_ahead_rejects_total: int = 0
         self._attestation_local_head_rejects_total: int = 0
+        self._attestation_echo_drops_total: int = 0
+        self._attestation_dup_drops_total: int = 0
+        self._attestation_seen: Dict[tuple, float] = {}
         self._attestation_target_head_rejects_total: int = 0
         self._unsolicited_block_rejects_total: int = 0
         self._unsolicited_state_root_rejects_total: int = 0
@@ -2109,6 +2112,14 @@ class P2PNode:
         if raw is None:
             return "", ""
         return str(raw).strip(), ""
+
+    def _try_expected_parent(self, height: int) -> tuple[Optional[str], str]:
+        """Tip-height parent hash. ``(None, local_parent_unreadable)`` on lookup fail."""
+        try:
+            return str(self._expected_parent_for_height(int(height)) or "").strip(), ""
+        except Exception as exc:
+            logger.warning("[P2P] expected parent lookup failed: %s", exc)
+            return None, "local_parent_unreadable"
 
     @property
     def height(self) -> int:
@@ -4083,12 +4094,46 @@ class P2PNode:
             )
             self._strike_peer_sync(peer, "attestation_verifier_unavailable")
             return
-        if not vkeys.verify_attestation(data):
+        try:
+            ok = bool(vkeys.verify_attestation(data))
+        except RuntimeError as exc:
+            logger.warning(
+                "[P2P] attestation verify unavailable from %s: %s",
+                (peer.peer_id or "?")[:12],
+                exc,
+            )
+            self._strike_peer_sync(peer, "attestation_verify_unavailable")
+            return
+        if not ok:
             logger.warning(
                 "[P2P] Invalid attestation sig/identity from %s",
                 (peer.peer_id or "?")[:12],
             )
             self._strike_peer_sync(peer, "bad_attestation_sig")
+            return
+        get_addr = getattr(vkeys, "get_address", None)
+        our = ""
+        if callable(get_addr):
+            try:
+                our = str(get_addr() or "").strip().lower()
+            except Exception as exc:
+                logger.warning(
+                    "[P2P] validator_keys.get_address failed; echo-drop skipped: %s",
+                    exc,
+                )
+        claimed = str(data.get("validator") or "").strip().lower()
+        if our and claimed == our:
+            # Echo of our own gossip: applying it again re-emits consensus.attestation
+            # and re-signs against the live tip (wrong height) → mesh flood.
+            self._attestation_echo_drops_total = int(
+                getattr(self, "_attestation_echo_drops_total", 0) or 0
+            ) + 1
+            return
+        fp = self._attestation_fingerprint(data)
+        if fp and self._attestation_already_seen(fp):
+            self._attestation_dup_drops_total = int(
+                getattr(self, "_attestation_dup_drops_total", 0) or 0
+            ) + 1
             return
         # v1.3.136: soft slot/target_height ahead vs local tip — stop LMD pollution / relay DoS.
         ahead_reason = self._attestation_ahead_reject_reason(data)
@@ -4124,6 +4169,44 @@ class P2PNode:
         if consensus and hasattr(consensus, "attest"):
             if consensus.attest(validator, block_hash, slot=slot):
                 await self._relay_attestation(data, exclude_peer=peer.peer_id)
+
+    def _attestation_fingerprint(self, data: Dict) -> tuple:
+        if not isinstance(data, dict):
+            return ()
+        try:
+            slot = int(data.get("slot") or 0)
+        except (TypeError, ValueError):
+            slot = 0
+        return (
+            str(data.get("validator") or "").strip().lower(),
+            slot,
+            str(data.get("target_hash") or "").strip().lower(),
+            str(data.get("signature") or "")[:32],
+        )
+
+    def _attestation_already_seen(self, fp: tuple) -> bool:
+        """True if this attestation was already applied/relayed (echo/dup drop)."""
+        if not fp or not fp[0]:
+            return False
+        seen = getattr(self, "_attestation_seen", None)
+        if seen is None:
+            self._attestation_seen = {}
+            seen = self._attestation_seen
+        now = time.monotonic()
+        prev = seen.get(fp)
+        if prev is not None and (now - float(prev)) < 120.0:
+            return True
+        seen[fp] = now
+        if len(seen) > 4096:
+            cutoff = now - 120.0
+            stale = [k for k, ts in seen.items() if float(ts) < cutoff]
+            for k in stale:
+                seen.pop(k, None)
+            if len(seen) > 4096:
+                extra = list(seen.keys())[: len(seen) - 2048]
+                for k in extra:
+                    seen.pop(k, None)
+        return False
 
     def _attestation_local_head_reject_reason(self, data: Dict) -> str:
         """Empty if unknown locally or consistent; else strike for height mismatch."""
@@ -5396,11 +5479,9 @@ class P2PNode:
         if body_h < 0 or tip_h < 0 or body_h != tip_h:
             return ""
         block_hash = str(getattr(block, "hash", "") or "").strip()
-        local_tip = ""
-        try:
-            local_tip = str(self.head() or "").strip()
-        except Exception:
-            local_tip = ""
+        local_tip, unreadable = self._try_local_head()
+        if unreadable:
+            return unreadable
         if (
             block_hash
             and local_tip
@@ -5408,13 +5489,9 @@ class P2PNode:
         ):
             return ""
         parent = str(getattr(block, "parent_hash", "") or "").strip()
-        local_parent = ""
-        try:
-            local_parent = str(
-                self._expected_parent_for_height(tip_h) or ""
-            ).strip()
-        except Exception:
-            local_parent = ""
+        local_parent, unreadable = self._try_expected_parent(tip_h)
+        if unreadable:
+            return unreadable
         if (
             parent
             and local_parent
@@ -5822,13 +5899,9 @@ class P2PNode:
         # v1.3.168: same-height sibling must share tip-height parent.
         if bool(getattr(self.config, "p2p_fork_peer_head_parent_bind", True)):
             parent = str(peer_block.get("parent_hash") or "").strip()
-            local_parent = ""
-            try:
-                local_parent = str(
-                    self._expected_parent_for_height(local_h) or ""
-                ).strip()
-            except Exception:
-                local_parent = ""
+            local_parent, unreadable = self._try_expected_parent(local_h)
+            if unreadable:
+                return unreadable
             if (
                 parent
                 and local_parent
@@ -5927,11 +6000,9 @@ class P2PNode:
         got_hash = str(
             peer_block.get("hash") or peer_block.get("block_hash") or ""
         ).strip()
-        local_tip = ""
-        try:
-            local_tip = str(self.head() or "").strip()
-        except Exception:
-            local_tip = ""
+        local_tip, unreadable = self._try_local_head()
+        if unreadable:
+            return unreadable
         if (
             got_hash
             and local_tip
@@ -5939,13 +6010,9 @@ class P2PNode:
         ):
             return ""
         parent = str(peer_block.get("parent_hash") or "").strip()
-        local_parent = ""
-        try:
-            local_parent = str(
-                self._expected_parent_for_height(tip_h) or ""
-            ).strip()
-        except Exception:
-            local_parent = ""
+        local_parent, unreadable = self._try_expected_parent(tip_h)
+        if unreadable:
+            return unreadable
         if (
             parent
             and local_parent
@@ -6032,13 +6099,9 @@ class P2PNode:
         # v1.3.169: same-height GHOST sibling must share tip-height parent.
         if bool(getattr(self.config, "p2p_ghost_head_parent_bind", True)):
             parent = str(peer_block.get("parent_hash") or "").strip()
-            local_parent = ""
-            try:
-                local_parent = str(
-                    self._expected_parent_for_height(local_h) or ""
-                ).strip()
-            except Exception:
-                local_parent = ""
+            local_parent, unreadable = self._try_expected_parent(local_h)
+            if unreadable:
+                return unreadable
             if (
                 parent
                 and local_parent
@@ -8291,6 +8354,12 @@ class P2PNode:
             ),
             "attestation_local_head_rejects_total": int(
                 getattr(self, "_attestation_local_head_rejects_total", 0) or 0
+            ),
+            "attestation_echo_drops_total": int(
+                getattr(self, "_attestation_echo_drops_total", 0) or 0
+            ),
+            "attestation_dup_drops_total": int(
+                getattr(self, "_attestation_dup_drops_total", 0) or 0
             ),
             "attestation_target_head_rejects_total": int(
                 getattr(self, "_attestation_target_head_rejects_total", 0) or 0

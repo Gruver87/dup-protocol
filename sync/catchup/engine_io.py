@@ -307,10 +307,37 @@ class SyncEngineCatchUpIO:
     # ── CatchUpProbePort ─────────────────────────────────────────────────────
 
     def local_tip_probe_refuse(self, peer: Any) -> str:
-        # SyncEngine fast_sync never ran tip probes; keep disabled via config.
+        """Refuse ahead catch-up when first imported block does not extend local tip."""
+        local_h = int(self.height() or 0)
+        peer_h = int(getattr(peer, "height", 0) or self._target_height or 0)
+        if peer_h <= local_h or local_h <= 0:
+            return ""
+        self._ensure_ahead_index()
+        first = self._by_height.get(local_h + 1)
+        if not isinstance(first, Mapping):
+            return ""
+        parent = str(first.get("parent_hash") or "").strip()
+        local_tip = self.head()
+        if parent and local_tip and parent.lower() != local_tip.lower():
+            return "catch_up_tip_head_mismatch"
         return ""
 
     def peer_head_probe_refuse(self, peer: Any) -> str:
+        """Refuse when downloaded head hash/height does not match the peer claim."""
+        local_h = int(self.height() or 0)
+        peer_h = int(getattr(peer, "height", 0) or self._target_height or 0)
+        if peer_h <= local_h:
+            return ""
+        self._ensure_ahead_index()
+        if not self._chain_ok:
+            return str(self._chain_error or "catch_up_peer_head_probe_failed")
+        head = str(getattr(peer, "head_hash", "") or self._peer_head or "").strip()
+        blk = self._by_height.get(peer_h)
+        if not isinstance(blk, Mapping):
+            return "catch_up_peer_head_probe_failed"
+        got = _block_hash(blk)
+        if head and got and got.lower() != head.lower():
+            return "catch_up_peer_head_hash_mismatch"
         return ""
 
     # ── CatchUpSideEffectPort ────────────────────────────────────────────────

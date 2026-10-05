@@ -350,9 +350,8 @@ class SyncEngine:
                 tip_head_bind=True,
                 height_continuity_bind=True,
                 contiguous_parent_bind=True,
-                # SyncEngine historically had no tip/peer-head wire probes.
-                tip_probe_enabled=False,
-                peer_head_probe_enabled=False,
+                tip_probe_enabled=True,
+                peer_head_probe_enabled=True,
                 fetch_timeout=45.0,
             )
             outcome = svc.run_ahead(peer_view, cfg)

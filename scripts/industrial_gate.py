@@ -5026,6 +5026,27 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
                 "tests/unit/test_state_root_probe_coalesce.py missing "
                 "(late_state_root + wire_probe_gate unit evidence)"
             )
+        # Attestation own-echo + fingerprint dedup (same failure class as own_forge_echo).
+        if "_attestation_fingerprint" not in p2p_py or "_attestation_already_seen" not in p2p_py:
+            errors.append("P2PNode must fingerprint attestations for echo/dup drop")
+        if "_attestation_echo_drops_total" not in p2p_py:
+            errors.append("P2PNode must count own-attestation echo drops")
+        if "claimed == our" not in p2p_py:
+            errors.append("P2PNode must drop own-validator attestation echo before apply")
+        # Parent lookup fail-closed (not soft-skip on store error).
+        if "def _try_expected_parent" not in p2p_py:
+            errors.append("P2PNode must expose _try_expected_parent fail-closed helper")
+        if "local_parent_unreadable" not in p2p_py:
+            errors.append("parent bind paths must refuse local_parent_unreadable")
+        # SyncEngine PathA tip/peer-head probes (parity with live P2P PathA).
+        se_py = (ROOT / "sync" / "sync_engine.py").read_text(encoding="utf-8")
+        if "tip_probe_enabled=True" not in se_py or "peer_head_probe_enabled=True" not in se_py:
+            errors.append("fast_sync CatchUpConfig must enable Path A tip/peer-head probes")
+        eio_py = (ROOT / "sync" / "catchup" / "engine_io.py").read_text(encoding="utf-8")
+        if "catch_up_peer_head_hash_mismatch" not in eio_py:
+            errors.append("SyncEngineCatchUpIO must refuse peer-head hash mismatch")
+        if "catch_up_tip_head_mismatch" not in eio_py:
+            errors.append("SyncEngineCatchUpIO must refuse tip-head parent mismatch")
     except Exception as exc:
         errors.append(f"STRICT mesh P2P hardening inspect failed: {exc}")
     return errors, warnings

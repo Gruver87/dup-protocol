@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin tip/sync correctness (attestation echo + SyncEngine probes + parent FC)
+
+- **Attestation own-echo + fingerprint dedup:** drop own-validator gossip echo; 120s fingerprint cache; counters `attestation_echo_drops_total` / `attestation_dup_drops_total`.
+- **SyncEngine PathA probes:** `tip_probe_enabled` / `peer_head_probe_enabled` on; EngineIO `catch_up_tip_head_mismatch` / `catch_up_peer_head_hash_mismatch` (parity with live P2P PathA).
+- **`_try_expected_parent`:** parent binds refuse `local_parent_unreadable` on store fail (same-height / fork / reconcile / GHOST).
+- Units + industrial_gate needles. **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** post-rebuild (h989 peers=2); pack `MESH_PROBE_POST_ATTEST_SYNC_PARENT.txt`. **Soak deferred.**
+
 ### Exp→pin tip/sync correctness (own-forge + solicit + PathA)
 
 - **Own-forge echo:** `_tip_safety_precheck` defers `last_forge` / `last_forge+1`; `note_local_forge` → tip_safety shadow (no Long-Range/WS).

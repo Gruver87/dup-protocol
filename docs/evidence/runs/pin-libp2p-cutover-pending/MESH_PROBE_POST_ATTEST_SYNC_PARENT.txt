@@ -1,0 +1,5 @@
+﻿checked_at: 2026-10-05T20:15:57.8631906+02:00
+wave: attestation-echo + SyncEngine probes + _try_expected_parent
+probe: see probe_prod_mesh_quick_attest_sync_parent.json
+industrial_gate: OK
+soak: DEFERRED by operator — not claimed

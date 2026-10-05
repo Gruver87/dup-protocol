@@ -37,6 +37,9 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `MESH_PROBE_POST_FORGE_SOLICIT_PATHA.txt` | Own-forge + solicit + PathA Quick probe (h908) |
 | `probe_prod_mesh_quick_forge_solicit_patha.json` | Probe JSON for forge/solicit/PathA wave |
 | `industrial_gate_forge_solicit_patha.json` | Gate snapshot for that wave |
+| `MESH_PROBE_POST_ATTEST_SYNC_PARENT.txt` | Attest-echo + SyncEngine probes + parent FC (h989) |
+| `probe_prod_mesh_quick_attest_sync_parent.json` | Probe JSON for attest/sync/parent wave |
+| `industrial_gate_attest_sync_parent.json` | Gate snapshot for that wave |
 | `README.md` | This honesty stamp |
 
 ## Still missing for industrial soak claim
