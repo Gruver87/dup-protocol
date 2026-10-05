@@ -476,6 +476,9 @@ class HybridDatabase:
     def count_transactions_by_address(self, address: str, direction: str = "all") -> int:
         return self._core.count_transactions_by_address(address, direction)
 
+    def count_address_transactions(self, address: str, direction: str = "all") -> int:
+        return self._core.count_address_transactions(address, direction)
+
     def get_address_activity(self, address: str) -> Dict:
         return self._core.get_address_activity(address)
 
@@ -486,6 +489,9 @@ class HybridDatabase:
         proposer: str = "",
     ) -> List[Dict]:
         return self._core.get_proposer_audit_log(limit, offset, proposer)
+
+    def count_proposer_audit(self, proposer: str = "") -> int | None:
+        return self._core.count_proposer_audit(proposer)
 
     def record_burn(self, block_height: int, burned_amount: float) -> None:
         self._core.record_burn(block_height, burned_amount)
@@ -513,6 +519,19 @@ class HybridDatabase:
 
     def get_total_supply(self) -> float:
         return self._core.get_total_supply()
+
+    def get_rocks_runtime_stats(self) -> Dict:
+        if hasattr(self._core, "get_rocks_runtime_stats"):
+            stats = dict(self._core.get_rocks_runtime_stats())
+        else:
+            stats = dict(self.get_stats())
+        aux_fails = int(getattr(self._aux, "_json_decode_failures", 0) or 0)
+        stats["aux_json_decode_failures"] = aux_fails
+        tuning = dict(stats.get("rocksdb_tuning") or {})
+        tuning["aux_json_decode_failures"] = aux_fails
+        tuning["sqlite_json_decode_failures"] = aux_fails
+        stats["rocksdb_tuning"] = tuning
+        return stats
 
     def get_stats(self) -> Dict:
         stats = self._core.get_stats()

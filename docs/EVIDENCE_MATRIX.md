@@ -36,6 +36,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 |-------|----------------|
 | Tip `state_root` | **Wave C tip+apply** — ceremony-armed v2 tip leaves use integer `b_satoshi` (`SATOSHI_MULTIPLIER=1e6`); apply/fees/gas/reward satoshi-int; float only at display/wire edges. Local prod mesh JSON + `ABS_STATE_ROOT_*` env armed. **tip-v2 48h soak PASS** Aug 5–7 (`docs/evidence/runs/375d14f/`). Not a public mainnet cutover claim. |
 | Mesh `/health/ready` | **Wave C/D + tip-v2 soak** — soft wire_probe flaps no longer 503 when deep_ready holds (`375d14f`); tip-v2 48h soak ready_only_fail=0. Soft-refuse bake still applies (`3288700f4fc7`). |
+| Rocks live-path O(1) honesty (ops) | **Ported from Exp** — `/metrics` → `get_rocks_runtime_stats`; `get_latest_blocks` tip point-reads; `get_total_burned` `prefix_last`; address/proposer counts from meta (`addr_tx_counts_v1` / `proposer_counts_v1`, batch-safe overlay); `/health/ready` cheap tip probe; `/status` defers `get_topology()` (`topology_deferred`). Units + gate; **Quick probe PASS** (h1051). **Soak deferred.** Legacy volumes without meta flags report count 0 / `blocks_proposed_known=false`. Still scanning: `get_transactions_by_address`, `get_recent_transactions`, `get_bridge_locks`, `get_chain_metrics`. |
 | External audit | **Not completed** — tracker rejects template notes; requires real evidence URL |
 | Public VPS / DNS | Not claimed |
 | Bridge L1 | **OFF by recorded decision** — see [Bridge OFF audit checklist](#bridge-off--pre-enable-audit-checklist) |

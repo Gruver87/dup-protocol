@@ -431,6 +431,13 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append("rocks_store.reorg purge must log corrupt tx_propagation JSON")
     if "rocksdb_properties_error" not in rocks_py:
         errors.append("rocks_store.get_stats must surface rocksdb_properties_error")
+    if "def get_rocks_runtime_stats" not in rocks_py:
+        errors.append("rocks_store must expose get_rocks_runtime_stats (no prefix scan)")
+    runtime_core_fn = rocks_py.split("def _rocks_runtime_core", 1)[-1].split(
+        "def get_rocks_runtime_stats", 1
+    )[0]
+    if "_cached_prefix_len" in runtime_core_fn or "_scan_prefix" in runtime_core_fn:
+        errors.append("_rocks_runtime_core must not prefix-scan or call _cached_prefix_len")
     db_py = (ROOT / "storage" / "database.py").read_text(encoding="utf-8")
     if "DELETE FROM evm_logs WHERE block_height" not in db_py:
         errors.append("SQLite reorg_truncate_above must delete evm_logs")
@@ -445,6 +452,8 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
     http_py = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
     if 'origins else "*"' in http_py:
         errors.append("api/http.py REST CORS must not fall back to *")
+    if "get_rocks_runtime_stats" not in http_py:
+        errors.append("/metrics must use get_rocks_runtime_stats (no prefix scan)")
     health_py = (ROOT / "bridge" / "health.py").read_text(encoding="utf-8")
     if "probe_skipped" not in health_py:
         errors.append("bridge.health must mark unprobed L1 as probe_skipped")
@@ -1260,7 +1269,10 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("rocks_store get_all_accounts must warn on corrupt decode")
         if "corrupt validator row skipped" not in rocks_py:
             errors.append("rocks_store get_validators must warn on corrupt decode")
-        if "corrupt proposer_audit row skipped" not in rocks_py:
+        if (
+            "corrupt proposer_audit row skipped" not in rocks_py
+            and "corrupt proposer_audit list row skipped" not in rocks_py
+        ):
             errors.append("rocks_store proposer_audit must warn on corrupt decode")
         if "corrupt bridge_lock row skipped" not in rocks_py:
             errors.append("rocks_store bridge_locks must warn on corrupt decode")
@@ -2486,6 +2498,58 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             ROOT / "storage" / "hybrid_database.py"
         ).read_text(encoding="utf-8"):
             errors.append("hybrid_database must delegate load_writeback_accounts")
+        if "def get_rocks_runtime_stats" not in (
+            ROOT / "storage" / "hybrid_database.py"
+        ).read_text(encoding="utf-8"):
+            errors.append("hybrid_database must delegate get_rocks_runtime_stats")
+        if "def count_address_transactions" not in (
+            ROOT / "storage" / "hybrid_database.py"
+        ).read_text(encoding="utf-8"):
+            errors.append("HybridDatabase must forward count_address_transactions")
+        if "def count_proposer_audit" not in (
+            ROOT / "storage" / "hybrid_database.py"
+        ).read_text(encoding="utf-8"):
+            errors.append("HybridDatabase must forward count_proposer_audit")
+        # Rocks O(1) honesty cluster — live RPC/metrics must not prefix-scan growing CFs.
+        latest_fn = rocks_py.split("def get_latest_blocks", 1)[-1].split("def ", 1)[0]
+        if "_scan_prefix" in latest_fn:
+            errors.append("Rocks get_latest_blocks must not prefix-scan all heights")
+        if "key_block_height" not in latest_fn:
+            errors.append("Rocks get_latest_blocks must point-read key_block_height from tip")
+        burn_fn = rocks_py.split("def get_total_burned", 1)[-1].split("def ", 1)[0]
+        if "prefix_last" not in burn_fn:
+            errors.append("get_total_burned must use Rocks prefix_last (not full P_BURN scan)")
+        act_fn = rocks_py.split("def get_address_activity", 1)[-1].split(
+            "def get_proposer_audit_log", 1
+        )[0]
+        if "_scan_prefix(kc.P_PROPOSER_AUDIT)" in act_fn:
+            errors.append("Rocks get_address_activity must not prefix-scan proposer_audit")
+        if "_max_indexed_tx_height" not in act_fn:
+            errors.append("Rocks get_address_activity must use indexed last_tx_height")
+        plog_fn = rocks_py.split("def get_proposer_audit_log", 1)[-1].split(
+            "def count_proposer_audit", 1
+        )[0]
+        if "_scan_prefix(kc.P_PROPOSER_AUDIT)" in plog_fn:
+            errors.append("Rocks get_proposer_audit_log must not prefix-scan proposer_audit")
+        if "key_proposer_audit" not in plog_fn:
+            errors.append("Rocks get_proposer_audit_log must seek by height key")
+        if "def count_proposer_audit" not in rocks_py:
+            errors.append("RocksChainStore must implement count_proposer_audit")
+        if "def count_address_transactions" not in rocks_py:
+            errors.append("RocksChainStore must implement count_address_transactions")
+        if 'len(self._scan_prefix(kc.prefix_tx_from' in rocks_py:
+            errors.append("Rocks address tx count must not prefix-scan the from-index")
+        if "_bump_addr_tx_count" not in rocks_py or "_bump_proposer_count" not in rocks_py:
+            errors.append("Rocks must maintain addr_tx / proposer meta counters")
+        ready_fn = http_py.split('if path == "/health/ready"', 1)[-1].split(
+            "checks = {", 1
+        )[0]
+        if "db.get_stats()" in ready_fn:
+            errors.append("/health/ready must not call db.get_stats()")
+        if "no cheap db probe" not in ready_fn:
+            errors.append("/health/ready must fail-closed without cheap tip/height probe")
+        if '"topology_deferred": True' not in http_py:
+            errors.append("/status p2p_summary must defer get_topology (topology_deferred)")
         # v1.3.65 — L1 fail-closed hardening
         vk_py = (ROOT / "crypto" / "validator_keys.py").read_text(encoding="utf-8")
         if "derive_address" not in vk_py:

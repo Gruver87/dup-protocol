@@ -491,4 +491,231 @@ def test_rocksdb_column_families_roundtrip_and_legacy_dual_read(tmp_path):
     assert store_cf.get_meta("schema_version") == "rocksdb-chain-v2-cf"
     stats = store_cf.get_stats()
     assert stats["rocksdb_tuning"].get("column_families") in (True, 1, "1")
+    runtime = store_cf.get_rocks_runtime_stats()
+    assert "total_transactions" not in runtime
+    assert "total_accounts" not in runtime
+    assert runtime.get("engine") == "rocksdb"
+    assert runtime.get("rocksdb_tuning", {}).get("column_families") in (True, 1, "1")
     store_cf.close()
+
+
+def _persist_blocks(rocks, count, miner_for):
+    for h in range(1, count + 1):
+        rocks.persist_block_atomic(
+            {
+                "height": h,
+                "hash": f"{h:064x}",
+                "parent_hash": f"{h - 1:064x}",
+                "timestamp": 1700000000 + h,
+                "miner": miner_for(h),
+                "transactions": [],
+            },
+            [],
+        )
+
+
+def _spy_scan_prefix(rocks, monkeypatch):
+    scans = []
+    orig = rocks._scan_prefix
+
+    def _spy(prefix, limit=100_000):
+        scans.append(prefix)
+        return orig(prefix, limit=limit)
+
+    monkeypatch.setattr(rocks, "_scan_prefix", _spy)
+    return scans
+
+
+def test_get_total_burned_uses_latest_prefix_key(rocks, monkeypatch):
+    from storage import keycodec as kc
+
+    rocks.record_burn(1, 0.1)
+    rocks.record_burn(2, 0.2)
+    rocks.record_burn(10, 0.3)
+    scans = _spy_scan_prefix(rocks, monkeypatch)
+    assert rocks.get_total_burned() == pytest.approx(0.6)
+    assert kc.P_BURN not in scans
+
+
+def test_get_latest_blocks_does_not_prefix_scan_heights(rocks, monkeypatch):
+    from storage import keycodec as kc
+
+    _persist_blocks(rocks, 5, lambda _h: "0x" + "1" * 40)
+    scans = _spy_scan_prefix(rocks, monkeypatch)
+    latest = rocks.get_latest_blocks(limit=3)
+    assert [int(b["height"]) for b in latest] == [5, 4, 3]
+    assert kc.prefix_block_heights() not in scans
+
+
+def test_get_address_activity_does_not_scan_proposer_audit(rocks, monkeypatch):
+    from storage import keycodec as kc
+
+    miner = "0x" + "aa" * 20
+    _persist_blocks(rocks, 5, lambda _h: miner)
+    scans = _spy_scan_prefix(rocks, monkeypatch)
+    act = rocks.get_address_activity(miner)
+    assert act["blocks_proposed"] == 5
+    assert act["blocks_proposed_known"] is True
+    assert kc.P_PROPOSER_AUDIT not in scans
+
+
+def test_proposer_audit_log_seeks_by_height_not_prefix_scan(rocks, monkeypatch):
+    from storage import keycodec as kc
+
+    miner_a = "0x" + "aa" * 20
+    miner_b = "0x" + "bb" * 20
+    _persist_blocks(rocks, 7, lambda h: miner_a if h % 2 else miner_b)
+    scans = _spy_scan_prefix(rocks, monkeypatch)
+    page = rocks.get_proposer_audit_log(limit=3, offset=1)
+    assert [r["height"] for r in page] == [6, 5, 4]
+    assert kc.P_PROPOSER_AUDIT not in scans
+    filtered = rocks.get_proposer_audit_log(limit=10, proposer=miner_a)
+    assert all(r["proposer"] == miner_a for r in filtered)
+    assert len(filtered) == 4
+    assert rocks.count_proposer_audit() == 7
+    assert rocks.count_proposer_audit(proposer=miner_a) == 4
+    stats = rocks.get_proposer_stats(limit=5)
+    assert stats[0]["proposer"] == miner_a
+    assert stats[0]["blocks_proposed"] == 4
+    detail = rocks.get_proposer_detail(miner_a, recent_limit=2)
+    assert detail["blocks_proposed"] == 4
+    assert detail["blocks_proposed_known"] is True
+    assert len(detail["recent_blocks"]) == 2
+
+
+def test_proposer_counts_follow_reorg(rocks):
+    miner = "0x" + "aa" * 20
+    _persist_blocks(rocks, 4, lambda _h: miner)
+    assert rocks.count_proposer_audit(proposer=miner) == 4
+    with rocks.atomic():
+        rocks.reorg_truncate_above(2)
+    assert rocks.count_proposer_audit(proposer=miner) == 2
+    assert rocks.get_address_activity(miner)["blocks_proposed"] == 2
+
+
+def test_address_tx_counts_are_meta_o1_and_follow_reorg(rocks, monkeypatch):
+    from storage import keycodec as kc
+
+    sender = "0x" + "2" * 40
+    receiver = "0x" + "3" * 40
+    for h in range(1, 4):
+        rocks.persist_block_atomic(
+            {
+                "height": h,
+                "hash": f"{h:064x}",
+                "parent_hash": f"{h - 1:064x}",
+                "timestamp": 1700000000 + h,
+                "miner": "0x" + "1" * 40,
+                "transactions": [],
+            },
+            [
+                {
+                    "hash": f"{h + 100:064x}",
+                    "block_height": h,
+                    "from_addr": sender,
+                    "to_addr": receiver,
+                    "value": 1.0,
+                    "gas": 21000,
+                    "fee": 0.1,
+                    "burned": 0.0,
+                    "nonce": h,
+                    "status": 1,
+                    "timestamp": 1700000000 + h,
+                }
+            ],
+        )
+    scans = _spy_scan_prefix(rocks, monkeypatch)
+    assert rocks.count_transactions_by_address(sender, "sent") == 3
+    assert rocks.count_address_transactions(receiver, "received") == 3
+    assert rocks.count_transactions_by_address(sender, "all") == 3
+    assert kc.prefix_tx_from(sender) not in scans
+    assert kc.prefix_tx_to(receiver) not in scans
+    monkeypatch.undo()
+    with rocks.atomic():
+        rocks.reorg_truncate_above(1)
+    assert rocks.count_transactions_by_address(sender, "sent") == 1
+    assert rocks.count_transactions_by_address(receiver, "received") == 1
+    assert rocks.count_transactions_by_address(sender, "all") == 1
+
+
+def test_address_tx_counts_survive_many_txs_in_one_batch(rocks):
+    """RocksWriteBatch is invisible to _raw_get; counters must not lose increments."""
+    sender = "0x" + "5" * 40
+    receiver = "0x" + "6" * 40
+    txs = [
+        {
+            "hash": f"{i + 500:064x}",
+            "block_height": 1,
+            "from_addr": sender,
+            "to_addr": receiver,
+            "value": 1.0,
+            "gas": 21000,
+            "fee": 0.1,
+            "burned": 0.0,
+            "nonce": i,
+            "status": 1,
+            "timestamp": 1700000002,
+        }
+        for i in range(4)
+    ]
+    rocks.persist_block_atomic(
+        {
+            "height": 1,
+            "hash": "a" * 64,
+            "parent_hash": "0" * 64,
+            "timestamp": 1700000001,
+            "miner": "0x" + "1" * 40,
+            "transactions": [],
+        },
+        txs,
+    )
+    assert rocks.count_transactions_by_address(sender, "sent") == 4
+    assert rocks.count_transactions_by_address(receiver, "received") == 4
+    assert rocks.count_transactions_by_address(sender, "all") == 4
+    assert rocks.count_transactions_by_address(receiver, "all") == 4
+
+
+def test_self_send_touch_count_not_double_counted(rocks):
+    addr = "0x" + "4" * 40
+    rocks.persist_block_atomic(
+        {
+            "height": 1,
+            "hash": "a" * 64,
+            "parent_hash": "0" * 64,
+            "timestamp": 1700000001,
+            "miner": "0x" + "1" * 40,
+            "transactions": [],
+        },
+        [
+            {
+                "hash": "c" * 64,
+                "block_height": 1,
+                "from_addr": addr,
+                "to_addr": addr,
+                "value": 1.0,
+                "gas": 21000,
+                "fee": 0.1,
+                "burned": 0.0,
+                "nonce": 0,
+                "status": 1,
+                "timestamp": 1700000002,
+            }
+        ],
+    )
+    assert rocks.count_transactions_by_address(addr, "sent") == 1
+    assert rocks.count_transactions_by_address(addr, "received") == 1
+    assert rocks.count_transactions_by_address(addr, "all") == 1
+
+
+def test_rocks_runtime_stats_no_scan_and_matches_get_stats_tuning(rocks, monkeypatch):
+    scans = _spy_scan_prefix(rocks, monkeypatch)
+    runtime = rocks.get_rocks_runtime_stats()
+    assert scans == []
+    assert "total_transactions" not in runtime
+    assert "total_accounts" not in runtime
+    assert runtime["engine"] == rocks.engine
+    full = rocks.get_stats()
+    assert full["rocksdb_tuning"]["column_families"] == runtime["rocksdb_tuning"][
+        "column_families"
+    ]
+    assert "total_transactions" in full and "height" in full

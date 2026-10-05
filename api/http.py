@@ -509,16 +509,25 @@ def _build_status_probe_payload(
     }
 
 
-def _status_p2p_hardening_snapshot(cfg, p2p) -> Dict[str, Any]:
-    """P2P wire hardening truth for GET /status (not heuristic)."""
-    sec: Dict[str, Any] = {}
+def _status_p2p_hardening_snapshot(
+    cfg, p2p, sec: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """P2P wire hardening truth for GET /status (not heuristic).
+
+    Pass ``sec`` when the caller already fetched ``get_p2p_security_status``
+    so /status does not take ``_rl_lock`` twice under mesh load.
+    """
     status_error = ""
-    if p2p and hasattr(p2p, "get_p2p_security_status"):
-        try:
-            sec = dict(p2p.get_p2p_security_status() or {})
-        except Exception as exc:
-            logger.warning("p2p security status snapshot failed: %s", exc)
-            status_error = str(exc)
+    if sec is None:
+        sec = {}
+        if p2p and hasattr(p2p, "get_p2p_security_status"):
+            try:
+                sec = dict(p2p.get_p2p_security_status() or {})
+            except Exception as exc:
+                logger.warning("p2p security status snapshot failed: %s", exc)
+                status_error = str(exc)
+    else:
+        sec = dict(sec or {})
     tls = dict(sec.get("tls") or {})
     if not tls and cfg and not status_error:
         try:
@@ -2018,12 +2027,18 @@ class RESTHandler(BaseHTTPRequestHandler):
                 db_probe_error = None
                 if db is not None:
                     try:
-                        if hasattr(db, "get_stats"):
-                            db.get_stats()
+                        # Cheap probe only. get_stats() prefix-scans all txs/accounts
+                        # and must not sit on /health/ready (K8s + soak liveness).
+                        if hasattr(db, "get_chain_tip"):
+                            db.get_chain_tip()
                         elif hasattr(db, "get_height"):
                             db.get_height()
                         elif bc is not None and hasattr(bc, "get_height"):
                             bc.get_height()
+                        else:
+                            raise RuntimeError(
+                                "no cheap db probe (get_chain_tip/get_height)"
+                            )
                     except Exception as exc:
                         db_ok = False
                         db_probe_error = str(exc)
@@ -2273,7 +2288,12 @@ class RESTHandler(BaseHTTPRequestHandler):
                 db_stats: dict = {}
                 if db is not None:
                     try:
-                        db_stats = dict(db.get_stats() if hasattr(db, "get_stats") else {})
+                        if hasattr(db, "get_rocks_runtime_stats"):
+                            db_stats = dict(db.get_rocks_runtime_stats())
+                        else:
+                            db_stats = dict(
+                                db.get_stats() if hasattr(db, "get_stats") else {}
+                            )
                         db_engine = str(
                             db_stats.get("engine")
                             or getattr(db, "engine", "")
@@ -2620,62 +2640,42 @@ class RESTHandler(BaseHTTPRequestHandler):
                     deployment_mode=getattr(cfg, "deployment_mode", "dev"),
                     mesh_min_peers=mesh_min_peers,
                 )
-                p2p_summary = {"enabled": bool(p2p)}
-                if p2p and hasattr(p2p, "get_topology"):
-                    try:
-                        topo = p2p.get_topology()
-                        sec = topo.get("security") or {}
-                        p2p_summary = {
-                            "enabled": True,
-                            "running": bool(getattr(p2p, "_running", False)),
-                            "peer_count": int(topo.get("peer_count", 0) or 0),
-                            "topology_healthy": topo.get("topology_healthy"),
-                            "peer_score_min": topo.get("peer_score_min"),
-                            "peer_score_avg": topo.get("peer_score_avg"),
-                            "state_consistent": topo.get("state_consistent"),
-                            "security": {
-                                "rate_limit_per_sec": sec.get("rate_limit_per_sec"),
-                                "max_message_bytes": sec.get("max_message_bytes"),
-                                "active_bans": sec.get("active_bans", 0),
-                                "strikes_before_ban": sec.get("strikes_before_ban"),
-                                "evict_min_score": sec.get("evict_min_score", 0),
-                                "handshake_rejects": sec.get("handshake_rejects", 0),
-                                "shape_rejects_total": sec.get("shape_rejects_total", 0),
-                                "shape_rejects": sec.get("shape_rejects") or {},
-                                "rate_limit_drops": sec.get("rate_limit_drops", 0),
-                                "attestation_local_fail": sec.get(
-                                    "attestation_local_fail", 0
-                                ),
-                                "ops_errors": sec.get("ops_errors") or {},
-                            },
-                        }
-                    except Exception as exc:
-                        logger.warning("/status p2p summary failed: %s", exc)
-                        security = {}
-                        if p2p and hasattr(p2p, "get_p2p_security_status"):
-                            try:
-                                raw = dict(p2p.get_p2p_security_status() or {})
-                                security = {
-                                    "active_bans": raw.get("active_bans", 0),
-                                    "handshake_rejects": raw.get("handshake_rejects", 0),
-                                    "shape_rejects_total": raw.get("shape_rejects_total", 0),
-                                    "shape_rejects": raw.get("shape_rejects") or {},
-                                    "rate_limit_drops": raw.get("rate_limit_drops", 0),
-                                    "attestation_local_fail": raw.get(
-                                        "attestation_local_fail", 0
-                                    ),
-                                    "ops_errors": raw.get("ops_errors") or {},
-                                }
-                            except Exception:
-                                security = {}
-                        p2p_summary = {
-                            "enabled": True,
-                            "running": bool(getattr(p2p, "_running", False)),
-                            "security": security,
-                            "status_error": str(exc),
-                        }
+                # Do not call p2p.get_topology() on GET /status. Live soak evidence:
+                # /health/ready and /p2p/security stay <100ms while /status waits >15s
+                # (health_watch hard-FAIL). Full graph stays on GET /p2p/topology.
                 rl_snap = _status_rate_limit_snapshot(cfg)
-                p2p_hard = _status_p2p_hardening_snapshot(cfg, p2p)
+                sec_raw: Dict[str, Any] = {}
+                if p2p and hasattr(p2p, "get_p2p_security_status"):
+                    try:
+                        sec_raw = dict(p2p.get_p2p_security_status() or {})
+                    except Exception as exc:
+                        logger.warning("/status p2p security summary failed: %s", exc)
+                # Single security snapshot — do not call get_p2p_security_status twice.
+                p2p_hard = _status_p2p_hardening_snapshot(cfg, p2p, sec=sec_raw)
+                p2p_summary = {
+                    "enabled": bool(p2p),
+                    "running": bool(getattr(p2p, "_running", False)) if p2p else False,
+                    "peer_count": int(peer_count or 0),
+                    "topology_healthy": None,
+                    "topology_deferred": True,
+                    "security": {
+                        "rate_limit_per_sec": int(
+                            sec_raw.get("rate_limit_per_sec", 0)
+                            or p2p_hard.get("rate_limit_per_sec", 0)
+                            or 0
+                        ),
+                        "max_message_bytes": int(sec_raw.get("max_message_bytes", 0) or 0),
+                        "active_bans": int(sec_raw.get("active_bans", 0) or 0),
+                        "handshake_rejects": int(sec_raw.get("handshake_rejects", 0) or 0),
+                        "shape_rejects_total": int(sec_raw.get("shape_rejects_total", 0) or 0),
+                        "shape_rejects": dict(sec_raw.get("shape_rejects") or {}),
+                        "rate_limit_drops": int(sec_raw.get("rate_limit_drops", 0) or 0),
+                        "attestation_local_fail": int(
+                            sec_raw.get("attestation_local_fail", 0) or 0
+                        ),
+                        "ops_errors": dict(sec_raw.get("ops_errors") or {}),
+                    },
+                }
                 monolith_summary = {
                     "deployment_mode": getattr(cfg, "deployment_mode", "dev"),
                     "chain_id": cfg.chain_id,
@@ -2708,7 +2708,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     feat_errs["mempool_store"] = (
                         f"demoted:{mp_stats.get('demote_reason') or 'unknown'}"
                     )
-                self._json({
+                payload = ({
                     # Do not hard-code "running" while mesh is inconsistent, unprobed, or P2P is down.
                     "status": (
                         "degraded"
@@ -2949,6 +2949,12 @@ class RESTHandler(BaseHTTPRequestHandler):
                     "p2p_hardening": p2p_hard,
                     "libp2p": dict(p2p_hard.get("libp2p") or {}),
                 })
+                status_ms = (time.perf_counter() - _status_t0) * 1000.0
+                payload["status_handler_ms"] = round(status_ms, 1)
+                mc_status = self.__class__.metrics_collector
+                if mc_status is not None and hasattr(mc_status, "observe_status_ms"):
+                    mc_status.observe_status_ms(status_ms)
+                self._json(payload)
 
             elif path == "/tokenomics":
                 try:

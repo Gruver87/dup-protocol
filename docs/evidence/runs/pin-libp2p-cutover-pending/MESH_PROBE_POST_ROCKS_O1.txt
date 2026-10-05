@@ -1,0 +1,5 @@
+﻿checked_at: 2026-10-05T18:34:33.782674+00:00
+wave: Rocks O(1) honesty + topology_deferred + /metrics runtime stats
+probe: RESULT OK (h1051 peers=2)
+industrial_gate: OK
+soak: DEFERRED by operator — not claimed

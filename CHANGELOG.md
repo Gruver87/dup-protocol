@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin Rocks O(1) honesty cluster (live RPC/metrics must not prefix-scan growing CFs)
+
+- **`RocksChainStore`:** `get_latest_blocks` tip point-reads; `get_total_burned` via `prefix_last`; `count_transactions_by_address` / `count_address_transactions` and `count_proposer_audit` from meta counters (`addr_tx_counts_v1` / `proposer_counts_v1`, enabled on empty stores only; legacy volumes stay honest-unknown); `get_proposer_audit_log` height-walk; `get_proposer_stats` / `get_proposer_detail` from counters; `get_address_activity` uses `_max_indexed_tx_height`; `_rocks_runtime_core` + `get_rocks_runtime_stats` (no tx/account scan); reorg rolls counters back.
+- **Fix over Exp:** meta counter bumps are read-your-writes inside `atomic()` (batch overlay, owner-thread only) — Exp-style `_raw_get`+`_raw_put` lost increments when one address/proposer was bumped twice in one `RocksWriteBatch`.
+- **API:** `/metrics` prefers `get_rocks_runtime_stats`; `/health/ready` uses cheap tip probe (no `get_stats()`); `/status` no longer calls `p2p.get_topology()` (`topology_deferred`), adds `status_handler_ms`.
+- `HybridDatabase` delegates `count_address_transactions`, `count_proposer_audit`, `get_rocks_runtime_stats`. Units + `industrial_gate` needles. Long-Range untouched. **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** post-rebuild (h1051 peers=2; live `/status` `p2p_summary.topology_deferred=true`, `status_handler_ms≈8`); pack `MESH_PROBE_POST_ROCKS_O1.txt`. **Soak deferred.**
+
 ### Exp→pin tip/sync correctness (attestation echo + SyncEngine probes + parent FC)
 
 - **Attestation own-echo + fingerprint dedup:** drop own-validator gossip echo; 120s fingerprint cache; counters `attestation_echo_drops_total` / `attestation_dup_drops_total`.
