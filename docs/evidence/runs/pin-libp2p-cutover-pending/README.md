@@ -9,7 +9,7 @@
 - Quick mesh probe (`probe_prod_mesh.ps1 -Quick`) → **RESULT: OK** — see `probe_prod_mesh_quick.json` + `status_snapshot.jsonl` (peers=2, aligned tip, `libp2p.active` + `rust_backend`, honesty `ADR0020_experimental_libp2p_industrial_mesh`)
 - `industrial_gate.py` → **OK** (see `industrial_gate.json`; external-audit warnings expected)
 - Negative refuse notes: `NEGATIVE_REFUSE.txt`
-- **48h soak started** on pin libp2p mesh (`restart_soak_prod_mesh.ps1` → `logs/soak_48h_libp2p_industrial.log` / `logs/soak_report_48h_libp2p_industrial.json`). **Do not claim PASS** until that report shows `passed=true` and `hard_fails=0`
+- **48h soak restarted** 2026-10-05 21:11 tip `bd500c1` (`restart_soak_prod_mesh.ps1 -Hours 48 -IntervalSec 300` → `logs/soak_48h_libp2p_industrial.log` / `logs/soak_report_48h_libp2p_industrial.json`). First sample h1156 peers=2 aligned. See `SOAK_IN_PROGRESS.txt`. **Do not claim PASS** until that report shows `passed=true` and `hard_fails=0`. Prior stalled log archived locally (not PASS).
 - **NOT** public mainnet · **NOT** external audit
 - Do **not** cite Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`) as pin evidence
 - Freeze tag `v1.3.1339-tip-v2-industrial` and sealed TCP+TLS packs remain **historical** — unchanged

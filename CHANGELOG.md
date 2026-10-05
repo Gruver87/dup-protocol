@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Pin libp2p 48h soak restarted (IN PROGRESS — not PASS)
+
+- **Kickoff:** `2026-10-05T21:11:10+02:00` tip `bd500c1` — `restart_soak_prod_mesh.ps1 -Hours 48 -IntervalSec 300` → `logs/soak_48h_libp2p_industrial.log` / `logs/soak_report_48h_libp2p_industrial.json`.
+- Preflight **READY**; first sample mesh aligned h1156 peers=2; `hard_fails=0` so far.
+- Prior mid-day soak stalled (log gap / process death during rebuilds) archived as `logs/soak_48h_libp2p_industrial.stalled_20261005_211055.log` — **not** PASS.
+- **Do not claim soak PASS** until report has `passed=true` and `hard_fails=0`. Pack stamp: `docs/evidence/runs/pin-libp2p-cutover-pending/SOAK_IN_PROGRESS.txt`.
+
 ### Exp→pin ChainApplyQueue async wait (wrap_future)
 
 - **`_await_job`:** async submit awaits `asyncio.wrap_future` (not `to_thread(self.submit_*)`) so import flood cannot pin default-executor workers for `timeout_sec`.
