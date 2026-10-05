@@ -107,7 +107,10 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 | Gap | Why it is **not** proven yet | What would prove it |
 |-----|------------------------------|---------------------|
 | **Fresh 48h soak on honesty tip** | Historical tip-v2 pack is Aug 2026 **TCP+TLS**; honesty merge `adc8547` has units+gate only | Operator re-run soak with `hard_fails=0` pack on current HEAD |
-| **Pin libp2p mesh (ADR 0020)** | Code + mesh JSON cutover; **Quick probe PASS** packaged; **48h soak IN PROGRESS** (`logs/soak_48h_libp2p_industrial.log` / `soak_report_48h_libp2p_industrial.json`) — not PASS until `hard_fails=0` | `docs/evidence/runs/pin-libp2p-cutover-pending/`; suggested tag `v1.3.1340-libp2p-industrial-mesh` only after soak PASS |
+| **Pin libp2p mesh (ADR 0020)** | Code + mesh JSON cutover; **Quick probe PASS** packaged; **48h soak deferred** by operator (local log may still run — claim PASS only with `hard_fails=0`) | `docs/evidence/runs/pin-libp2p-cutover-pending/`; suggested tag `v1.3.1340-libp2p-industrial-mesh` only after soak PASS |
+| **STRICT P2P hardenings (post-0020)** | late_state_root + wire_probe_gate + coalesced roots + write bound + under-mesh soft-refuse; units + industrial_gate needles | Mesh Quick probe after image rebuild still required for L1 acceptance of this wave |
+| **ADR 0021 diligence (pin)** | `test_mempool_port` + gate needles + `verify_adr0021_phase1 --skip-mesh` PASS; no pin mempool 48h pack | Host evidence only |
+| **EVM depth labs (pin host)** | `verify_evm_depth_lab.ps1` **PASS** (`--skip-mesh`); COMPAT matrix on disk | Not EVM-only 48h; mesh optional `-WithMesh` |
 | **External audit** | README and `external_audit_tracker.py` checklist incomplete | Third-party audit report + tracker items closed |
 | **Bridge mainnet cutover** | Prod mesh runs with `bridge_enabled: false` by design | Audited L1 contracts + relayer SLOs per `docs/BRIDGE_L1_MAINNET.md`; decision recorded via `bridge_decision_off` step |
 | **Ceremony + secret rotation (operator cutover)** | Scripts proven; production hash/manifest pin is operator-owned | Operator runs pin + `-Force` rotation before cutover — see `docs/MAINNET_CUTOVER.md` |

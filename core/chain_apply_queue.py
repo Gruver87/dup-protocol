@@ -89,12 +89,24 @@ class ChainApplyQueue:
         self.wait_seconds_total = 0.0
         self.exec_seconds_total = 0.0
         self._depth_lock = threading.Lock()
+        self._in_flight = 0
         self._worker = threading.Thread(target=self._run, name=name, daemon=True)
         self._worker.start()
 
     @property
     def depth(self) -> int:
         return int(self._q.qsize())
+
+    @property
+    def busy(self) -> bool:
+        """True while a job is executing or queued.
+
+        ``qsize`` is 0 during ``_dispatch`` (item already taken). Wire probes
+        that start in that window race persist and return empty with live peers.
+        """
+        with self._depth_lock:
+            inflight = int(self._in_flight)
+        return inflight > 0 or self.depth > 0
 
     def stats(self) -> Dict[str, Any]:
         return {
@@ -110,6 +122,8 @@ class ChainApplyQueue:
             "maxsize": int(self.maxsize),
             "priority_lanes": True,
             "priority_order": "reorg>forge>add>import",
+            "busy": bool(self.busy),
+            "in_flight": int(self._in_flight),
         }
 
     def stop(self, join_timeout: float = 5.0) -> None:
@@ -242,6 +256,8 @@ class ChainApplyQueue:
                     job.future.set_result(("expired", None))
                 continue
             try:
+                with self._depth_lock:
+                    self._in_flight += 1
                 t0 = time.perf_counter()
                 result = self._dispatch(job)
                 self.exec_seconds_total += time.perf_counter() - t0
@@ -252,6 +268,9 @@ class ChainApplyQueue:
                 self.error_total += 1
                 if not job.future.done():
                     job.future.set_exception(exc)
+            finally:
+                with self._depth_lock:
+                    self._in_flight = max(0, int(self._in_flight) - 1)
 
     def _dispatch(self, job: _Job) -> Any:
         bc = self.blockchain

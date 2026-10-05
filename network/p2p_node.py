@@ -19,6 +19,7 @@ import time
 import threading
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from typing import Dict, List, Optional, Callable, Any, Tuple
 
 from network.p2p_tls import (
@@ -43,6 +44,29 @@ logger = logging.getLogger("P2P")
 
 # Fail closed on oversized wire payloads (DoS hardening).
 DEFAULT_MAX_P2P_LINE_BYTES = 2 * 1024 * 1024
+
+
+def should_defer_tip_safety_skip_ahead(
+    *,
+    apply_busy: bool,
+    candidate_height: int,
+    tip_height: int,
+) -> bool:
+    """True when skip-ahead is the local forge pipeline, not a long-range jump.
+
+    Miner can have tip+1 in the apply queue and already gossip tip+2. Tip-safety
+    seeing committed tip then refuses tip_unknown_parent. Import still runs on
+    the serial queue and ``_validate_block_structure`` rejects a real gap.
+    Only defer exactly tip+2 while the queue is busy.
+    """
+    if not apply_busy:
+        return False
+    try:
+        cand = int(candidate_height)
+        tip = int(tip_height)
+    except (TypeError, ValueError):
+        return False
+    return cand == tip + 2
 
 
 class WireReject:
@@ -444,19 +468,71 @@ class PeerConnection:
         with lock:
             return fn(*args, **kwargs)
 
+    def _native_write_timeout_sec(self) -> float:
+        """Bound a native/TCP write so `_native_io_lock` cannot starve recv.
+
+        A 30s write hold deadlocks both sides: we cannot read, the peer's
+        send buffer fills, their write also blocks. Probe budget is 6.5s.
+        """
+        return max(0.4, min(0.75, float(self._drain_timeout_sec or 5.0)))
+
+    def _native_write_bound(self, fn, *args):
+        """Set SO_SNDTIMEO then invoke `fn`. Caller must hold `_native_io_lock`.
+
+        asyncio.wait_for cannot cancel a native write thread. Without a socket
+        timeout the thread keeps the IO lock for 30s after wait_for fires,
+        and state_root sits behind a deadlocked TCP window. The full I/O
+        timeout is restored afterwards so a later blocking read is not left on
+        the short write bound (``set_timeout_ms`` also sets the read side).
+        """
+        conn = self._native_conn
+        ms = max(1, int(self._native_write_timeout_sec() * 1000))
+        full_ms = max(1, int(getattr(self, "_native_io_timeout_ms", 30000) or 30000))
+        bound = False
+        if conn is not None and hasattr(conn, "set_timeout_ms"):
+            try:
+                conn.set_timeout_ms(ms)
+                bound = True
+            except Exception as exc:
+                logger.warning(
+                    "[P2P] set_timeout_ms(write bound) failed to %s: %s",
+                    self.peer_id or self.host,
+                    exc,
+                )
+        try:
+            return fn(*args)
+        finally:
+            if bound and conn is not None:
+                try:
+                    conn.set_timeout_ms(full_ms)
+                except Exception as exc:
+                    logger.warning(
+                        "[P2P] restore native I/O timeout failed to %s: %s",
+                        self.peer_id or self.host,
+                        exc,
+                    )
+
     async def _write_payload(self, payload: bytes) -> None:
         """Write framed bytes via native TCP conn or asyncio writer."""
-        write_timeout = max(30.0, float(self._drain_timeout_sec or 5.0))
         if self._native_conn is not None:
             await asyncio.wait_for(
-                asyncio.to_thread(self._native_io_call, self._native_conn.write, payload),
-                timeout=write_timeout,
+                asyncio.to_thread(
+                    self._native_io_call,
+                    self._native_write_bound,
+                    self._native_conn.write,
+                    payload,
+                ),
+                timeout=self._native_write_timeout_sec() + 0.5,
             )
             return
         if self.writer is None:
             raise OSError("p2p_no_writer")
+        # asyncio writer has no shared native IO lock; keep the legacy drain bound.
         self.writer.write(payload)
-        await asyncio.wait_for(self.writer.drain(), timeout=write_timeout)
+        await asyncio.wait_for(
+            self.writer.drain(),
+            timeout=max(30.0, float(self._drain_timeout_sec or 5.0)),
+        )
 
     def _invoke_libp2p_hook(
         self, cb: Optional[Callable[[], None]], *, name: str
@@ -576,13 +652,14 @@ class PeerConnection:
             out = await asyncio.wait_for(
                 asyncio.to_thread(
                     self._native_io_call,
+                    self._native_write_bound,
                     self._native_conn.write_message,
                     str(msg_type or ""),
                     data_json,
                     list(ALLOWED_WIRE_TYPES),
                     "auto",
                 ),
-                timeout=self._drain_timeout_sec,
+                timeout=self._native_write_timeout_sec() + 0.5,
             )
             if not isinstance(out, dict) or not out.get("ok"):
                 reason = ""
@@ -641,10 +718,11 @@ class PeerConnection:
                 out = await asyncio.wait_for(
                     asyncio.to_thread(
                         self._native_io_call,
+                        self._native_write_bound,
                         self._native_conn.write_payloads,
                         [p for _i, p in payloads],
                     ),
-                    timeout=max(30.0, float(self._drain_timeout_sec or 5.0)),
+                    timeout=self._native_write_timeout_sec() + 0.5,
                 )
                 ok = isinstance(out, dict) and bool(out.get("ok"))
                 written = int(out.get("written") or out.get("count") or 0) if isinstance(out, dict) else 0
@@ -676,11 +754,12 @@ class PeerConnection:
             out = await asyncio.wait_for(
                 asyncio.to_thread(
                     self._native_io_call,
+                    self._native_write_bound,
                     self._native_conn.write_messages,
                     items,
                     list(ALLOWED_WIRE_TYPES),
                 ),
-                timeout=self._drain_timeout_sec,
+                timeout=self._native_write_timeout_sec() + 0.5,
             )
             if isinstance(out, dict) and out.get("ok"):
                 return [True] * len(batch)
@@ -1877,6 +1956,17 @@ class P2PNode:
         # One solicit waiter slot per peer — serialize arm/wait to avoid
         # get_block vs state_root races overwriting each other (empty genesis download).
         self._solicit_peer_locks: Dict[str, asyncio.Lock] = {}
+        # Late state_root replies (waiter already timed out) — stash, not strike.
+        self._state_root_late: Dict[str, tuple] = {}
+        self._state_root_timeout_at: Dict[str, float] = {}
+        self._state_root_late_accepts_total: int = 0
+        # Coalesced state_root wire probe (single in-flight gather) + post-forge hold.
+        self._state_root_probe_task: Optional[asyncio.Task] = None
+        self._state_root_probe_lock: Optional[asyncio.Lock] = None
+        self._wire_probe_hold_until: float = 0.0
+        self._last_local_forge_height: int = 0
+        # PathA serialization across peers (lazy asyncio.Lock).
+        self._catch_up_apply_lock: Optional[asyncio.Lock] = None
         # Catch-up pure policy + orchestrator gates (ADR 0003).
         from sync.catchup import CatchUpOrchestrator, CatchUpPolicy
 
@@ -2090,6 +2180,26 @@ class P2PNode:
         """
         shadow = getattr(self, "tip_safety_shadow", None)
         if shadow is None:
+            return True
+        q = getattr(self, "apply_queue", None)
+        try:
+            cand_h = int((block_data or {}).get("height") or 0)
+        except (TypeError, ValueError):
+            cand_h = 0
+        try:
+            tip_h = int(self.blockchain.get_height() or 0) if self.blockchain else 0
+        except (TypeError, ValueError, AttributeError):
+            tip_h = 0
+        if should_defer_tip_safety_skip_ahead(
+            apply_busy=bool(q is not None and getattr(q, "busy", False)),
+            candidate_height=cand_h,
+            tip_height=tip_h,
+        ):
+            logger.info(
+                "[P2P] tip_safety defer skip-ahead height=%s tip=%s (apply_queue busy)",
+                cand_h,
+                tip_h,
+            )
             return True
         decision = None
         try:
@@ -3390,10 +3500,23 @@ class P2PNode:
                     "rate_limited",
                     # Catch-up / tip races under partial mesh — drop tip, do not ban.
                     "tip_unknown_parent",
+                    # Soft ownership bind races (startup / catch-up): refuse the
+                    # claim, allow redial when tips align. Hard-ban here + mesh_min
+                    # stalls the hub (peers=1 under mesh_min=2).
+                    "handshake_head_height_mismatch",
+                    "status_head_height_mismatch",
+                    # Tip-race state_root solicit: local tip advances between arm and
+                    # reply → false local_root/head mismatch. Drop reply, do not ban
+                    # (live lab: follower banned miner for 300s on this path).
+                    "bad_state_root_response_local_root",
+                    "bad_state_root_response_head",
                     # libp2p Noise reconnect can re-send the Absolute handshake into
                     # a live Absolute epoch (session lifetime mismatch). Soft-refuse
                     # only — TCP+TLS still hard-bans mid_session_handshake.
                     "mid_session_handshake_libp2p",
+                    # Plain EOF / reset on reconnect — same policy as p2p_transport_io:.
+                    # Counting recv_error toward 300s ban self-isolates the mesh.
+                    "recv_error",
                 }
             )
             self._SOFT_REFUSE_STRIKE_REASONS = soft
@@ -3408,13 +3531,32 @@ class P2PNode:
             if bump is not None:
                 try:
                     bump(why or "unknown")
-                except Exception:
-                    pass
-            logger.info(
-                "[P2P] soft-refuse %s from %s (no ban; mesh-safe)",
-                why[:80],
-                (getattr(peer, "peer_id", None) or "?")[:16],
-            )
+                except Exception as exc:
+                    logger.debug("[P2P] soft-refuse shape counter failed: %s", exc)
+            # Debounce INFO spam on libp2p mid-session HS reconnect storms —
+            # host contention + reconnect loops flooded logs and starved /status.
+            peer_key = str(getattr(peer, "peer_id", None) or "?")[:32]
+            why_key = str(why or "unknown")[:80]
+            now = time.time()
+            bucket = getattr(self, "_soft_refuse_log_at", None)
+            if not isinstance(bucket, dict):
+                bucket = {}
+                self._soft_refuse_log_at = bucket
+            stamp_key = (why_key, peer_key)
+            last = float(bucket.get(stamp_key, 0.0) or 0.0)
+            if (now - last) >= 30.0:
+                bucket[stamp_key] = now
+                logger.info(
+                    "[P2P] soft-refuse %s from %s (no ban; mesh-safe)",
+                    why_key,
+                    peer_key[:16],
+                )
+            else:
+                logger.debug(
+                    "[P2P] soft-refuse %s from %s (debounced)",
+                    why_key,
+                    peer_key[:16],
+                )
             return False
         return self.peer_manager.strike(peer, reason)
 
@@ -3636,6 +3778,20 @@ class P2PNode:
             bump=self.bump_counter,
         )
         if waiter_result.consumed:
+            # Timed-out waiter can still occupy the hub until `finally: clear()`.
+            # fulfill_or_reject consumes it as late_state_root; stash the payload
+            # so the grace window in `_wait_peer_response` can still score the wire.
+            if (
+                str(msg_type or "") == MSG_STATE_ROOT_RESPONSE
+                and str(getattr(waiter_result, "detail", "") or "") == "late_state_root"
+            ):
+                self._stash_late_state_root(peer, data)
+            return
+        # Waiter already popped by hub.timeout(): reply arrived after the deadline.
+        # Stash (bounded by recent timeout mark) instead of unsolicited strike.
+        if str(msg_type or "") == MSG_STATE_ROOT_RESPONSE and self._stash_late_state_root(
+            peer, data
+        ):
             return
 
         # ADR 0002 Step D: application type routing via Handler Registry.
@@ -4948,6 +5104,12 @@ class P2PNode:
             self._peer_sync_locks[peer_id] = asyncio.Lock()
         return self._peer_sync_locks[peer_id]
 
+    def _global_catch_up_lock(self) -> asyncio.Lock:
+        """Serialize PathA across peers so a failed duplicate cannot reorg a live import."""
+        if self._catch_up_apply_lock is None:
+            self._catch_up_apply_lock = asyncio.Lock()
+        return self._catch_up_apply_lock
+
     def _local_known_head_height_mismatch(
         self, block_hash: str, block_h: int
     ) -> bool:
@@ -5816,6 +5978,67 @@ class P2PNode:
             return False
         return bool(hub.mempool_solicit_armed(pid))
 
+    def _peer_solicit_keys(self, peer: PeerConnection) -> List[str]:
+        """Node id plus rust-libp2p PeerId (late stash may be keyed on either)."""
+        keys: List[str] = []
+        pid = str(getattr(peer, "peer_id", "") or "")
+        if pid:
+            keys.append(pid)
+        lp = str(getattr(peer, "_libp2p_peer_id", "") or "")
+        if lp and lp not in keys:
+            keys.append(lp)
+        return keys
+
+    def _stash_late_state_root(self, peer: PeerConnection, data: Any) -> bool:
+        """Keep a just-timed-out state_root payload instead of unsolicited strike.
+
+        Waiter is already popped on asyncio timeout; the reply is often already
+        in the native buffer (miner HOL). Stash for the 400ms grace in
+        ``_wait_peer_response`` so STRICT HTTP 8s can still score the wire.
+        Only accepted within 2s of a recorded state_root waiter timeout for the
+        same peer — never an open-ended unsolicited accept path.
+        """
+        keys = self._peer_solicit_keys(peer)
+        if not keys or not isinstance(data, dict):
+            return False
+        now = time.monotonic()
+        timeout_at = getattr(self, "_state_root_timeout_at", {}) or {}
+        marked = 0.0
+        for k in keys:
+            marked = max(marked, float(timeout_at.get(k, 0.0) or 0.0))
+        if marked <= 0.0 or (now - marked) > 2.0:
+            return False
+        late = getattr(self, "_state_root_late", None)
+        if late is None:
+            self._state_root_late = {}
+            late = self._state_root_late
+        for k in [
+            key for key, item in late.items() if (now - float(item[1] or 0.0)) >= 2.0
+        ]:
+            late.pop(k, None)
+        for k in keys:
+            late[k] = (data, now)
+        self._state_root_late_accepts_total = int(
+            getattr(self, "_state_root_late_accepts_total", 0) or 0
+        ) + 1
+        return True
+
+    def _consume_late_state_root(self, peer: PeerConnection) -> Optional[Dict]:
+        """Use a stashed late reply instead of a second RTT (retry)."""
+        keys = self._peer_solicit_keys(peer)
+        if not keys:
+            return None
+        late_map = getattr(self, "_state_root_late", None) or {}
+        found: Optional[Dict] = None
+        for k in keys:
+            late = late_map.pop(k, None)
+            if not late:
+                continue
+            data, ts = late
+            if isinstance(data, dict) and (time.monotonic() - float(ts or 0.0)) < 2.0:
+                found = data
+        return found
+
     def _solicit_lock_for(self, peer_id: str) -> asyncio.Lock:
         locks = getattr(self, "_solicit_peer_locks", None)
         if locks is None:
@@ -5841,17 +6064,46 @@ class P2PNode:
             raise RuntimeError("solicit_hub required for peer response wait")
         loop = asyncio.get_running_loop()
         fut = loop.create_future()
+        want_root = MSG_STATE_ROOT_RESPONSE in tuple(expected_types or ())
         async with self._solicit_lock_for(peer.peer_id):
             hub.arm(peer.peer_id, expected_types, fut, request_ctx)
             try:
+                sent = True
                 if presend:
-                    await presend()
+                    sent = await presend()
+                if sent is False:
+                    # Response may already have landed while send() awaited the
+                    # write. Do not time out a completed waiter.
+                    if fut.done() and not fut.cancelled():
+                        return fut.result()
+                    late = self._consume_late_state_root(peer) if want_root else None
+                    if late:
+                        return {"type": MSG_STATE_ROOT_RESPONSE, "data": late}
+                    hub.timeout(peer.peer_id, result=None)
+                    return None
                 # shield: transport timeout must not cancel the Future so the hub
                 # can fulfill it with None via timeout() (owned waiter semantics).
                 return await asyncio.wait_for(asyncio.shield(fut), timeout=timeout)
             except asyncio.TimeoutError:
+                if want_root:
+                    now = time.monotonic()
+                    timeout_at = self._state_root_timeout_at
+                    for k in self._peer_solicit_keys(peer):
+                        timeout_at[k] = now
+                    # Bound the mark tables (departed peers must not leak keys).
+                    for k in [
+                        key for key, ts in timeout_at.items() if (now - float(ts)) > 60.0
+                    ]:
+                        timeout_at.pop(k, None)
                 # Hub-side timeout: fulfill future (if still pending) + drop waiter.
                 hub.timeout(peer.peer_id, result=None)
+                if want_root:
+                    # Reply is often already in the native buffer (miner HOL):
+                    # `_handle_message` stashes it once the waiter is gone.
+                    await asyncio.sleep(0.4)
+                    late = self._consume_late_state_root(peer)
+                    if late:
+                        return {"type": MSG_STATE_ROOT_RESPONSE, "data": late}
                 return None
             finally:
                 hub.clear(peer.peer_id)
@@ -5962,7 +6214,10 @@ class P2PNode:
         # Run synchronous domain loop in a dedicated thread so the asyncio
         # event loop stays responsive; fetch/probe adapters bridge back via
         # run_coroutine_threadsafe.
-        outcome = await asyncio.to_thread(_svc.run_ahead, _peer_view, _cfg)
+        # Serialize PathA across peers: two ahead peers must not interleave
+        # import(#N) + reorg(#N-1) on the serial apply queue.
+        async with self._global_catch_up_lock():
+            outcome = await asyncio.to_thread(_svc.run_ahead, _peer_view, _cfg)
 
         reached_target = outcome.reached_target
         if not reached_target and outcome.status is not CatchUpStatus.SKIPPED:
@@ -6394,6 +6649,128 @@ class P2PNode:
             ctx["expected_state_root"] = str(blk.get("state_root") or "")
         return ctx
 
+    def note_local_forge(self, hold_sec: float = 1.0, height: int = 0) -> None:
+        """Defer state_root solicit until NEW_BLOCK is on the wire.
+
+        A probe started right after a local forge races the broadcast / apply
+        pipeline and can return empty with live peers. Delay, do not skip.
+        ``height`` is the just-forged tip (monotonic record only).
+        """
+        hold = max(0.0, min(2.0, float(hold_sec)))
+        self._wire_probe_hold_until = time.monotonic() + hold
+        try:
+            h = int(height or 0)
+        except (TypeError, ValueError):
+            h = 0
+        if h > 0:
+            prev = int(getattr(self, "_last_local_forge_height", 0) or 0)
+            if h > prev:
+                self._last_local_forge_height = h
+
+    async def _wait_wire_probe_gate(self, timeout: float = 1.2) -> float:
+        """Wait until apply-queue idle and post-forge hold expires.
+
+        Bounded so HTTP STRICT 8s still has budget for the 6.5s RTT.
+        """
+        t0 = time.monotonic()
+        deadline = t0 + max(0.0, float(timeout))
+        while time.monotonic() < deadline:
+            q = getattr(self, "apply_queue", None)
+            if q is not None:
+                maxsize = int(getattr(q, "maxsize", 0) or 0)
+                depth = int(getattr(q, "depth", 0) or 0)
+                # Saturated apply queue: refuse to stall HTTP / harness (15s /status).
+                if maxsize > 0 and depth >= maxsize:
+                    break
+            apply_busy = bool(q is not None and getattr(q, "busy", False))
+            hold = float(getattr(self, "_wire_probe_hold_until", 0.0) or 0.0)
+            if not apply_busy and hold <= time.monotonic():
+                break
+            await asyncio.sleep(0.05)
+        return time.monotonic() - t0
+
+    def _state_root_probe_lock_obj(self) -> asyncio.Lock:
+        lock = getattr(self, "_state_root_probe_lock", None)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._state_root_probe_lock = lock
+        return lock
+
+    async def _coalesced_peer_state_roots(self) -> List[Dict]:
+        """Single in-flight state_root gather; concurrent waiters join it."""
+        # Isolated node: return immediately. Joining a stale flight after the
+        # last peer dropped made HTTP 8s timeout (peer_probe_ok).
+        if not self.peers:
+            return []
+        async with self._state_root_probe_lock_obj():
+            if not self.peers:
+                return []
+            existing = getattr(self, "_state_root_probe_task", None)
+            if existing is not None and not existing.done():
+                task = existing
+            else:
+                # Shared flight must finish inside the HTTP 8s STRICT budget:
+                # gate 1.2s + 6.5s wait + 0.4s grace stays under 8s.
+                # Coalesced state_root flight is one RTT (retry=True doubles RTT
+                # past the quick/STRICT budget); late stash covers HOL past the
+                # waiter.
+                await self._wait_wire_probe_gate(1.2)
+                task = asyncio.create_task(
+                    self.request_peer_state_roots(
+                        per_peer_timeout=6.5,
+                        retry=False,
+                    )
+                )
+                self._state_root_probe_task = task
+
+                def _cleanup(_t, owner=task):
+                    if getattr(self, "_state_root_probe_task", None) is owner:
+                        self._state_root_probe_task = None
+                    self._apply_completed_wire_probe(_t)
+
+                task.add_done_callback(_cleanup)
+        return await task
+
+    def _apply_completed_wire_probe(self, task: asyncio.Task) -> None:
+        """Feed a finished coalesced flight into ConsistencyService.
+
+        HTTP/sync waiters that hit future.result timeout must not leave
+        topology_healthy false after the wire actually answered.
+        """
+        if task.cancelled():
+            return
+        try:
+            roots = task.result()
+        except Exception as exc:
+            logger.warning("[P2P] coalesced wire probe task failed: %s", exc)
+            return
+        if not isinstance(roots, list) or not roots:
+            return
+        eng = getattr(self, "sync_engine", None)
+        if eng is None or not hasattr(eng, "consistency"):
+            return
+        try:
+            from sync.consistency import WireProbeResult
+
+            bc = self.blockchain
+            local_root = str(bc.get_state_root() or "")
+            local_height = int(bc.get_height() or 0)
+            peers = eng._peer_views() if hasattr(eng, "_peer_views") else ()
+            probe = WireProbeResult.succeeded(wire_roots=tuple(roots))
+            eng.consistency.apply_probe_evaluation(
+                peers=peers,
+                local_height=local_height,
+                local_root=local_root,
+                probe=probe,
+            )
+            if hasattr(eng, "_set_state_consistent"):
+                eng._set_state_consistent(
+                    bool(eng.consistency.snapshot().consistent)
+                )
+            eng._wire_probe_fail_ts = 0.0
+        except Exception as exc:
+            logger.warning("[P2P] apply completed wire probe suppressed: %s", exc)
+
     def _state_root_response_for_height(self, req_h: int) -> Optional[Dict]:
         """v1.3.129: build honest state_root_response for a requested height.
 
@@ -6444,6 +6821,11 @@ class P2PNode:
         retry: bool = True,
     ) -> Optional[Dict]:
         """Request state_root at height from a single peer."""
+        # Previous flight timed out; the reply landed after hub.clear() and
+        # was stashed. Use it before another RTT (stash TTL is 2s, same burst).
+        stashed = self._consume_late_state_root(peer)
+        if stashed:
+            return stashed
         h = height if height is not None else self.blockchain.get_height()
         wait_s = max(0.4, float(timeout))
         msg = await self._wait_peer_response(
@@ -6453,15 +6835,21 @@ class P2PNode:
             presend=lambda: peer.send(MSG_STATE_ROOT_REQUEST, {"height": h}),
             request_ctx=self._state_root_request_ctx(int(h)),
         )
-        if (not msg or msg.get("type") != MSG_STATE_ROOT_RESPONSE) and retry:
-            # One retry — first attempt often races attestation/tip flood.
-            msg = await self._wait_peer_response(
-                peer,
-                (MSG_STATE_ROOT_RESPONSE,),
-                timeout=wait_s,
-                presend=lambda: peer.send(MSG_STATE_ROOT_REQUEST, {"height": h}),
-                request_ctx=self._state_root_request_ctx(int(h)),
-            )
+        if not msg or msg.get("type") != MSG_STATE_ROOT_RESPONSE:
+            # Late stash even when retry=False — retry used to be the only
+            # consume path, so one-RTT flights dropped HOL replies.
+            late = self._consume_late_state_root(peer)
+            if late:
+                return late
+            if retry:
+                # One retry — first attempt often races attestation/tip flood.
+                msg = await self._wait_peer_response(
+                    peer,
+                    (MSG_STATE_ROOT_RESPONSE,),
+                    timeout=wait_s,
+                    presend=lambda: peer.send(MSG_STATE_ROOT_REQUEST, {"height": h}),
+                    request_ctx=self._state_root_request_ctx(int(h)),
+                )
         if not msg or msg.get("type") != MSG_STATE_ROOT_RESPONSE:
             return None
         data = msg.get("data")
@@ -6492,33 +6880,57 @@ class P2PNode:
 
         raw = await asyncio.gather(*(_one(p) for p in peers), return_exceptions=True)
         out: List[Dict] = []
+        seen: set = set()
         for r in raw:
             if isinstance(r, Exception):
                 self._peer_sync_fail += 1
                 logger.warning("[P2P] state_root peer gather failed: %s", r)
                 continue
             if isinstance(r, dict):
+                pid = str(r.get("peer_id") or "")
+                if pid:
+                    seen.add(pid)
                 out.append(r)
+        if len(out) < len(peers):
+            # Miner HOL: reply often lands after hub.clear(). Drain once more
+            # inside the HTTP 8s STRICT budget (gate 1.2s + 6.5s wait + 0.4s
+            # grace + 0.4s).
+            await asyncio.sleep(0.4)
+            for peer in peers:
+                pid = str(getattr(peer, "peer_id", "") or "")
+                if not pid or pid in seen:
+                    continue
+                late = self._consume_late_state_root(peer)
+                if late:
+                    late["peer_id"] = pid
+                    out.append(late)
         return out
 
     def request_peer_state_roots_sync(self, timeout: float = 15) -> Optional[List[Dict]]:
         if not self._loop or not self._running:
             return []
+        if not self.peers:
+            return []
         # Hard ceiling: callers (quick harness /health/ready) pass short timeouts.
         # Never inflate past the requested budget — that blocked HTTP handlers for
         # ~70s/peer and caused CI "harness: timed out" under a 60s urllib limit.
         budget = max(0.5, float(timeout))
-        # Solicits run in parallel — each peer may use nearly the full budget.
-        per_peer = min(30.0, max(0.4, budget * 0.85))
-        retry = (2.0 * per_peer) <= budget
         future = asyncio.run_coroutine_threadsafe(
-            self.request_peer_state_roots(per_peer_timeout=per_peer, retry=retry),
+            self._coalesced_peer_state_roots(),
             self._loop,
         )
         try:
             return future.result(timeout=budget)
+        except (TimeoutError, FutureTimeoutError) as exc:
+            # Do not cancel: HTTP waiters share one flight with sync_state.
+            # Cancelling the 8s harness aborted the background probe and
+            # left _state_consistent sticky-false on an aligned mesh.
+            logger.warning(
+                "[P2P] state_root wire probe waiter timeout (inflight continues): %s",
+                exc,
+            )
+            return None
         except Exception as exc:
-            future.cancel()
             logger.warning("[P2P] state_root wire probe timeout/error: %s", exc)
             return None
 
@@ -7112,7 +7524,18 @@ class P2PNode:
                     if peer.height > our_height:
                         self._schedule_sync(peer)
                 target_peers = max(1, int(getattr(self.config, "testnet_expected_peers", 1) or 1))
-                if len(self.peers) < target_peers:
+                mesh_min = int(getattr(self.config, "mesh_min_peers_before_mine", 0) or 0)
+                mode = str(getattr(self.config, "deployment_mode", "dev") or "dev").lower()
+                use_mesh_min = mode in ("prod", "production", "staging")
+                need = max(target_peers, mesh_min if use_mesh_min else 0)
+                if len(self.peers) < need:
+                    # under_mesh soak WARN (evm48pass1 peers=1): re-dial bootstrap
+                    # aggressively, not only known_addrs drip.
+                    try:
+                        await self.reconnect_known_peers()
+                    except Exception as exc:
+                        self._peer_connect_task_fail += 1
+                        logger.warning("[P2P] catch-up reconnect_known_peers: %s", exc)
                     for addr in list(self._known_addrs):
                         parts = addr.rsplit(":", 1)
                         if len(parts) == 2:
@@ -7605,6 +8028,9 @@ class P2PNode:
             ),
             "state_root_outbound_refuse_total": int(
                 getattr(self, "_state_root_outbound_refuse_total", 0) or 0
+            ),
+            "state_root_late_accepts_total": int(
+                getattr(self, "_state_root_late_accepts_total", 0) or 0
             ),
             "discovery_dial_rejects_total": int(
                 getattr(self, "_discovery_dial_rejects_total", 0) or 0

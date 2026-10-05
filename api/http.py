@@ -1492,7 +1492,14 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
             tag = params[0] if params else "latest"
             full_tx = params[1] if len(params) > 1 else False
             blk = _resolve_block_by_tag(bc, tag)
-            return _format_block(blk, full_tx)
+            q = self.__class__.query_facade or getattr(bc, "query_facade", None)
+            return _format_block(
+                blk,
+                full_tx,
+                query=q,
+                bc=bc,
+                gas_limit=getattr(cfg, "evm_gas_limit", None),
+            )
 
         if method == "eth_getBlockByHash":
             block_hash = params[0] if params else ""
@@ -1503,7 +1510,13 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
             else:
                 blk = None
             full_tx = params[1] if len(params) > 1 else False
-            return _format_block(blk, full_tx)
+            return _format_block(
+                blk,
+                full_tx,
+                query=q,
+                bc=bc,
+                gas_limit=getattr(cfg, "evm_gas_limit", None),
+            )
 
         # ── Аккаунты ──────────────────────────────────────────────────────
         if method == "eth_getBalance":

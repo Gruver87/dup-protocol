@@ -111,6 +111,8 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         "abs_state_consistent",
         "abs_sync_wire_probe_ok",
         "abs_sync_wire_probe_probed",
+        "abs_p2p_under_mesh",
+        "abs_p2p_sync_status",
     ):
         if needle not in metrics_src:
             errors.append(f"metrics.py missing Prometheus series: {needle}")
@@ -144,6 +146,8 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         "abs_rocksdb_block_cache_mb",
         "abs_state_consistent",
         "abs_sync_wire_probe_ok",
+        "abs_p2p_under_mesh",
+        "AbsoluteP2PUnderMesh",
     ):
         if needle not in alerts_src:
             errors.append(f"prometheus alerts.yml missing rule surface: {needle}")
@@ -1687,11 +1691,47 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             ):
                 if needle not in mk_txt:
                     errors.append(f"mempool_kernel.rs missing {needle}")
+        if not (ROOT / "docs" / "adr" / "0021-mempool-validation-rust-phases.md").is_file():
+            errors.append("ADR 0021 mempool-validation-rust-phases missing")
+        mempool_ports = ROOT / "blockchain" / "ports.py"
+        if not mempool_ports.is_file():
+            errors.append("blockchain/ports.py MempoolPort missing (ADR 0021 phase-0)")
+        elif "class MempoolPort" not in mempool_ports.read_text(encoding="utf-8"):
+            errors.append("blockchain/ports.py must define MempoolPort")
+        tx_ports = ROOT / "core" / "components" / "ports.py"
+        if not tx_ports.is_file() or "class TxPipelinePort" not in tx_ports.read_text(
+            encoding="utf-8"
+        ):
+            errors.append("core/components/ports.py TxPipelinePort missing (ADR 0021)")
+        ms_rs = ROOT / "native" / "abs_native" / "src" / "mempool_store.rs"
+        if not ms_rs.is_file():
+            errors.append("mempool_store.rs missing (ADR 0021 phase-2)")
+        else:
+            ms_txt = ms_rs.read_text(encoding="utf-8", errors="replace")
+            for needle in (
+                "struct MempoolStore",
+                "fn insert",
+                "fn get_sorted",
+                "cleanup_cheapest_10pct",
+                "fee_satoshi",
+                "min_fee_satoshi",
+            ):
+                if needle not in ms_txt:
+                    errors.append(f"mempool_store.rs missing {needle}")
+        mempool_py_adr = (ROOT / "blockchain" / "mempool.py").read_text(
+            encoding="utf-8", errors="replace"
+        )
+        if "create_mempool_store" not in mempool_py_adr:
+            errors.append("blockchain/mempool.py must wire create_mempool_store (ADR 0021 phase-2)")
+        if "store_backend" not in mempool_py_adr:
+            errors.append("mempool get_stats must expose store_backend (ADR 0021 phase-2)")
         native_py_adr = (ROOT / "crypto" / "native.py").read_text(
             encoding="utf-8", errors="replace"
         )
         if "def mempool_validate_post_sig" not in native_py_adr:
             errors.append("crypto/native.py must export mempool_validate_post_sig (ADR 0021)")
+        if "def create_mempool_store" not in native_py_adr:
+            errors.append("crypto/native.py must export create_mempool_store (ADR 0021 phase-2)")
         if "def mempool_admit_evm_deploy" not in native_py_adr:
             errors.append("crypto/native.py must export mempool_admit_evm_deploy (ADR 0021 phase-3)")
         caps_py = (ROOT / "runtime" / "native_capabilities.py").read_text(
@@ -1699,6 +1739,8 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         )
         if 'MEMPOOL_KERNEL = "mempool_kernel"' not in caps_py:
             errors.append("NativeFamily.MEMPOOL_KERNEL missing (ADR 0021 / ADR 0009)")
+        if 'MEMPOOL_STORE = "mempool_store"' not in caps_py:
+            errors.append("NativeFamily.MEMPOOL_STORE missing (ADR 0021 phase-2 / ADR 0009)")
         pipe_py = (ROOT / "core" / "components" / "tx_pipeline.py").read_text(
             encoding="utf-8", errors="replace"
         )
@@ -1711,11 +1753,19 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("ADR 0021 phase-1 golden fixtures missing")
         if not (ROOT / "tests" / "unit" / "test_adr0021_phase1_fixtures.py").is_file():
             errors.append("test_adr0021_phase1_fixtures.py missing")
+        if not (ROOT / "tests" / "unit" / "test_adr0021_phase2_store.py").is_file():
+            errors.append("test_adr0021_phase2_store.py missing (ADR 0021 phase-2)")
+        if not (ROOT / "tests" / "unit" / "test_mempool_port.py").is_file():
+            errors.append("test_mempool_port.py missing (ADR 0021 phase-0)")
+        if not (ROOT / "scripts" / "verify_adr0021_phase1.py").is_file():
+            errors.append("scripts/verify_adr0021_phase1.py missing (operator self-check)")
         lib_rs_txt = (ROOT / "native" / "abs_native" / "src" / "lib.rs").read_text(
             encoding="utf-8", errors="replace"
         )
         if "mempool_kernel" not in lib_rs_txt:
             errors.append("lib.rs must register mempool_kernel module")
+        if "mempool_store" not in lib_rs_txt:
+            errors.append("lib.rs must register mempool_store module (ADR 0021 phase-2)")
         amt_rs = (ROOT / "native" / "abs_native" / "src" / "amount.rs").read_text(
             encoding="utf-8", errors="replace"
         )
@@ -3222,7 +3272,25 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("p2p_node must expose _state_root_request_ctx (v1.3.135)")
         if "bad_state_root_response_local_root" not in solicit_surface:
             errors.append(
-                "p2p_node must strike bad_state_root_response_local_root (v1.3.135)"
+                "p2p_node must surface bad_state_root_response_local_root (v1.3.135)"
+            )
+        if "Tip-race state_root solicit" not in p2p_py:
+            errors.append(
+                "P2P soft-refuse must include bad_state_root_response_local_root "
+                "(tip-race must not 300s-ban the miner)"
+            )
+        if "Soft ownership bind races" not in p2p_py or "Counting recv_error toward 300s ban" not in p2p_py:
+            errors.append(
+                "P2P soft-refuse must include handshake_head_height_mismatch and recv_error "
+                "(mesh_min>=2 must not self-ban on tip/EOF races)"
+            )
+        if "under_mesh soak WARN" not in p2p_py:
+            errors.append(
+                "p2p catch-up must reconnect_known_peers when under mesh_min (evm48 soft)"
+            )
+        if "mid_session_handshake_libp2p" not in p2p_py:
+            errors.append(
+                "libp2p mid-session Absolute handshake must soft-refuse (no 300s soak ban)"
             )
         if "native_handshake_height_cap" not in p2p_py:
             errors.append("p2p_node must advertise native_handshake_height_cap (v1.3.135)")
@@ -4833,6 +4901,55 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
                 errors.append(f"OPTIONAL_MODULE_PROBES must include {name}")
     except Exception as exc:
         errors.append(f"fail-loud http inspect failed: {exc}")
+    # STRICT mesh P2P: late state_root stash, wire-probe gate, coalesced gather.
+    # Source needles only (mirror Exp); mesh probe / soak are separate evidence.
+    try:
+        p2p_py = (ROOT / "network" / "p2p_node.py").read_text(encoding="utf-8")
+        if "_stash_late_state_root" not in p2p_py:
+            errors.append("P2PNode must stash late state_root replies after solicit timeout")
+        if '== "late_state_root"' not in p2p_py:
+            errors.append("timed-out state_root waiter must stash late_state_root payloads")
+        if "_consume_late_state_root" not in p2p_py:
+            errors.append("state_root retry must consume the late stash before a second RTT")
+        if "Late stash even when retry=False" not in p2p_py:
+            errors.append("state_root one-RTT flight must still consume the late stash")
+        if "await asyncio.sleep(0.4)" not in p2p_py:
+            errors.append("empty state_root gather must drain late stash inside HTTP 8s budget")
+        if "_wait_wire_probe_gate" not in p2p_py:
+            errors.append("coalesced state_root flight must wait apply-idle / post-forge hold")
+        if "_apply_completed_wire_probe" not in p2p_py:
+            errors.append("completed state_root flight must feed ConsistencyService after waiter timeout")
+        if "coalesced wire probe task failed" not in p2p_py:
+            errors.append("completed wire probe must log task failures")
+        if "_coalesced_peer_state_roots" not in p2p_py:
+            errors.append("P2PNode must coalesce concurrent state_root probes")
+        if "inflight continues" not in p2p_py:
+            errors.append("state_root sync waiter timeout must not cancel inflight probe")
+        if "per_peer_timeout=6.5" not in p2p_py:
+            errors.append("coalesced state_root flight must fit inside HTTP 8s STRICT budget")
+        if "Coalesced state_root flight is one RTT" not in p2p_py:
+            errors.append("coalesced state_root flight must not retry (HTTP 5s quick budget)")
+        if "Isolated node: return immediately" not in p2p_py:
+            errors.append("coalesced state_root probe must not join a stale flight on 0 peers")
+        if "_native_write_bound" not in p2p_py:
+            errors.append("native P2P writes must set SO_SNDTIMEO so wait_for cannot leak the IO lock")
+        if "_global_catch_up_lock" not in p2p_py:
+            errors.append("P2P must serialize PathA across peers")
+        if "tip_safety defer skip-ahead" not in p2p_py:
+            errors.append(
+                "P2PNode must defer tip-safety skip-ahead while apply_queue is busy"
+            )
+        if "def busy" not in (
+            ROOT / "core" / "chain_apply_queue.py"
+        ).read_text(encoding="utf-8"):
+            errors.append("ChainApplyQueue must expose busy while dispatch is in-flight")
+        if not (ROOT / "tests" / "unit" / "test_state_root_probe_coalesce.py").is_file():
+            errors.append(
+                "tests/unit/test_state_root_probe_coalesce.py missing "
+                "(late_state_root + wire_probe_gate unit evidence)"
+            )
+    except Exception as exc:
+        errors.append(f"STRICT mesh P2P hardening inspect failed: {exc}")
     return errors, warnings
 
 
@@ -5049,6 +5166,55 @@ def _check_balance_precision() -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
+def _check_evm_depth_labs() -> tuple[list[str], list[str]]:
+    """ADR 0010 Profile A EVM depth labs on pin (no Long-Range / Exp-only harnesses)."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    evm_runtime = ROOT / "execution" / "evm_runtime.py"
+    if not evm_runtime.is_file():
+        errors.append("EVM depth evm_runtime.py missing (Profile A lab honesty)")
+    elif "evm_compat_honesty_snapshot" not in evm_runtime.read_text(encoding="utf-8"):
+        errors.append("evm_runtime must expose evm_compat_honesty_snapshot")
+    if not (ROOT / "scripts" / "evm_rpc_lab.py").is_file():
+        errors.append("EVM depth evm_rpc_lab.py missing (wave-9 RPC lab)")
+    else:
+        rpc_lab = (ROOT / "scripts" / "evm_rpc_lab.py").read_text(encoding="utf-8")
+        if "format_fee_history" not in rpc_lab or "estimateGas" not in rpc_lab:
+            errors.append("evm_rpc_lab must cover estimateGas + feeHistory null-honesty")
+        if "maxPriorityFeePerGas" not in rpc_lab:
+            errors.append("evm_rpc_lab must cover maxPriorityFeePerGas null-honesty")
+        if "eth_coinbase" not in rpc_lab or "eth_hashrate" not in rpc_lab:
+            errors.append("evm_rpc_lab must cover coinbase/mining/hashrate honesty")
+        if "eth_getCode" not in rpc_lab or "eth_getStorageAt" not in rpc_lab:
+            errors.append("evm_rpc_lab must cover getCode/balance/storage honesty")
+    for name, label in (
+        ("evm_nested_lab.py", "wave-10 nested lab"),
+        ("evm_reorg_lab.py", "wave-11 reorg lab"),
+        ("evm_logs_lab.py", "wave-11 logs lab"),
+        ("evm_filters_lab.py", "wave-11 filters lab"),
+        ("evm_precompile_lab.py", "precompile lab"),
+        ("evm_pre_48h_harness.py", "EVM pre-48h readiness"),
+        ("verify_evm_depth_lab.ps1", "EVM depth lab verify"),
+    ):
+        if not (ROOT / "scripts" / name).is_file():
+            errors.append(f"EVM depth {name} missing ({label})")
+    http_py = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+    if "/evm/status" not in http_py:
+        errors.append("GET /evm/status missing (EVM compat honesty endpoint)")
+    compat = ROOT / "docs" / "sprouts" / "EVM_COMPAT_MATRIX.md"
+    if not compat.is_file():
+        errors.append("docs/sprouts/EVM_COMPAT_MATRIX.md missing (EVM depth honesty)")
+    else:
+        body = compat.read_text(encoding="utf-8")
+        if "Absolute-native" not in body:
+            errors.append(
+                "EVM_COMPAT_MATRIX.md must document Absolute-native opcode map honesty"
+            )
+    if not (ROOT / "tests" / "unit" / "test_evm_rpc_compat.py").is_file():
+        errors.append("tests/unit/test_evm_rpc_compat.py missing (EVM RPC compat units)")
+    return errors, warnings
+
+
 def _check_native_wheel() -> tuple[list[str], list[str]]:
     """Require abs_native self-test and prod-critical exports when wheel is present."""
     errors: list[str] = []
@@ -5170,6 +5336,7 @@ def run_industrial_gate(
     balance_errors, balance_warnings = _check_balance_precision()
     fail_loud_errors, fail_loud_warnings = _check_fail_loud_surfaces()
     audit_pack_errors, audit_pack_warnings = _check_audit_pack_export()
+    evm_depth_errors, evm_depth_warnings = _check_evm_depth_labs()
     soak_errors: list[str] = []
     ceremony_errors: list[str] = []
     ceremony_warnings: list[str] = []
@@ -5285,6 +5452,7 @@ def run_industrial_gate(
     errors.extend(balance_errors)
     errors.extend(fail_loud_errors)
     errors.extend(audit_pack_errors)
+    errors.extend(evm_depth_errors)
     errors.extend(ceremony_errors)
     warnings.extend(native_warnings)
     warnings.extend(bridge_warnings)
@@ -5292,6 +5460,7 @@ def run_industrial_gate(
     warnings.extend(balance_warnings)
     warnings.extend(fail_loud_warnings)
     warnings.extend(audit_pack_warnings)
+    warnings.extend(evm_depth_warnings)
     warnings.extend(ceremony_warnings)
     report = {
         "ok": not errors,

@@ -2349,9 +2349,14 @@ class NodeOrchestrator:
 
             if self.p2p and self.p2p._loop and self.p2p._running:
                 try:
-                    asyncio.create_task(self.p2p._broadcast_block(block.to_dict()))
+                    # Record forge height before gossip so inbound echo cannot
+                    # hit dispatcher tip-evidence with a stale AncestryWindow.
+                    note = getattr(self.p2p, "note_local_forge", None)
+                    if callable(note):
+                        note(1.0, height=int(getattr(block, "height", 0) or 0))
+                    await self.p2p._broadcast_block(block.to_dict())
                 except Exception as exc:
-                    print(f"[Mining] broadcast_block schedule failed: {exc}")
+                    print(f"[Mining] broadcast_block failed: {exc}")
 
             if self.sync_engine and self.p2p:
                 try:

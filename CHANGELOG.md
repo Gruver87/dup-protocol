@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin integration wave (post ADR 0020, soak deferred)
+
+- **STRICT mesh P2P hardenings:** late `state_root` stash/consume, wire-probe gate + coalesced gather, native write SO_SNDTIMEO bound, PathA catch-up lock, `note_local_forge` before broadcast, under-mesh soft-refuse / catch-up redial. Units `test_state_root_probe_coalesce.py`, soft-refuse mesh tests. **Not** Long-Range / ws_checkpoint.
+- **ADR 0021 diligence surface:** `test_mempool_port.py`, industrial_gate mempool_store needles, `verify_global_rd_audit.ps1` (Host). `verify_adr0021_phase1.py --skip-mesh` PASS.
+- **EVM depth labs (host):** ported `evm_*_lab.py` + `EVM_COMPAT_MATRIX.md` + `verify_evm_depth_lab.ps1`; block RPC passes `query=` for logsBloom reconstruction; missing `extraData` stays null (no invent `0x`). **RESULT: PASS** host verify (`--skip-mesh`). **Not** EVM 48h / not mesh probe this wave.
+- **Honesty:** 48h libp2p soak deferred by operator — do not claim soak PASS.
+
 ### ADR 0020 — libp2p industrial mesh cutover (pin)
 
 - **Transport (2026-10-05+):** prod 3-node mesh (`778888`) defaults to **rust-libp2p** — `docker/node.prod.mesh{1,2,3}.json` set `feature_libp2p=true`, `p2p_tls_enabled=false`; mutually exclusive with TCP+TLS (`feature_libp2p=false`). Single-node / ceremony profile `docker/node.prod.json` keeps TCP+TLS alternate. Boot fail-closed if native libp2p unavailable. **Not** public mainnet.
