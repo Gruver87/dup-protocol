@@ -1,0 +1,4 @@
+﻿stopped_at: 2026-10-05T21:23:01.8185908+02:00
+reason: operator correction — soak was started prematurely; merge/integration not declared complete by operator
+prior_kickoff: 2026-10-05T21:11:10+02:00 tip bd500c1
+status: STOPPED — NOT a soak PASS; do not claim IN PROGRESS

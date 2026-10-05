@@ -1,7 +1,7 @@
 # Pin libp2p industrial mesh — cutover evidence (`pin-libp2p-cutover-pending`)
 
 **Kind:** ADR 0020 cutover  
-**Status:** **Quick probe PASS packaged** · **48h soak IN PROGRESS** (`logs/soak_48h_libp2p_industrial.log` — claim PASS only when report has `hard_fails=0`)  
+**Status:** **Quick probe PASS packaged** · **48h soak DEFERRED** (operator: after full merge; premature 21:11 restart **stopped** — not PASS)  
 **Chain:** prod-profile `778888` · rust-libp2p (`feature_libp2p=true`, `p2p_tls_enabled=false`)
 
 ## Honesty
@@ -9,7 +9,7 @@
 - Quick mesh probe (`probe_prod_mesh.ps1 -Quick`) → **RESULT: OK** — see `probe_prod_mesh_quick.json` + `status_snapshot.jsonl` (peers=2, aligned tip, `libp2p.active` + `rust_backend`, honesty `ADR0020_experimental_libp2p_industrial_mesh`)
 - `industrial_gate.py` → **OK** (see `industrial_gate.json`; external-audit warnings expected)
 - Negative refuse notes: `NEGATIVE_REFUSE.txt`
-- **48h soak restarted** 2026-10-05 21:11 tip `bd500c1` (`restart_soak_prod_mesh.ps1 -Hours 48 -IntervalSec 300` → `logs/soak_48h_libp2p_industrial.log` / `logs/soak_report_48h_libp2p_industrial.json`). First sample h1156 peers=2 aligned. See `SOAK_IN_PROGRESS.txt`. **Do not claim PASS** until that report shows `passed=true` and `hard_fails=0`. Prior stalled log archived locally (not PASS).
+- **48h soak deferred** until operator declares full Exp→pin merge complete. Premature restart 2026-10-05 21:11 tip `bd500c1` was **stopped** (see `SOAK_STOPPED_PREMATURE.txt` / `SOAK_IN_PROGRESS.txt`). **Do not claim PASS.**
 - **NOT** public mainnet · **NOT** external audit
 - Do **not** cite Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`) as pin evidence
 - Freeze tag `v1.3.1339-tip-v2-industrial` and sealed TCP+TLS packs remain **historical** — unchanged

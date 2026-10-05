@@ -10,12 +10,10 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
-### Pin libp2p 48h soak restarted (IN PROGRESS — not PASS)
+### Pin libp2p 48h soak — premature start STOPPED (not PASS)
 
-- **Kickoff:** `2026-10-05T21:11:10+02:00` tip `bd500c1` — `restart_soak_prod_mesh.ps1 -Hours 48 -IntervalSec 300` → `logs/soak_48h_libp2p_industrial.log` / `logs/soak_report_48h_libp2p_industrial.json`.
-- Preflight **READY**; first sample mesh aligned h1156 peers=2; `hard_fails=0` so far.
-- Prior mid-day soak stalled (log gap / process death during rebuilds) archived as `logs/soak_48h_libp2p_industrial.stalled_20261005_211055.log` — **not** PASS.
-- **Do not claim soak PASS** until report has `passed=true` and `hard_fails=0`. Pack stamp: `docs/evidence/runs/pin-libp2p-cutover-pending/SOAK_IN_PROGRESS.txt`.
+- **Error:** soak restarted 2026-10-05 21:11 tip `bd500c1` without operator declaring Exp→pin merge complete. Operator order: soaks only after full integration merge + operator test verify.
+- **Stopped:** `stop_soak_monitors.ps1 -Force`; stamp `SOAK_STOPPED_PREMATURE.txt`. Partial log is **not** evidence. Soak remains **deferred**.
 
 ### Exp→pin ChainApplyQueue async wait (wrap_future)
 

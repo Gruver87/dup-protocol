@@ -1,15 +1,6 @@
 ﻿started_at: 2026-10-05T21:11:10.1816450+02:00
-checked_at: 2026-10-05T21:11:12+02:00
-git_tip: bd500c1
-log: logs/soak_48h_libp2p_industrial.log
-report: logs/soak_report_48h_libp2p_industrial.json
-interval_sec: 300
-hours: 48
-ok_port: 3
-mesh_ok: 1
-warn: 0
-fail: 0
-status: IN_PROGRESS hard_fails=0 so far — NOT a soak PASS
-mesh: h1156 peers=2 libp2p (sample at kickoff; tip still advancing)
-prior: stalled log archived as logs/soak_48h_libp2p_industrial.stalled_20261005_211055.log (process died mid-day during rebuilds; not PASS)
-note: Do not rebuild mesh / restart soak without archiving — claim PASS only when report has passed=true and hard_fails=0
+stopped_at: 2026-10-05T21:22:00+02:00
+git_tip_at_kickoff: bd500c1
+status: STOPPED — NOT IN PROGRESS — NOT PASS
+reason: Operator correction. Soak must wait until full Exp→pin merge is declared complete and operator has verified tests. Premature start was agent error.
+log: logs/soak_48h_libp2p_industrial.log (partial only; do not package as soak evidence)
