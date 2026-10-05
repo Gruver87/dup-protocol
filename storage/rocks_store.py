@@ -401,6 +401,26 @@ class RocksChainStore:
             return None
         return bytes(row[0]), bytes(row[1])
 
+    def _prefix_prev_kv(
+        self, prefix: bytes, before: bytes
+    ) -> Optional[tuple[bytes, bytes]]:
+        """Reverse-seek predecessor under `prefix`, strictly before `before`.
+
+        Requires native ``prefix_prev``; absent/failing engine returns None
+        (callers must treat that as end-of-index, never a full-CF fallback).
+        """
+        engine = self._engine
+        if engine is None or not hasattr(engine, "prefix_prev"):
+            return None
+        try:
+            row = engine.prefix_prev(prefix, before)
+        except Exception as exc:
+            logger.warning("[RocksStore] prefix_prev failed: %s", exc)
+            return None
+        if not row:
+            return None
+        return bytes(row[0]), bytes(row[1])
+
     def _scan_range(
         self, start: bytes, end_exclusive: bytes, limit: int
     ) -> List[tuple[bytes, bytes]]:
@@ -1423,41 +1443,64 @@ class RocksChainStore:
             return ""
         return "0x" + body[16:].hex()
 
-    def _rows_from_address_index(
-        self, addr: str, direction: str
-    ) -> List[Dict]:
-        addr = SqliteDatabase._normalize_address(addr)
+    def _address_index_page_hashes(
+        self, addr: str, direction: str, limit: int, offset: int
+    ) -> List[str]:
+        """Newest-first unique tx hashes from address indexes. No full CF scan.
+
+        Walks each of the from/to index prefixes backwards with native
+        ``prefix_last`` / ``prefix_prev`` and merges by the key body
+        (``u64 height || tx_hash``), so work is O(offset + limit) seeks.
+        Missing native capability is fail-closed (no silent empty page).
+        """
+        from storage.types import StorageUnavailableError
+
+        offset = max(0, int(offset))
+        limit = max(1, int(limit))
         prefixes: List[bytes] = []
         if direction in ("all", "sent"):
             prefixes.append(kc.prefix_tx_from(addr))
         if direction in ("all", "received"):
             prefixes.append(kc.prefix_tx_to(addr))
+        if not prefixes:
+            return []
+        engine = self._engine
+        if (
+            engine is None
+            or not hasattr(engine, "prefix_last")
+            or not hasattr(engine, "prefix_prev")
+        ):
+            raise StorageUnavailableError(
+                "address index paging requires native prefix_last/prefix_prev",
+                reason_code="rocks_prefix_prev_unavailable",
+            )
+        need = offset + limit
+        cursors: List[Optional[tuple[bytes, bytes]]] = [
+            self._prefix_last_kv(p) for p in prefixes
+        ]
         seen: set[str] = set()
-        rows: List[Dict] = []
-        for prefix in prefixes:
-            for key, _marker in self._scan_prefix(prefix):
-                tx_hash = self._tx_hash_from_index_key(key, prefix)
-                if not tx_hash or tx_hash in seen:
+        ordered: List[str] = []
+        while len(ordered) < need and any(c is not None for c in cursors):
+            best_i = -1
+            best_body: Optional[bytes] = None
+            for i, kv in enumerate(cursors):
+                if kv is None:
                     continue
+                # Compare index bodies, not full keys: from/to prefixes differ.
+                body = kv[0][len(prefixes[i]) :]
+                if best_body is None or body > best_body:
+                    best_body = body
+                    best_i = i
+            if best_i < 0:
+                break
+            prefix = prefixes[best_i]
+            key = cursors[best_i][0]  # type: ignore[index]
+            tx_hash = self._tx_hash_from_index_key(key, prefix)
+            cursors[best_i] = self._prefix_prev_kv(prefix, key)
+            if tx_hash and tx_hash not in seen:
                 seen.add(tx_hash)
-                raw = self._raw_get(kc.key_tx(tx_hash))
-                if raw:
-                    row = self._loads_tx_blob_or_none(
-                        raw, context=f"address_tx {tx_hash[:16]}"
-                    )
-                    if row is None:
-                        logger.warning(
-                            "[RocksStore] corrupt address_tx row skipped "
-                            "(decode_failures=%s)",
-                            self._json_decode_failures,
-                        )
-                        continue
-                    rows.append(row)
-        rows.sort(
-            key=lambda r: (int(r.get("block_height", 0)), int(r.get("timestamp", 0))),
-            reverse=True,
-        )
-        return rows
+                ordered.append(tx_hash)
+        return ordered[offset : offset + limit]
 
     def _insert_tx_receipt(self, tx: Dict, block_hash: str, block_height: int) -> None:
         from runtime.amount import tx_money_abs, tx_money_satoshi
@@ -1536,7 +1579,10 @@ class RocksChainStore:
     def get_recent_transactions(self, limit: int = 30) -> List[Dict]:
         limit = max(1, min(int(limit), 200))
         out: List[Dict] = []
-        for key, _marker in self._scan_prefix(kc.prefix_tx_recent(), limit=limit * 2):
+        # Inverted height/ts keys: lexicographic first == newest.
+        start = kc.prefix_tx_recent()
+        end = kc.prefix_family_end(start)
+        for key, _marker in self._scan_range(start, end, limit * 2):
             tx_hash = self._tx_hash_from_recent_key(key)
             if not tx_hash:
                 continue
@@ -1682,9 +1728,24 @@ class RocksChainStore:
         addr = SqliteDatabase._normalize_address(address)
         limit = max(1, min(int(limit), 200))
         offset = max(0, int(offset))
-        matched = self._rows_from_address_index(addr, direction)
-        page = matched[offset : offset + limit]
-        return [self._serialize_tx_row(row, addr) for row in page]
+        hashes = self._address_index_page_hashes(addr, direction, limit, offset)
+        out: List[Dict] = []
+        for tx_hash in hashes:
+            raw = self._raw_get(kc.key_tx(tx_hash))
+            if not raw:
+                continue
+            row = self._loads_tx_blob_or_none(
+                raw, context=f"address_tx {tx_hash[:16]}"
+            )
+            if row is None:
+                logger.warning(
+                    "[RocksStore] corrupt address_tx row skipped "
+                    "(decode_failures=%s)",
+                    self._json_decode_failures,
+                )
+                continue
+            out.append(self._serialize_tx_row(row, addr))
+        return out
 
     def get_address_activity(self, address: str) -> Dict:
         from runtime.amount import account_balance_abs, account_satoshi
@@ -1904,7 +1965,11 @@ class RocksChainStore:
 
         limit = max(1, min(int(limit), 5000))
         rows: List[Dict] = []
-        for _key, value in self._scan_prefix(kc.prefix_bridge_locks()):
+        start = kc.prefix_bridge_locks()
+        # Keys are tx-hash order, not time. Bound the walk; do not scan 100k.
+        for _key, value in self._scan_range(
+            start, kc.prefix_family_end(start), 5000
+        ):
             try:
                 row = json.loads(value.decode("utf-8"))
             except Exception as exc:
@@ -2914,9 +2979,10 @@ class RocksChainStore:
         from runtime.amount import from_satoshi_float, to_satoshi
 
         tip = self.get_chain_tip()
-        tx_rows = self._iter_transaction_rows()
-        receipt_rows = self._scan_prefix(kc.P_TX_RECEIPT)
-        audit_rows = self._scan_prefix(kc.P_PROPOSER_AUDIT)
+        # Cached prefix lengths — never materialize every tx/receipt/audit on HTTP.
+        tx_count = self._cached_prefix_len("stats_tx_count", kc.P_TX)
+        receipt_count = self._cached_prefix_len("stats_receipt_count", kc.P_TX_RECEIPT)
+        audit_count = self._cached_prefix_len("stats_proposer_audit", kc.P_PROPOSER_AUDIT)
         blocks = self.get_latest_blocks(limit=max(2, int(window)))
         avg_block_time = 0.0
         if len(blocks) >= 2:
@@ -2950,9 +3016,9 @@ class RocksChainStore:
                 burn_sats += int(to_satoshi(b.get("total_burned", 0) or 0))
         return {
             "height": tip,
-            "tx_count": len(tx_rows),
-            "receipt_count": len(receipt_rows),
-            "proposer_audit_count": len(audit_rows),
+            "tx_count": tx_count,
+            "receipt_count": receipt_count,
+            "proposer_audit_count": audit_count,
             "receipts_enabled": str(getattr(self, "engine", "") or "").startswith("rocks"),
             "proposer_audit_enabled": str(getattr(self, "engine", "") or "").startswith("rocks"),
             "state_root_strict_p2p": True,

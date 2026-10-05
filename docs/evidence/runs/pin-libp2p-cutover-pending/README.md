@@ -43,6 +43,9 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `MESH_PROBE_POST_ROCKS_O1.txt` | Rocks O(1) + topology_deferred Quick probe (h1051) |
 | `probe_prod_mesh_quick_rocks_o1.json` | Probe JSON for Rocks O(1) wave |
 | `industrial_gate_rocks_o1.json` | Gate snapshot for that wave |
+| `MESH_PROBE_POST_ROCKS_PAGES.txt` | Rocks page-scan leftovers Quick probe (h1101) |
+| `probe_prod_mesh_quick_rocks_pages.json` | Probe JSON for Rocks pages wave |
+| `industrial_gate_rocks_pages.json` | Gate snapshot for that wave |
 | `README.md` | This honesty stamp |
 
 ## Still missing for industrial soak claim

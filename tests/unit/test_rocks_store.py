@@ -263,6 +263,7 @@ def test_address_tx_index_direction_and_pagination(rocks):
 
     page = rocks.get_transactions_by_address("0xaaa", limit=1, offset=1)
     assert len(page) == 1
+    assert page[0]["block_height"] == 1
 
     act = rocks.get_address_activity("0xaaa")
     assert act["sent_count"] == 2
@@ -719,3 +720,113 @@ def test_rocks_runtime_stats_no_scan_and_matches_get_stats_tuning(rocks, monkeyp
         "column_families"
     ]
     assert "total_transactions" in full and "height" in full
+
+
+def _persist_tx_block(rocks, height: int, tx_hash: str, fr: str, to: str) -> None:
+    rocks.persist_block_atomic(
+        {
+            "height": height,
+            "hash": f"{height:064x}",
+            "parent_hash": f"{height - 1:064x}" if height > 1 else "0" * 64,
+            "timestamp": 1700000000 + height,
+            "miner": "0x" + "1" * 40,
+            "transactions": [],
+        },
+        [
+            {
+                "hash": tx_hash,
+                "block_height": height,
+                "from_addr": fr,
+                "to_addr": to,
+                "value": 1,
+                "fee": 0.01,
+                "burned": 0.0,
+                "gas_used": 21000,
+                "status": 1,
+                "timestamp": 1700000000 + height,
+            }
+        ],
+    )
+
+
+def test_address_tx_page_does_not_prefix_scan(rocks, monkeypatch):
+    sender = "0xaaa"
+    for i in range(1, 6):
+        _persist_tx_block(rocks, i, hex(i + 200)[2:].zfill(64), sender, "0xbbb")
+    scans = _spy_scan_prefix(rocks, monkeypatch)
+    page = rocks.get_transactions_by_address(sender, limit=2, offset=1, direction="sent")
+    assert [t["block_height"] for t in page] == [4, 3]
+    assert rocks.count_transactions_by_address(sender, "sent") == 5
+    assert scans == []
+
+
+def test_address_tx_all_direction_merges_from_and_to_newest_first(rocks, monkeypatch):
+    # Interleaved heights across the from-index and to-index prefixes: the
+    # merge must order by index body (height), not by the full key (prefix byte).
+    me = "0xaaa"
+    other = "0xbbb"
+    layout = [(1, me, other), (2, other, me), (3, me, other), (4, other, me), (5, me, me)]
+    for h, fr, to in layout:
+        _persist_tx_block(rocks, h, hex(h + 300)[2:].zfill(64), fr, to)
+    scans = _spy_scan_prefix(rocks, monkeypatch)
+    full = rocks.get_transactions_by_address(me, limit=50, direction="all")
+    assert [t["block_height"] for t in full] == [5, 4, 3, 2, 1]
+    # Self-send appears once (dedup across from/to indexes).
+    assert len({t["hash"] for t in full}) == 5
+    page = rocks.get_transactions_by_address(me, limit=2, offset=2, direction="all")
+    assert [t["block_height"] for t in page] == [3, 2]
+    tail = rocks.get_transactions_by_address(me, limit=10, offset=4, direction="all")
+    assert [t["block_height"] for t in tail] == [1]
+    assert rocks.get_transactions_by_address(me, limit=5, offset=50) == []
+    assert scans == []
+
+
+def test_address_index_page_requires_native_prefix_prev(rocks, monkeypatch):
+    from storage.types import StorageUnavailableError
+
+    _persist_tx_block(rocks, 1, "e" * 64, "0xaaa", "0xbbb")
+
+    class _NoPrev:
+        def __init__(self, inner):
+            self._inner = inner
+
+        def __getattr__(self, name):
+            if name == "prefix_prev":
+                raise AttributeError(name)
+            return getattr(self._inner, name)
+
+    monkeypatch.setattr(rocks, "_engine", _NoPrev(rocks._engine))
+    with pytest.raises(StorageUnavailableError):
+        rocks.get_transactions_by_address("0xaaa", direction="sent")
+
+
+def test_get_chain_metrics_uses_cached_counts_not_full_tx_scan(rocks, monkeypatch):
+    from storage import keycodec as kc
+
+    _persist_tx_block(rocks, 1, "b" * 64, "0xaaa", "0xbbb")
+    first = rocks.get_chain_metrics(window=8)
+    assert first["tx_count"] >= 1
+    assert first["proposer_audit_count"] >= 1
+    scans = _spy_scan_prefix(rocks, monkeypatch)
+    second = rocks.get_chain_metrics(window=8)
+    assert second["tx_count"] == first["tx_count"]
+    assert second["receipt_count"] == first["receipt_count"]
+    assert kc.P_TX not in scans
+    assert kc.P_TX_RECEIPT not in scans
+    assert kc.P_PROPOSER_AUDIT not in scans
+
+
+def test_get_recent_transactions_does_not_unbounded_prefix_scan(rocks, monkeypatch):
+    _persist_tx_block(rocks, 1, "b" * 64, "0x" + "2" * 40, "0x" + "3" * 40)
+    scans = _spy_scan_prefix(rocks, monkeypatch)
+    recent = rocks.get_recent_transactions(limit=1)
+    assert len(recent) == 1
+    assert scans == []
+
+
+def test_get_bridge_locks_bounded_range_not_unbounded_prefix_scan(rocks, monkeypatch):
+    from storage import keycodec as kc
+
+    scans = _spy_scan_prefix(rocks, monkeypatch)
+    rocks.get_bridge_locks(limit=5)
+    assert kc.prefix_bridge_locks() not in scans

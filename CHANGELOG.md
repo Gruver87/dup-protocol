@@ -17,6 +17,13 @@ Canonical language for this repository is **English**. Older entries below may s
 - **API:** `/metrics` prefers `get_rocks_runtime_stats`; `/health/ready` uses cheap tip probe (no `get_stats()`); `/status` no longer calls `p2p.get_topology()` (`topology_deferred`), adds `status_handler_ms`.
 - `HybridDatabase` delegates `count_address_transactions`, `count_proposer_audit`, `get_rocks_runtime_stats`. Units + `industrial_gate` needles. Long-Range untouched. **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** post-rebuild (h1051 peers=2; live `/status` `p2p_summary.topology_deferred=true`, `status_handler_ms≈8`); pack `MESH_PROBE_POST_ROCKS_O1.txt`. **Soak deferred.**
 
+### Exp→pin Rocks page-scan leftovers (address index / recent tx / chain metrics / bridge locks)
+
+- **Native `RocksEngine`:** added `prefix_prev` (reverse-seek predecessor) and `scan_range` (bounded `[start, end)` forward walk, dual-CF merge); `prefix_last` now merges target CF + legacy default by lexicographically last key (was primary-first).
+- **`RocksChainStore`:** `get_transactions_by_address` pages via `_address_index_page_hashes` (`prefix_last` / `_prefix_prev_kv`, O(offset+limit) seeks; refuses with `StorageUnavailableError` when native lacks `prefix_prev`); `get_recent_transactions` and `get_bridge_locks` use bounded `_scan_range` + `prefix_family_end`; `get_chain_metrics` uses cached counts (`stats_*`) instead of walking every tx/receipt/audit row. Removed full-load `_rows_from_address_index`.
+- **Fix over Exp:** `direction=all` merges the from/to indexes by index body (height‖hash), not full key (prefix byte), so newest-first holds across both indexes.
+- Units + `industrial_gate` needles (`prefix_prev` / `scan_range` / dual-CF `prefix_last`). **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** post-rebuild (h1101 peers=2); pack `MESH_PROBE_POST_ROCKS_PAGES.txt`. **Soak deferred.** Long-Range untouched.
+
 ### Exp→pin tip/sync correctness (attestation echo + SyncEngine probes + parent FC)
 
 - **Attestation own-echo + fingerprint dedup:** drop own-validator gossip echo; 120s fingerprint cache; counters `attestation_echo_drops_total` / `attestation_dup_drops_total`.

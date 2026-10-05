@@ -2539,6 +2539,48 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("RocksChainStore must implement count_address_transactions")
         if 'len(self._scan_prefix(kc.prefix_tx_from' in rocks_py:
             errors.append("Rocks address tx count must not prefix-scan the from-index")
+        metrics_fn = rocks_py.split("def get_chain_metrics", 1)[-1].split("def ", 1)[0]
+        if "_iter_transaction_rows()" in metrics_fn:
+            errors.append("Rocks get_chain_metrics must not iterate every tx row")
+        if "_scan_prefix(kc.P_TX_RECEIPT)" in metrics_fn:
+            errors.append("Rocks get_chain_metrics must not scan every receipt")
+        if '_cached_prefix_len("stats_tx_count"' not in metrics_fn:
+            errors.append("Rocks get_chain_metrics must use cached prefix lengths")
+        tx_addr_fn = rocks_py.split("def get_transactions_by_address", 1)[-1].split(
+            "def ", 1
+        )[0]
+        if "_rows_from_address_index" in tx_addr_fn:
+            errors.append(
+                "Rocks get_transactions_by_address must not load the full address index"
+            )
+        if "_scan_prefix" in tx_addr_fn:
+            errors.append(
+                "Rocks get_transactions_by_address must paginate via prefix_prev, not prefix_scan"
+            )
+        if "_address_index_page_hashes" not in tx_addr_fn:
+            errors.append("Rocks get_transactions_by_address must page index hashes newest-first")
+        page_fn = rocks_py.split("def _address_index_page_hashes", 1)[-1].split(
+            "def ", 1
+        )[0]
+        if "_prefix_prev_kv" not in page_fn or "_scan_prefix" in page_fn:
+            errors.append("_address_index_page_hashes must walk via _prefix_prev_kv only")
+        keycodec_py = (ROOT / "storage" / "keycodec.py").read_text(encoding="utf-8")
+        if "def prefix_family_end" not in keycodec_py:
+            errors.append("keycodec must expose prefix_family_end for exclusive family scans")
+        recent_fn = rocks_py.split("def get_recent_transactions", 1)[-1].split(
+            "def ", 1
+        )[0]
+        if "_scan_prefix" in recent_fn:
+            errors.append(
+                "Rocks get_recent_transactions must scan_range the inverted recent index"
+            )
+        if "_scan_range" not in recent_fn:
+            errors.append("Rocks get_recent_transactions must use _scan_range")
+        lock_fn = rocks_py.split("def get_bridge_locks", 1)[-1].split("def ", 1)[0]
+        if "_scan_prefix(kc.prefix_bridge_locks())" in lock_fn:
+            errors.append("Rocks get_bridge_locks must not unbounded prefix-scan locks")
+        if "_scan_range" not in lock_fn:
+            errors.append("Rocks get_bridge_locks must bound the lock walk via _scan_range")
         if "_bump_addr_tx_count" not in rocks_py or "_bump_proposer_count" not in rocks_py:
             errors.append("Rocks must maintain addr_tx / proposer meta counters")
         ready_fn = http_py.split('if path == "/health/ready"', 1)[-1].split(
@@ -2581,6 +2623,14 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("p2p must coalesce sync/connect tasks (v1.3.66)")
         if "fn prefix_last" not in storage_rs:
             errors.append("RocksEngine must expose prefix_last (v1.3.66)")
+        if "fn prefix_prev" not in storage_rs:
+            errors.append("RocksEngine must expose prefix_prev (address index pagination)")
+        if "fn scan_range" not in storage_rs:
+            errors.append("RocksEngine must expose scan_range (bounded recent-tx / bridge walks)")
+        if "lexicographically last key across" not in storage_rs:
+            errors.append(
+                "prefix_last must merge target CF + legacy default (not primary-first)"
+            )
         if 'key_meta("chain_tip")' not in rocks_py2:
             errors.append("rocks_store must persist chain_tip meta (v1.3.66)")
         metrics_py2 = (ROOT / "observability" / "metrics.py").read_text(encoding="utf-8")
