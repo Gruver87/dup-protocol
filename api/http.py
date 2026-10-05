@@ -371,6 +371,46 @@ def _status_rate_limit_snapshot(cfg) -> Dict[str, Any]:
     }
 
 
+# TTL cache: native_crypto_status() runs a full self-test every call; soak polls
+# /status every few seconds and must not re-run kernels under GIL each time.
+_NATIVE_CRYPTO_STATUS_CACHE: Dict[str, Any] = {"t": 0.0, "required": False, "payload": None}
+_NATIVE_CRYPTO_STATUS_TTL_SEC = 15.0
+
+
+def _status_native_crypto_cached(required: bool) -> Dict[str, Any]:
+    """Cached slim native_crypto snapshot for GET /status and /health/ready."""
+    from crypto import native
+
+    want = bool(required)
+    now = time.monotonic()
+    cached = _NATIVE_CRYPTO_STATUS_CACHE.get("payload")
+    if (
+        cached is not None
+        and bool(_NATIVE_CRYPTO_STATUS_CACHE.get("required")) == want
+        and (now - float(_NATIVE_CRYPTO_STATUS_CACHE.get("t") or 0.0))
+        < _NATIVE_CRYPTO_STATUS_TTL_SEC
+    ):
+        out = dict(cached)
+        out["cache_hit"] = True
+        return out
+    full = native.native_crypto_status(required=want)
+    slim = {
+        "available": bool(full.get("available")),
+        "required": bool(full.get("required")),
+        "mode": full.get("mode"),
+        "self_test": bool(full.get("self_test")),
+        "error": str(full.get("error") or ""),
+        "capabilities": dict(full.get("capabilities") or {}),
+        # Full kernel list stays on GET /native/crypto — not every soak poll.
+        "kernels_deferred": True,
+        "cache_hit": False,
+    }
+    _NATIVE_CRYPTO_STATUS_CACHE["t"] = now
+    _NATIVE_CRYPTO_STATUS_CACHE["required"] = want
+    _NATIVE_CRYPTO_STATUS_CACHE["payload"] = dict(slim)
+    return slim
+
+
 def _status_cached_metric(db, method_name: str):
     """O(1) meta/prefix_last only. Never call get_total_supply / get_all_accounts."""
     if db is None:
@@ -2020,7 +2060,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     str(os.environ.get("ABS_NATIVE_MODE", "") or "").strip().lower()
                     == "require"
                 )
-                native_crypto = native.native_crypto_status(required=_native_req)
+                native_crypto = _status_native_crypto_cached(required=_native_req)
                 bridge_health = _rust_bridge_health(cfg)
                 is_prod = str(getattr(cfg, "deployment_mode", "") or "").lower() == "prod"
                 db_ok = db is not None
@@ -2568,7 +2608,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                         })
                     if peer_heights:
                         peer_gap = max(p["gap"] for p in peer_heights)
-                native_crypto = native.native_crypto_status(
+                native_crypto = _status_native_crypto_cached(
                     required=bool(getattr(cfg, "require_native_crypto", False))
                 )
                 bridge_health = _rust_bridge_health(cfg)

@@ -52,6 +52,9 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `MESH_PROBE_POST_MERGE_TIP_SOLICIT_BLOCKS.txt` | Tip-rebind + solicit lag + get_blocks + redial Quick probe (h1244) |
 | `probe_prod_mesh_quick_merge_tip_solicit_blocks.json` | Probe JSON for tip/solicit/blocks/redial wave |
 | `industrial_gate_merge_tip_solicit_blocks.json` | Gate snapshot for that wave |
+| `MESH_PROBE_POST_MERGE_SR_CACHE_SOAK.txt` | Outbound state_root lag + FullHarnessEvery + crypto cache Quick probe (h1289) |
+| `probe_prod_mesh_quick_merge_sr_cache_soak.json` | Probe JSON for sr-lag/cache/soak-prep wave |
+| `industrial_gate_merge_sr_cache_soak.json` | Gate snapshot for that wave |
 | `README.md` | This honesty stamp |
 
 ## Still missing for industrial soak claim

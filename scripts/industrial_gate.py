@@ -4491,6 +4491,22 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
                 "solicit accepts lower-height state_root as lag "
                 "(state_root_lag / state_root_lag_replies_total, no strike)"
             )
+        # Exp→pin wave: outbound state_root lag + soak FullHarnessEvery + status cache.
+        handlers_src = (
+            ROOT / "network" / "p2p_dispatch" / "handlers.py"
+        ).read_text(encoding="utf-8")
+        if "state_root_outbound_lag_total" not in handlers_src:
+            errors.append(
+                "state_root handler must answer ahead requests with local tip lag"
+            )
+        http_py = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+        if "_status_native_crypto_cached" not in http_py:
+            errors.append("GET /status must cache native_crypto_status (soak HOL)")
+        soak_mon = (ROOT / "scripts" / "soak_monitor.ps1").read_text(encoding="utf-8")
+        if "$hwArgs.FullHarnessEvery = 6" not in soak_mon:
+            errors.append(
+                "48h soak_monitor must set FullHarnessEvery=6 (not AlwaysFullHarness)"
+            )
         # v1.3.183 — mempool max-calldata refuse before validate
         if "calldata_too_large" not in p2p_py:
             errors.append(

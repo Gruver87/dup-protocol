@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — outbound state_root lag / soak FullHarnessEvery / status native-crypto cache
+
+- `handle_state_root_request`: when requested height is ahead of local tip, answer with tip payload and bump `state_root_outbound_lag_total` (missing historical stays silent; pairs with inbound `state_root_lag`).
+- `soak_monitor.ps1`: `-FullHarness` / `-Strict` (long ≥12h) set `FullHarnessEvery=6` (avoids AlwaysFullHarness HOL on 48h); Strict scoring in report; pin `health_watch -Strict` still deferred.
+- `_status_native_crypto_cached`: 15s TTL slim snapshot for `/status` + `/health/ready` (full self-test stays on `/native/crypto`).
+- Units + industrial_gate needles. **Non-LR.** **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** post-rebuild (h1289 peers=2); pack `MESH_PROBE_POST_MERGE_SR_CACHE_SOAK.txt`. **Soak deferred.**
+
 ### Exp→pin merge wave — tip rebind / solicit lag / get_blocks offload / disconnect redial
 
 - `tip_state_from_chain` anchors at `get_height()` (`get_block(height)`); refuses `get_last_block` height mismatch. `observe_before_import` rebinds a stale window to the live tip before evaluate (fail-closed if rebind fails).

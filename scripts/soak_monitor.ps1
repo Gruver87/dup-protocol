@@ -3,11 +3,20 @@ param(
     [int]$Hours = 24,
     [int]$IntervalSec = 300,
     [switch]$ProdMesh,
+    # Non-prod meshes. Ignored when -ProdMesh.
+    [int[]]$Ports = @(),
     [string]$LogFile = "logs/soak_monitor.log",
     [string]$ReportFile = "logs/soak_report.json",
     # Rebuild report from an existing soak log (no health_watch run).
     [switch]$RescoreOnly,
-    [int]$HealthWatchExit = -1
+    [int]$HealthWatchExit = -1,
+    # Strict: no mesh_warn / ready-flap tolerance in soak_monitor scoring.
+    # Pin health_watch has no -Strict yet — scoring only; harness cadence still applied.
+    [switch]$Strict,
+    # Full harness every 6th cycle without Strict FAIL-on-harness (48h: WARN, not soak FAIL).
+    [switch]$FullHarness,
+    # Intensify short runs: full harness every cycle (still non-Strict mesh delta).
+    [switch]$AlwaysFullHarness
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,6 +45,13 @@ if ($RescoreOnly) {
     Write-Host "Soak rescore-only: log=$LogFile report=$ReportFile" -ForegroundColor Cyan
 } else {
     Write-Host "Soak monitor: ${Hours}h interval=${IntervalSec}s log=$LogFile" -ForegroundColor Cyan
+    if ($Strict -and [int]$Hours -ge 12) {
+        Write-Host "  STRICT long (>=12h): mesh_warn=0, soft ready_flap OK, FullHarnessEvery=6" -ForegroundColor Yellow
+    } elseif ($Strict) {
+        Write-Host "  STRICT short: mesh_warn=0 scoring, AlwaysFullHarness" -ForegroundColor Yellow
+    } elseif ($FullHarness) {
+        Write-Host "  full harness every 6 cycles (WARN on probe flake; 48h default scoring)" -ForegroundColor DarkGray
+    }
     Write-Host "  Press Ctrl+C to stop early; partial report will be written." -ForegroundColor DarkGray
 }
 
@@ -47,6 +63,24 @@ if (-not $RescoreOnly) {
         LogFile     = $LogFile
     }
     if ($ProdMesh) { $hwArgs.ProdMesh = $true }
+    elseif ($Ports -and $Ports.Count -gt 0) { $hwArgs.Ports = $Ports }
+    if ($Strict) {
+        # Pin health_watch has no -Strict yet (Exp port deferred). Cadence only:
+        # Short STRICT (5h bar): full harness every cycle.
+        # Long STRICT (>=12h / 48h): AlwaysFullHarness HOL-stalls
+        # /health/ready + harness → false ready_flap / harness_timeout FAILs.
+        if ([int]$Hours -ge 12) {
+            $hwArgs.FullHarnessEvery = 6
+        } else {
+            $hwArgs.AlwaysFullHarness = $true
+        }
+    } elseif ($AlwaysFullHarness) {
+        $hwArgs.AlwaysFullHarness = $true
+    } elseif ($FullHarness) {
+        # 48h: full harness every 6th cycle (health_watch default). Always-on
+        # full harness HOL-stalls GET /status and paints hard FAILs on a live mesh.
+        $hwArgs.FullHarnessEvery = 6
+    }
 
     try {
         & (Join-Path $ScriptDir "health_watch.ps1") @hwArgs
@@ -115,9 +149,30 @@ try {
 } catch {
     $hoursElapsed = 0.0
 }
-# Allow 5% clock skew when rescoring completed soaks.
-$hoursFloor = [Math]::Max(0.0, $Hours * 0.95)
+# Allow 5% clock skew when rescoring completed soaks (1% under Strict).
+$hoursFloor = if ($Strict) { [Math]::Max(0.0, $Hours * 0.99) } else { [Math]::Max(0.0, $Hours * 0.95) }
 
+$strictPass = (
+    $exitCode -eq 0 -and
+    $startedWatch -and
+    $finishedWatch -and
+    $ok -gt 0 -and
+    $fail -eq 0 -and
+    $meshWarn -eq 0 -and
+    $hoursElapsed -ge $hoursFloor
+)
+$defaultPass = (
+    ($exitCode -eq 0 -or ($readyFlapsTolerated -and $hardFail -eq 0)) -and
+    $startedWatch -and
+    $finishedWatch -and
+    $ok -gt 0 -and
+    $hardFail -eq 0 -and
+    ($fail -eq 0 -or $readyFlapsTolerated) -and
+    ($meshWarn -eq 0 -or $meshAcceptable) -and
+    $hoursElapsed -ge $hoursFloor
+)
+
+$portDivisor = if ($ProdMesh) { 3 } elseif ($Ports -and $Ports.Count -gt 0) { [Math]::Max(1, $Ports.Count) } else { 1 }
 $report = @{
     started_at = $started
     ended_at = $ended
@@ -125,6 +180,7 @@ $report = @{
     hours_elapsed = [Math]::Round($hoursElapsed, 4)
     interval_sec = $IntervalSec
     log_file = $LogFile
+    ports = $(if ($ProdMesh) { @(18180, 18181, 18182) } elseif ($Ports) { @($Ports) } else { @() })
     counts = @{
         ok_lines = $ok
         warn_lines = $warn
@@ -138,20 +194,17 @@ $report = @{
     mesh_warns_transient_ok = $meshWarnsTransient
     mesh_acceptable = $meshAcceptable
     ready_flaps_tolerated = $readyFlapsTolerated
-    cycles_observed = [double](($lines | Select-String -Pattern "$ts OK port").Count) / [Math]::Max(1, $(if ($ProdMesh) { 3 } else { 1 }))
-    passed = (
-        $exitCode -eq 0 -and
-        $startedWatch -and
-        $finishedWatch -and
-        $ok -gt 0 -and
-        $hardFail -eq 0 -and
-        ($fail -eq 0 -or $readyFlapsTolerated) -and
-        ($meshWarn -eq 0 -or $meshAcceptable) -and
-        $hoursElapsed -ge $hoursFloor
-    )
+    cycles_observed = [double](($lines | Select-String -Pattern "$ts OK port").Count) / $portDivisor
+    strict = [bool]$Strict
+    passed = $(if ($Strict) { $strictPass } else { $defaultPass })
     pass_notes = $(
         $notes = @()
-        if ($meshWarn -eq 0) {
+        if ($Strict) {
+            $notes += "STRICT: fail=0 mesh_warn=0 (soak_monitor scoring; health_watch -Strict deferred)"
+            if ($fail -gt 0) { $notes += "fail_lines=$fail" }
+            if ($meshWarn -gt 0) { $notes += "mesh_warn=$meshWarn (not tolerated)" }
+            if ($readyOnlyFail -gt 0) { $notes += "ready_only_fail=$readyOnlyFail (not tolerated)" }
+        } elseif ($meshWarn -eq 0) {
             $notes += "strict mesh_warn=0"
         } elseif ($meshWarnsTransient) {
             $notes += "mesh_warn=$meshWarn accepted: height deltas <=2 (sequential poll skew)"
@@ -160,7 +213,7 @@ $report = @{
         } else {
             $notes += "mesh_warn=$meshWarn not acceptable"
         }
-        if ($readyOnlyFail -gt 0) {
+        if (-not $Strict -and $readyOnlyFail -gt 0) {
             if ($readyFlapsTolerated) {
                 $notes += "ready_only_fail=$readyOnlyFail tolerated (mesh aligned, no hard fails)"
             } else {

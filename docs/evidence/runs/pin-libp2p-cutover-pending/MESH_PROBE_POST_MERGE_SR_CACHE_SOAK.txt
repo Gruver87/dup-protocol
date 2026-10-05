@@ -1,0 +1,5 @@
+﻿checked_at: 2026-10-05T19:48:35.3201601Z
+wave: outbound state_root lag + soak FullHarnessEvery + status native-crypto cache
+probe: RESULT OK (h1289 peers=2)
+industrial_gate: OK
+soak: DEFERRED by operator — not claimed
