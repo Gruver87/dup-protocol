@@ -348,8 +348,14 @@ class Blockchain:
             from runtime.state_root_encoding import bind_tip_encoding_config
 
             bind_tip_encoding_config(config)
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.error("bind_tip_encoding_config failed: %s", exc)
+            mode = str(getattr(config, "deployment_mode", "") or "").lower()
+            if bool(getattr(config, "is_production", False)) or mode in (
+                "prod",
+                "production",
+            ):
+                raise
         self.bus = bus
         if storage is None:
             if db is None:

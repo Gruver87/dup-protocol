@@ -987,21 +987,27 @@ fn try_inline_leaf_delegate_call(
         }
         return Ok(false);
     }
-    let sub_gas = child_dict
-        .get_item("gas_used")?
-        .map(|v| v.extract::<u64>().unwrap_or(0))
-        .unwrap_or(0)
-        .min(call_gas);
+    let sub_gas = charge_nested_call_gas(
+        reason.as_str(),
+        child_dict
+            .get_item("gas_used")?
+            .map(|v| v.extract::<u64>().unwrap_or(0))
+            .unwrap_or(0),
+        call_gas,
+    );
     if let Err(reason) = consume_gas(gas_used, gas_limit, sub_gas) {
         if let Some(ref snap) = balance_snap {
             restore_inline_balances(host_context, snap)?;
         }
         return Err(pyo3::exceptions::PyRuntimeError::new_err(reason));
     }
-    let rd = child_dict
+    let mut rd = child_dict
         .get_item("return_data")?
         .map(|v| v.extract::<Vec<u8>>().unwrap_or_default())
         .unwrap_or_default();
+    if reason == "out_of_gas" {
+        rd.clear();
+    }
     *return_data = rd.clone();
     // Shared parent storage already mutated in place; re-sync arena (v1.3.70+71).
     *arena = snapshot_storage_dict(storage)?.unwrap_or_default();
@@ -1385,21 +1391,27 @@ fn try_inline_leaf_value0_call(
         }
         return Ok(false);
     }
-    let sub_gas = child_dict
-        .get_item("gas_used")?
-        .map(|v| v.extract::<u64>().unwrap_or(0))
-        .unwrap_or(0)
-        .min(call_gas);
+    let sub_gas = charge_nested_call_gas(
+        reason.as_str(),
+        child_dict
+            .get_item("gas_used")?
+            .map(|v| v.extract::<u64>().unwrap_or(0))
+            .unwrap_or(0),
+        call_gas,
+    );
     if let Err(reason) = consume_gas(gas_used, gas_limit, sub_gas) {
         if let Some(ref snap) = balance_snap {
             restore_inline_balances(host_context, snap)?;
         }
         return Err(pyo3::exceptions::PyRuntimeError::new_err(reason));
     }
-    let rd = child_dict
+    let mut rd = child_dict
         .get_item("return_data")?
         .map(|v| v.extract::<Vec<u8>>().unwrap_or_default())
         .unwrap_or_default();
+    if reason == "out_of_gas" {
+        rd.clear();
+    }
     *return_data = rd.clone();
     let reverted = child_dict
         .get_item("reverted")?
@@ -1620,11 +1632,14 @@ fn run_inline_create_init(
     if !matches!(reason.as_str(), "halt" | "return" | "revert" | "out_of_gas") {
         return Ok(None);
     }
-    let sub_gas = child_dict
-        .get_item("gas_used")?
-        .map(|v| v.extract::<u64>().unwrap_or(0))
-        .unwrap_or(0)
-        .min(call_gas);
+    let sub_gas = charge_nested_call_gas(
+        reason.as_str(),
+        child_dict
+            .get_item("gas_used")?
+            .map(|v| v.extract::<u64>().unwrap_or(0))
+            .unwrap_or(0),
+        call_gas,
+    );
     let reverted = child_dict
         .get_item("reverted")?
         .map(|v| v.is_truthy().unwrap_or(false))
@@ -2026,6 +2041,16 @@ fn consume_gas(gas_used: &mut u64, gas_limit: u64, cost: u64) -> Result<(), &'st
     } else {
         *gas_used += cost;
         Ok(())
+    }
+}
+
+/// Yellow Paper: exceptional halt of a nested call consumes all forwarded gas.
+/// REVERT refunds unused gas; OOG does not.
+fn charge_nested_call_gas(reason: &str, child_gas_used: u64, call_gas: u64) -> u64 {
+    if reason == "out_of_gas" {
+        call_gas
+    } else {
+        child_gas_used.min(call_gas)
     }
 }
 

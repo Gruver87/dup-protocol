@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — nested CALL OOG gas / tip-encoding FC / DAO BPS quorum
+
+- `charge_nested_call_gas`: nested OOG burns all forwarded gas + clears returndata (Yellow Paper); REVERT still refunds unused.
+- `Blockchain.__init__`: log + re-raise `bind_tip_encoding_config` failure in prod (no silent `pass`).
+- `DAO_VOTE_BPS=5100`: integer quorum `vote*10000 >= total*5100` (no float 0.51).
+- Units (`test_evm_nested_oog.py`) + industrial_gate needles. **Non-LR.** **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** after full docker rebuild (h1322 peers=2); pack `MESH_PROBE_POST_MERGE_OOG_DAO.txt`. **Soak deferred.**
+
 ### Exp→pin merge wave — outbound state_root lag / soak FullHarnessEvery / status native-crypto cache
 
 - `handle_state_root_request`: when requested height is ahead of local tip, answer with tip payload and bump `state_root_outbound_lag_total` (missing historical stays silent; pairs with inbound `state_root_lag`).

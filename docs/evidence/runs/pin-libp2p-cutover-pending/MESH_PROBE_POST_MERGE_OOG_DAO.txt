@@ -1,0 +1,6 @@
+﻿checked_at: 2026-10-05T20:02:24.9978708Z
+wave: nested CALL OOG gas + tip-encoding FC + DAO BPS
+probe: RESULT OK (h1322 peers=2) after full docker rebuild (native wheel)
+industrial_gate: OK
+units: test_evm_nested_oog + dao_vote PASS
+soak: DEFERRED by operator — not claimed

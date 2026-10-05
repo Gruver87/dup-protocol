@@ -55,6 +55,9 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `MESH_PROBE_POST_MERGE_SR_CACHE_SOAK.txt` | Outbound state_root lag + FullHarnessEvery + crypto cache Quick probe (h1289) |
 | `probe_prod_mesh_quick_merge_sr_cache_soak.json` | Probe JSON for sr-lag/cache/soak-prep wave |
 | `industrial_gate_merge_sr_cache_soak.json` | Gate snapshot for that wave |
+| `MESH_PROBE_POST_MERGE_OOG_DAO.txt` | Nested CALL OOG + tip-encoding FC + DAO BPS Quick probe (h1322, full docker rebuild) |
+| `probe_prod_mesh_quick_merge_oog_dao.json` | Probe JSON for OOG/DAO wave |
+| `industrial_gate_merge_oog_dao.json` | Gate snapshot for that wave |
 | `README.md` | This honesty stamp |
 
 ## Still missing for industrial soak claim

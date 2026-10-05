@@ -2073,6 +2073,8 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         ).read_text(encoding="utf-8", errors="replace")
         if "static_write_protection" not in rust_runner or "_abs_inline_read_only" not in rust_runner:
             errors.append("Rust EVM runner must refuse STATICCALL writes (EIP-214)")
+        if "fn charge_nested_call_gas" not in rust_runner:
+            errors.append("evm_pure_runner must charge all forwarded gas on nested OOG")
         if 'host["_abs_read_only"]' not in native_py:
             errors.append("evm_host_context_from_evm must copy _abs_read_only")
         create_hook = evm_ad_gate.split("def _contract_create_hook", 1)
@@ -4506,6 +4508,15 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         if "$hwArgs.FullHarnessEvery = 6" not in soak_mon:
             errors.append(
                 "48h soak_monitor must set FullHarnessEvery=6 (not AlwaysFullHarness)"
+            )
+        if "DAO_VOTE_BPS" not in (
+            ROOT / "runtime" / "pool_locks.py"
+        ).read_text(encoding="utf-8"):
+            errors.append("pool_locks DAO must use integer BPS quorum (Wave O)")
+        bc_init = (ROOT / "core" / "blockchain.py").read_text(encoding="utf-8")
+        if "bind_tip_encoding_config failed" not in bc_init:
+            errors.append(
+                "Blockchain.__init__ must log/raise bind_tip_encoding_config failures"
             )
         # v1.3.183 — mempool max-calldata refuse before validate
         if "calldata_too_large" not in p2p_py:

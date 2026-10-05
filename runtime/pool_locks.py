@@ -14,7 +14,9 @@ from runtime.tokenomics import build_allocations, MAX_SUPPLY_ABS
 
 POOL_META_KEY = "pool_locks_state"
 STAKING_RELEASE_EPOCHS = 100   # 100 эпох × 32 блока = полная разблокировка staking
-DAO_VOTE_THRESHOLD = 0.51        # 51% валидаторов для unlock ecosystem/treasury
+# Integer majority — vote*10000 >= total*5100 (not float 0.51).
+DAO_VOTE_BPS = 5100  # 51.00% in basis points (of 10000)
+DAO_VOTE_THRESHOLD = 0.51  # legacy display only
 
 
 def _sat_field(info: dict, sat_key: str, abs_key: str) -> int:
@@ -254,7 +256,8 @@ class PoolLockManager:
         if total_validators <= 0:
             quorum = False
         else:
-            quorum = vote_count / total_validators >= DAO_VOTE_THRESHOLD
+            # Integer 51%: vote*10000 >= total*5100
+            quorum = vote_count * 10000 >= total_validators * DAO_VOTE_BPS
         if quorum:
             pools[target_addr]["dao_unlocked"] = True
             pools[target_addr]["locked"] = False
