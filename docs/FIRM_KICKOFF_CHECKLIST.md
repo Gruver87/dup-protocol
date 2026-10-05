@@ -5,7 +5,7 @@
 **Purpose:** human / org checklist to close the two remaining external-audit tracker items.  
 **This file is not an audit report and not a PASS.**
 
-Pin transport: **TCP+TLS** (libp2p / Long-Range stay Experimental — not this engagement pin).
+Pin transport (working tip): **rust-libp2p** on prod 3-node mesh JSON (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` = **TCP+TLS** historical scope. **Long-Range stays off.** Pin libp2p 48h soak **not run** — disclose before firm scopes P2P.
 
 ---
 
@@ -53,7 +53,7 @@ Place PDF under `audits/<firm>/report.pdf`. Do **not** mark tracker items with T
 
 - “Audited” / “mainnet-ready” / listed ABS  
 - Claiming Experimental soak packs as pin audit PASS  
-- Flipping `feature_libp2p` / `feature_long_range` on this pin  
+- Enabling `feature_long_range` on prod · claiming pin libp2p soak PASS without `docs/evidence/runs/pin-libp2p-cutover-pending/` (or successor) pack  
 
 ---
 

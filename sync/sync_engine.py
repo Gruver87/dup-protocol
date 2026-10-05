@@ -33,6 +33,10 @@ class SyncEngine:
         self.sync_progress = 0
         self._solo_log_last_ts = 0.0
         self._solo_log_interval_sec = 300.0  # intentional solo: avoid per-block spam
+        # Wire-probe HOL backoff (main._mining_loop reads these): after a
+        # timeout/empty/exception probe, do not re-solicit for backoff_sec.
+        self._wire_probe_fail_ts = 0.0
+        self._wire_probe_backoff_sec = 8.0
         self._last_wire_probe_ok = None
         self._sync_fail = 0
         self._last_sync_error = ""
@@ -548,6 +552,16 @@ class SyncEngine:
             )
             return bool(decision.trusted)
 
+        # Wire-probe backoff after timeout/empty: a 70s solicit per mine tick piles
+        # HOL on the event loop / HTTP. Return the last ConsistencyService verdict
+        # unchanged (no synthetic failed probe, no sticky-green promotion).
+        now = time.time()
+        fail_ts = float(getattr(self, "_wire_probe_fail_ts", 0.0) or 0.0)
+        backoff = max(0.0, float(getattr(self, "_wire_probe_backoff_sec", 8.0)))
+        if fail_ts > 0.0 and (now - fail_ts) < backoff:
+            print("   [Sync] wire probe backoff after timeout/empty")
+            return bool(self.consistency.snapshot().consistent)
+
         # Re-probe without wiping last-known green: request_probing keeps
         # consistent=True sticky while the wire solicit runs (see machine).
         self.consistency.request_probing()
@@ -557,18 +571,22 @@ class SyncEngine:
             raw = self.node.request_peer_state_roots_sync(timeout=70)
             if raw is None:
                 print("   [Sync] peer state_root wire probe failed: timeout/empty")
+                self._wire_probe_fail_ts = time.time()
                 probe = WireProbeResult.failed("probe_timeout_empty")
             elif len(raw) == 0:
                 print(
                     "   [Sync] peer state_root wire probe empty "
                     f"with {len(peers)} peer(s)"
                 )
+                self._wire_probe_fail_ts = time.time()
                 probe = WireProbeResult.failed("probe_empty")
             else:
                 wire_roots = list(raw)
+                self._wire_probe_fail_ts = 0.0
                 probe = WireProbeResult.succeeded(wire_roots=tuple(wire_roots))
         except Exception as exc:
             print(f"   [Sync] peer state_root wire probe failed: {exc}")
+            self._wire_probe_fail_ts = time.time()
             probe = WireProbeResult.failed(str(exc))
 
         decision = self.consistency.apply_probe_evaluation(

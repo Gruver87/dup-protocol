@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### ADR 0020 — libp2p industrial mesh cutover (pin)
+
+- **Transport (2026-10-05+):** prod 3-node mesh (`778888`) defaults to **rust-libp2p** — `docker/node.prod.mesh{1,2,3}.json` set `feature_libp2p=true`, `p2p_tls_enabled=false`; mutually exclusive with TCP+TLS (`feature_libp2p=false`). Single-node / ceremony profile `docker/node.prod.json` keeps TCP+TLS alternate. Boot fail-closed if native libp2p unavailable. **Not** public mainnet.
+- **Evidence honesty:** freeze tag `v1.3.1339-tip-v2-industrial` + `docs/evidence/runs/375d14f/` remain **TCP+TLS tip-v2** proof — sealed packs unchanged. Post-cutover **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/` (`industrial_gate` OK). **48h libp2p soak IN PROGRESS** (`logs/soak_48h_libp2p_industrial.log` — claim PASS only with `hard_fails=0`). Do **not** cite Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`, `0a7932c4`) as pin transport evidence. Long-Range stays **off**.
+- **Suggested operator tag after soak PASS:** `v1.3.1340-libp2p-industrial-mesh` (document only — **no tag** until repo clean + soak pack).
+- **Docs:** [docs/CHANGELOG.md](docs/CHANGELOG.md) · [ADR 0020](docs/adr/0020-libp2p-industrial-mesh.md) · EVIDENCE_MATRIX / MAINNET_GAP / audit pack honesty sync.
+
 ### Industrial harden (no new features)
 
 - **Docs (2026-10-05):** MAINNET_GAP + EVIDENCE_MATRIX DUP-first headers (Formerly Absolute…). **Not** soak.

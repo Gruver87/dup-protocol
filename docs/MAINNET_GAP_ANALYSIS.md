@@ -3,11 +3,13 @@
 **Product:** DUP Protocol · **Org:** DUP Labs  
 **Repos:** [`dup-protocol`](https://github.com/Gruver87/dup-protocol) (industrial pin) · R&D [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)  
 **Formerly:** Absolute Blockchain Ultimate Hybrid (same pin / evidence)  
-**Updated:** 2026-10-05 (header brand sync; body may still cite older soak windows)  
+**Updated:** 2026-10-05 (ADR 0020 libp2p mesh cutover honesty; soak gap explicit)  
 **Positioning:** Production-hardened R&D stack → path to public mainnet  
 **Evidence ledger:** [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) — separates CI/automation from live ops proof
 
-**Wave C tip+apply (2026-08-02):** ceremony-armed tip encoding v2 uses integer `b_satoshi` (`SATOSHI_MULTIPLIER=1e6`) on fresh prod mesh; StateService fees/gas/reward are satoshi-int. Float tip `"b"` remains legacy/offline only. See [STATE_ROOT_ENCODING_MIGRATION.md](STATE_ROOT_ENCODING_MIGRATION.md) + evidence `docs/evidence/runs/79472a111cd5/`. **Phase 2 tip-v2 48h soak PASS** 2026-08-05→07 — `docs/evidence/runs/375d14f/` + `logs/soak_report_tipv2_48h_rerun.json`.
+**Wave C tip+apply (2026-08-02):** ceremony-armed tip encoding v2 uses integer `b_satoshi` (`SATOSHI_MULTIPLIER=1e6`) on fresh prod mesh; StateService fees/gas/reward are satoshi-int. Float tip `"b"` remains legacy/offline only. See [STATE_ROOT_ENCODING_MIGRATION.md](STATE_ROOT_ENCODING_MIGRATION.md) + evidence `docs/evidence/runs/79472a111cd5/`. **Phase 2 tip-v2 48h soak PASS** 2026-08-05→07 — `docs/evidence/runs/375d14f/` + `logs/soak_report_tipv2_48h_rerun.json` (**TCP+TLS**; freeze tag evidence).
+
+**ADR 0020 (2026-10):** working-tip prod 3-node mesh JSON is **rust-libp2p** (`feature_libp2p=true`, `p2p_tls_enabled=false`). **Gap:** post-cutover `probe_prod_mesh.ps1 -Quick` evidence pack and **48h pin libp2p soak** (`hard_fails=0`) are **not completed** — operator placeholder `docs/evidence/runs/pin-libp2p-cutover-pending/`. Do not cite Experimental libp2p soaks as pin proof. Suggested tag after PASS: `v1.3.1340-libp2p-industrial-mesh` (document only until tagged).
 
 This document is the honest engineering checklist after a full repository scan.  
 Automated gates (`mainnet_readiness`, `prod_gate`, `industrial_gate`, `post_soak_verify`) enforce code-level fail-closed rules; **they do not replace** external audit, validator operations, or legal review.
@@ -113,7 +115,7 @@ Operator sequence: [MAINNET_CUTOVER.md](MAINNET_CUTOVER.md).
 | Storage | RocksDB prod + backup/restore; **reorg purges EVM/tx-prop indexes** (v1.2.43); aux.db scope documented |
 | State root | Prod refuse tip header rewrite (`allow_state_root_rewrite=false`, v1.2.79) |
 | Tests | ✅ CI: `industrial_gate.py`, prod boot E2E, `verify_p2p_ci --mode prod-smoke` |
-| libp2p / Long-Range | **Not this repo** — R&D in [Gruver87/dup-protocol-experimental](https://github.com/Gruver87/dup-protocol-experimental); Hybrid prod JSON keeps `feature_libp2p=false` / `feature_long_range=false` |
+| libp2p / Long-Range | **ADR 0020:** pin prod **mesh** JSON uses `feature_libp2p=true` (rust-libp2p); alternate TCP+TLS via `node.prod.json` / ceremony. **Long-Range** stays off (`feature_long_range=false`). Pin libp2p soak **pending** — Experimental Long-Range/libp2p lab soaks are **not** pin evidence |
 
 ---
 

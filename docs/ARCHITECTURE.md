@@ -1,9 +1,9 @@
 # Architecture (honest overview)
 
-**Updated:** 2026-08-13  
-**Scope:** Absolute Blockchain Ultimate Hybrid — domain ports + adapters (ADR **0001–0016**; **0013 unused**). Devnet + mainnet-v1 **prep**, not a launched public mainnet.  
-**Industrial pin:** tag [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) (tip-v2 `b_satoshi` 48h soak PASS + Phase 3–4 binder READY).  
-**This pin refuses** `FEATURE_LIBP2P` / `FEATURE_LONG_RANGE` and `SECRET_BACKEND=file` in prod. rust-libp2p lives in [experimental](https://github.com/Gruver87/dup-protocol-experimental) only.
+**Updated:** 2026-10-05 (ADR 0020 transport note)  
+**Scope:** DUP Protocol industrial pin — domain ports + adapters (ADR **0001–0016**, **0018–0020**; **0013 unused**). Devnet + mainnet-v1 **prep**, not a launched public mainnet.  
+**Industrial pin:** tag [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) (**TCP+TLS** tip-v2 `b_satoshi` 48h soak PASS + Phase 3–4 binder READY). Working-tip prod mesh uses **rust-libp2p** per [ADR 0020](adr/0020-libp2p-industrial-mesh.md) — pin libp2p soak **pending**.  
+**This pin refuses** `FEATURE_LONG_RANGE` and `SECRET_BACKEND=file` in prod. `feature_libp2p=true` vs TCP+TLS (`feature_libp2p=false`, `p2p_tls_enabled=true`) are **mutually exclusive** mesh profiles (both-on refused).
 
 ---
 
@@ -43,8 +43,8 @@ flowchart TB
     STOP["Graceful shutdown · ADR 0014"]
   end
 
-  subgraph net ["Network plane — TCP+TLS only on this pin"]
-    P2P["P2PNode TCP+TLS · soft-refuse"]
+  subgraph net ["Network plane — libp2p mesh default · TCP+TLS alternate"]
+    P2P["P2PNode libp2p or TCP+TLS · soft-refuse"]
     DISP["p2p_dispatch handlers"]
     CA["catchup_adapters"]
     FA["fork_adapters"]

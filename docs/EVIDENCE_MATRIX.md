@@ -9,7 +9,7 @@ This doc reflects honest status after local prod mesh runs and monitoring — no
 
 **DUP Protocol** (DUP Labs; formerly Absolute Blockchain Ultimate Hybrid) is a working R&D L1 / devnet stack with a functioning **3-node production-profile mesh** (chain `778888`), state synchronization, RocksDB hybrid persistence, Rust crypto on the hot path, automated CI/gates, and baseline ops tooling (health watch, DR rehearsal scripts, restart recovery).
 
-**Public mainnet-ready readiness is not proven.** Missing confirmed evidence for independent external security audit. **48h prod mesh soak PASS** (Jul float tip 19–21 2026; **tip-v2 `b_satoshi` Aug 5–7 2026**). **Cross-node EVM (mempool path) is proven** on local prod mesh (Jul 12 evening).
+**Public mainnet-ready readiness is not proven.** Missing confirmed evidence for independent external security audit. **Historical 48h prod mesh soak PASS** on **TCP+TLS** (Jul float tip 19–21 2026; **tip-v2 `b_satoshi` Aug 5–7 2026**, pack `375d14f` / freeze tag `v1.3.1339-tip-v2-industrial`). **ADR 0020** moved working-tip prod 3-node mesh JSON to **rust-libp2p** — **post-cutover Quick probe PASS** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/` (`probe_prod_mesh.ps1 -Quick` → RESULT: OK); **pin libp2p 48h soak IN PROGRESS** (`logs/soak_48h_libp2p_industrial.log` — claim PASS only with `hard_fails=0`). **Cross-node EVM (mempool path) is proven** on local prod mesh (Jul 12 evening; pre–libp2p-cutover transport).
 
 Compared to documentation-only claims, **evidence level increased** in Jul 2026: real prod mesh bring-up logs, harness alignment, **7h soak passed**, **failover drill**, **signed tx propagation**, and **cross-node EVM (mempool deploy + 3 RPC storage)**.
 
@@ -41,7 +41,8 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 | Bridge L1 | **OFF by recorded decision** — see [Bridge OFF audit checklist](#bridge-off--pre-enable-audit-checklist) |
 | RocksDB column families | **Opt-in** (`ROCKSDB_COLUMN_FAMILIES`, default false) — not required for soak contract |
 | Ceremony pin | Automation exists; production hash/manifest still operator-owned |
-| P2P TLS | Default ON for prod mesh (+mTLS); handshake `node_id` bound to cert CN/SAN (v1.2.87) |
+| P2P transport (`778888` mesh) | **ADR 0020 cutover:** default prod 3-node mesh JSON is **rust-libp2p** (`feature_libp2p=true`, `p2p_tls_enabled=false`, Noise/Yamux + `/abs/wire`). **TCP+TLS/mTLS** remains the **alternate** profile (`feature_libp2p=false`, e.g. `docker/node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` evidence is **TCP+TLS only** — do not relabel. **Quick probe PASS** (packaged); **48h libp2p soak pending**. Do not cite Experimental libp2p packs as pin proof. |
+| P2P TLS (alternate profile) | When `feature_libp2p=false`: default ON for prod (+mTLS); handshake `node_id` bound to cert CN/SAN (v1.2.87). Not the default mesh JSON after ADR 0020. |
 | JWT admin | `role=admin` enforced on protected POSTs; mint via `scripts/mint_admin_jwt.py` |
 | Tip-safety domain (`consensus/tip_safety`) | **Unit-proven** (stage 1) — see [ADR 0001](adr/0001-tip-safety.md) |
 | Tip-safety shadow (`TIP_SAFETY_SHADOW`) | **Wired observe-only** (stage 2) — metrics `abs_tip_safety_shadow_*` |
@@ -105,7 +106,8 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Gap | Why it is **not** proven yet | What would prove it |
 |-----|------------------------------|---------------------|
-| **Fresh 48h soak on honesty tip** | Historical tip-v2 pack is Aug 2026; honesty merge `adc8547` has units+gate only | Operator re-run soak with `hard_fails=0` pack on current HEAD |
+| **Fresh 48h soak on honesty tip** | Historical tip-v2 pack is Aug 2026 **TCP+TLS**; honesty merge `adc8547` has units+gate only | Operator re-run soak with `hard_fails=0` pack on current HEAD |
+| **Pin libp2p mesh (ADR 0020)** | Code + mesh JSON cutover; **Quick probe PASS** packaged; **48h soak IN PROGRESS** (`logs/soak_48h_libp2p_industrial.log` / `soak_report_48h_libp2p_industrial.json`) — not PASS until `hard_fails=0` | `docs/evidence/runs/pin-libp2p-cutover-pending/`; suggested tag `v1.3.1340-libp2p-industrial-mesh` only after soak PASS |
 | **External audit** | README and `external_audit_tracker.py` checklist incomplete | Third-party audit report + tracker items closed |
 | **Bridge mainnet cutover** | Prod mesh runs with `bridge_enabled: false` by design | Audited L1 contracts + relayer SLOs per `docs/BRIDGE_L1_MAINNET.md`; decision recorded via `bridge_decision_off` step |
 | **Ceremony + secret rotation (operator cutover)** | Scripts proven; production hash/manifest pin is operator-owned | Operator runs pin + `-Force` rotation before cutover — see `docs/MAINNET_CUTOVER.md` |

@@ -224,8 +224,8 @@ class Config:
     feature_ai_validator: bool = False
     feature_smart_accounts: bool = False
     feature_validator_selection: bool = False
-    # Not implemented here. validate() refuses True in every mode.
-    # R&D: Gruver87/dup-protocol-experimental. Default transport remains TCP+TLS.
+    # ADR 0020: industrial mesh transport (rust-libp2p Noise). Exclusive with p2p_tls_enabled.
+    # Default off: single-node / TCP+TLS alternate. Mesh JSON sets it true explicitly.
     feature_libp2p: bool = False
     feature_long_range: bool = False
 
@@ -1038,16 +1038,11 @@ class Config:
             errors.append("prod deployment forbids bridge_mode=fake")
         if self.is_production and self.bridge_dev_adapter_enabled:
             errors.append("prod deployment forbids BRIDGE_DEV_ADAPTER_ENABLED")
-        # Hybrid freeze does not implement these kernels (Experimental only).
-        if self.feature_libp2p:
-            errors.append(
-                "FEATURE_LIBP2P is not implemented in this audit-freeze repo "
-                "(use Gruver87/dup-protocol-experimental; default transport remains TCP+TLS)"
-            )
+        # ADR 0017: Long-Range stays lab-only / refuse in this pin until complete on disk.
         if self.feature_long_range:
             errors.append(
-                "FEATURE_LONG_RANGE is not implemented in this audit-freeze repo "
-                "(use Gruver87/dup-protocol-experimental)"
+                "FEATURE_LONG_RANGE is not implemented for pin production "
+                "(lab-only until ADR 0017 complete; use Gruver87/dup-protocol-experimental)"
             )
         if self.is_production:
             backend = str(self.secret_backend or "env").strip().lower()
@@ -1088,7 +1083,6 @@ class Config:
                 "FEATURE_AI_VALIDATOR": self.feature_ai_validator,
                 "FEATURE_SMART_ACCOUNTS": self.feature_smart_accounts,
                 "FEATURE_VALIDATOR_SELECTION": self.feature_validator_selection,
-                "FEATURE_LIBP2P": self.feature_libp2p,
                 "FEATURE_LONG_RANGE": self.feature_long_range,
             }
             enabled_blocked = [name for name, enabled in blocked.items() if enabled]
@@ -1099,10 +1093,17 @@ class Config:
                 )
             if not self.require_native_crypto:
                 errors.append("prod mode requires ABS_REQUIRE_NATIVE_CRYPTO=true")
-            if not self.p2p_native_transport:
+            # ADR 0020: exclusive rust-libp2p mesh OR native TCP+TLS alternate profile.
+            if not self.p2p_native_transport and not self.feature_libp2p:
                 errors.append(
                     "prod mode requires p2p_native_transport=true "
-                    "(native TCP+TLS data plane; set P2P_NATIVE_TRANSPORT=true)"
+                    "(native TCP+TLS data plane; set P2P_NATIVE_TRANSPORT=true) "
+                    "or feature_libp2p=true (ADR 0020 rust-libp2p mesh)"
+                )
+            if self.feature_libp2p and self.p2p_tls_enabled:
+                errors.append(
+                    "prod feature_libp2p=true forbids p2p_tls_enabled "
+                    "(Noise ≠ mTLS; set p2p_tls_enabled=false for ADR 0020 mesh)"
                 )
             if not self.evm_create2_eip1014:
                 errors.append("prod mode requires evm_create2_eip1014=true")

@@ -1,0 +1,70 @@
+"""ADR 0018 libp2p dual-stack adapter unit tests."""
+
+from __future__ import annotations
+
+import pytest
+
+from network.transport.errors import TransportCapabilityError
+from network.transport.libp2p_adapter import Libp2pTransportAdapter
+from network.transport.types import PeerEndpoint
+from runtime.config import Config
+
+
+def test_default_config_libp2p_off() -> None:
+    cfg = Config()
+    assert cfg.feature_libp2p is False
+    assert cfg.feature_long_range is False
+
+
+def test_adapter_disabled_refuses_dial() -> None:
+    ad = Libp2pTransportAdapter(enabled=False)
+    with pytest.raises(TransportCapabilityError):
+        ad.connect(PeerEndpoint(host="127.0.0.1", port=4001))
+
+
+def test_adapter_enabled_capability() -> None:
+    ad = Libp2pTransportAdapter(enabled=True)
+    st = ad.capability_status()
+    assert st["available"] is True
+    assert st["transport"] == "libp2p"
+    if not ad.rust_backend:
+        h = ad.connect(PeerEndpoint(host="127.0.0.1", port=4001))
+        assert h["transport"] == "libp2p"
+        assert h["connected"] is False
+        assert h["backend"] == "stub"
+    else:
+        # Real rust backend: dial without listener must fail closed.
+        with pytest.raises(TransportCapabilityError):
+            ad.connect(PeerEndpoint(host="127.0.0.1", port=39999))
+        ad.close()
+
+
+def test_prod_allows_libp2p_refuses_long_range(monkeypatch) -> None:
+    """Pin policy: env is not silently coerced; validate() refuses long_range (ADR 0017)."""
+    monkeypatch.setenv("DEPLOYMENT_MODE", "prod")
+    monkeypatch.setenv("FEATURE_LIBP2P", "true")
+    monkeypatch.setenv("FEATURE_LONG_RANGE", "true")
+    monkeypatch.delenv("P2P_TLS_ENABLED", raising=False)
+    cfg = Config()
+    cfg.deployment_mode = "prod"
+    cfg.apply_env()
+    assert cfg.feature_libp2p is True
+    errs = cfg.validate()
+    assert not any("feature_libp2p" in e.lower() for e in errs), errs
+    assert any("FEATURE_LONG_RANGE" in e for e in errs), errs
+
+
+def test_libp2p_close_logs_failure(caplog) -> None:
+    import logging
+
+    ad = Libp2pTransportAdapter(enabled=True)
+
+    class _Boom:
+        def close(self):
+            raise RuntimeError("close boom")
+
+    ad._node = _Boom()
+    with caplog.at_level(logging.DEBUG, logger="LibP2P"):
+        ad.close()
+    assert "node close failed" in caplog.text
+    assert ad._node is None

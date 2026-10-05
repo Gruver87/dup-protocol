@@ -153,9 +153,9 @@ def test_bridge_reject_emit_failure_is_visible():
     assert "bus_down" in str(res.detail.get("event_bus_emit_failed") or "")
 
 
-def test_pin_tcp_tls_has_no_libp2p_adapter_module():
-    """Audit pin stays TCP+TLS — libp2p adapter is Experimental-only."""
+def test_pin_has_libp2p_adapter_module_for_adr0020_mesh():
+    """ADR 0020 pin industrial mesh cutover: libp2p adapter must exist on disk."""
     import importlib.util
 
     spec = importlib.util.find_spec("network.transport.libp2p_adapter")
-    assert spec is None
+    assert spec is not None

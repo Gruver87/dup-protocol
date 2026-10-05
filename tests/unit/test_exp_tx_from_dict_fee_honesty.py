@@ -75,6 +75,19 @@ def test_execution_mempool_refuses_missing_fee(monkeypatch):
         )
         is False
     )
+    # Pin refuses invent gas=21000 — fee alone is not enough.
+    assert (
+        mp.add_transaction(
+            {
+                "from": "alice",
+                "to": "bob",
+                "value": 1,
+                "nonce": 0,
+                "gas_price": 0.001,
+            }
+        )
+        is False
+    )
     h = mp.add_transaction(
         {
             "from": "alice",
@@ -82,6 +95,7 @@ def test_execution_mempool_refuses_missing_fee(monkeypatch):
             "value": 1,
             "nonce": 0,
             "gas_price": 0.001,
+            "gas": 21000,
         }
     )
     assert isinstance(h, str) and h.startswith("0x")

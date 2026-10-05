@@ -1,11 +1,11 @@
 # Fund / demo operator pack — industrial pin (honest)
 
-**Date:** 2026-10-05 · **Repo tip:** run `git rev-parse --short HEAD` (honesty code tip `adc8547`)  
+**Date:** 2026-10-05 (transport note refreshed for ADR 0020) · **Repo tip:** run `git rev-parse --short HEAD`  
 **Brand:** DUP Labs · DUP Protocol  
 **Repo:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)  
 **Not:** public audited mainnet · not firm pen-test PASS · not a new 48h soak claim.
 
-Operator checklist after Exp→pin honesty merge close. Pin transport remains **TCP+TLS** (libp2p stays Experimental / opt-in only).
+Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020: `feature_libp2p=true`, `p2p_tls_enabled=false`). **TCP+TLS** remains the alternate profile (`node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** evidence only. Pin libp2p soak/probe **not completed** — do not claim PASS.
 
 ---
 
@@ -13,7 +13,7 @@ Operator checklist after Exp→pin honesty merge close. Pin transport remains **
 
 | Layer | Status | Proof |
 |-------|--------|-------|
-| Industrial pin (TCP+TLS freeze) | Show for firm scope | tag `v1.3.1339-tip-v2-industrial` (`0531995`) + honesty code tip `adc8547` |
+| Industrial pin (freeze + working tip) | Show for firm scope | tag `v1.3.1339-tip-v2-industrial` (`0531995`) = **TCP+TLS** sealed evidence; working tip = ADR 0020 libp2p mesh JSON (soak pending) |
 | Fail-closed satoshi / RPC / health honesty | Code + units + industrial_gate | Exp→pin merge CLOSED — see [EVIDENCE_MATRIX](EVIDENCE_MATRIX.md) CI row |
 | STRICT 48h scoreboard | Historical packs only | Do not claim soak on current HEAD unless a new pack exists |
 | Showcase / diligence docs | Pin stub + Exp GitHub | [SHOWCASE](SHOWCASE.md) · [DILIGENCE_BRIEF (Exp)](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DILIGENCE_BRIEF.md) · [FUND_READINESS (Exp)](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/FUND_READINESS.md) |
@@ -49,7 +49,7 @@ python scripts/industrial_gate.py
 1. Open [SHOWCASE.md](SHOWCASE.md)  
 2. Honesty: `/status` tip_skew (not false inconsistent) · MEV `simulation_only` · bridge OFF  
 3. Gaps: [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md) — say them first  
-4. Narrative: **TCP+TLS** industrial pin — not Experimental libp2p as “audited”
+4. Narrative: **pin prod mesh is libp2p (ADR 0020)** on working tip — freeze tag stays **TCP+TLS**; Experimental libp2p soaks are **not** pin evidence; external audit still **pending**
 
 ---
 
@@ -69,8 +69,9 @@ python scripts/industrial_gate.py
 |------|-------|
 | External pen-test + L1 audit PDF | Org / Phase 6 |
 | Bridge L1 contracts live | Keep bridge OFF on live mesh |
-| Fresh 48h soak on current HEAD | Operator — honesty tip not soak-proven |
-| ADR 0020 Exp libp2p vs pin TCP+TLS | Intentional — do not sell as pin parity |
+| Fresh 48h soak on current HEAD | Operator — ADR 0020 libp2p cutover **not** soak-proven (`pin-libp2p-cutover-pending`) |
+| Post-cutover mesh probe | Operator — `probe_prod_mesh.ps1 -Quick` not re-run as pin evidence pack |
+| Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`) | **Not** pin evidence — R&D on [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) only |
 | Long-Range / BLS | Lab-only / off in prod JSON |
 
 ---

@@ -2,9 +2,9 @@
 
 **Product:** DUP Protocol (DUP Labs) · Formerly Absolute Blockchain Ultimate Hybrid  
 **Audience:** external auditors / operators  
-**Scope:** single-tip prod-profile chain `778888` (Profile A) · TCP+TLS pin  
-**Out of scope:** shard lab, L2 sandbox, ZK/PQ, bridge ON, libp2p / Long-Range (Experimental)  
-**Updated:** 2026-10-05 (brand sync; assets unchanged)
+**Scope:** single-tip prod-profile chain `778888` (Profile A) · **working-tip prod mesh:** rust-libp2p (ADR 0020); **freeze tag** `v1.3.1339-tip-v2-industrial` reviewed **TCP+TLS** only  
+**Out of scope:** shard lab, L2 sandbox, ZK/PQ, bridge ON, Long-Range (`feature_long_range=false`)  
+**Updated:** 2026-10-05 (ADR 0020 transport honesty; assets unchanged)
 
 ## Assets
 
@@ -21,10 +21,12 @@
 
 ```text
 [Wallet/Explorer] --HTTP/RPC+JWT--> [API] --> [Blockchain/StateService]
-[Peer] --TCP+TLS/mTLS--> [P2P admit] --> [Dispatcher] --> [Sync/TipSafety/Apply]
+[Peer] --libp2p Noise/Yamux (/abs/wire) OR TCP+TLS/mTLS (alternate)--> [P2P admit] --> [Dispatcher] --> [Sync/TipSafety/Apply]
 [Operator] --secrets/env--> [SecretManager] --> [Node]
 [Bridge L1] --OFF on mesh--> (no trust path until audited cutover)
 ```
+
+Default prod 3-node mesh JSON after ADR 0020: **libp2p** (TLS off). Ceremony / `node.prod.json`: **TCP+TLS** when `feature_libp2p=false`. Profiles are mutually exclusive.
 
 ## Adversaries (assumed)
 
@@ -50,7 +52,7 @@
 - `finality_quorum_live` remains false until real QC mesh proof.  
 - EVM is a **subset**, not a full Ethereum client.  
 - pyo3 0.22 held with scoped RUSTSEC ignores until 0.29 migration (PR #7).  
-- Historical Jul float 48h soak pre-dates tip-v2; **tip-v2 48h soak PASS** Aug 5–7 2026 (`docs/evidence/runs/375d14f/`).
+- Historical Jul float 48h soak pre-dates tip-v2; **tip-v2 48h soak PASS** Aug 5–7 2026 (`docs/evidence/runs/375d14f/`) on **TCP+TLS** freeze evidence. **Pin libp2p mesh soak/probe after ADR 0020: not completed.**
 
 ## References
 

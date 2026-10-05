@@ -18,6 +18,7 @@ import math
 import time
 import threading
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional, Callable, Any, Tuple
 
 from network.p2p_tls import (
@@ -204,6 +205,56 @@ def _clamp_native_timeout_ms(n: Any, default: int = 30000) -> int:
     return max(1000, min(600_000, raw if raw > 0 else default))
 
 
+_libp2p_send_pool: Optional[ThreadPoolExecutor] = None
+_libp2p_inbox_pool: Optional[ThreadPoolExecutor] = None
+_libp2p_pool_lock = threading.Lock()
+
+
+def _ensure_libp2p_io_pools() -> tuple[ThreadPoolExecutor, ThreadPoolExecutor]:
+    """Dedicated pools so send_wire ACK waits cannot starve poll_inbox.
+
+    Default asyncio executor is shared with native I/O. rust ``send_wire``
+    blocks until the Noise ACK; saturating that pool stalls
+    ``_libp2p_inbox_loop`` and state_root replies miss the HTTP waiter.
+    """
+    global _libp2p_send_pool, _libp2p_inbox_pool
+    with _libp2p_pool_lock:
+        if _libp2p_send_pool is None:
+            _libp2p_send_pool = ThreadPoolExecutor(
+                max_workers=8, thread_name_prefix="abs-lp2p-send"
+            )
+        if _libp2p_inbox_pool is None:
+            _libp2p_inbox_pool = ThreadPoolExecutor(
+                max_workers=1, thread_name_prefix="abs-lp2p-inbox"
+            )
+        return _libp2p_send_pool, _libp2p_inbox_pool
+
+
+# rust `/abs/wire` request-response timeout is 10s (libp2p_wire_timeout_secs);
+# the handshake await must outlive it so a slow ACK is a send failure, not a hang.
+_LIBP2P_HANDSHAKE_SEND_TIMEOUT_SEC = 12.0
+
+
+def _libp2p_send_wire_bg(adapter: Any, peer_id: str, frame: bytes) -> bool:
+    """Complete rust-libp2p request-response off the peer send loop.
+
+    Application replies arrive as inbox frames. Blocking the send loop on the
+    Noise ACK HOL-stalls state_root solicit (empty peer_probe_ok).
+
+    Returns True when ``send_wire`` completed (remote Noise ACK), False on error.
+    """
+    try:
+        adapter.send_wire(str(peer_id), bytes(frame))
+    except Exception as exc:
+        logger.warning(
+            "[P2P] libp2p send_wire bg failed to %s: %s",
+            str(peer_id)[:24],
+            exc,
+        )
+        return False
+    return True
+
+
 # Soft peer score lives in network.peer_manager (imported as _peer_health_score).
 
 
@@ -219,8 +270,20 @@ class PeerConnection:
         send_queue_max: int = 256,
         drain_timeout_sec: float = 5.0,
         native_conn=None,
+        libp2p_adapter=None,
+        libp2p_peer_id: str = "",
     ):
         self._native_conn = native_conn  # optional P2PNativeConn (v1.3.90)
+        self._libp2p_adapter = libp2p_adapter
+        self._libp2p_peer_id = str(libp2p_peer_id or "")
+        self._libp2p_role = ""
+        self._libp2p_inbound_handler = False
+        self._libp2p_message_loop = False
+        self._libp2p_inbound: Optional[asyncio.Queue] = (
+            asyncio.Queue(maxsize=max(32, int(send_queue_max or 256)))
+            if libp2p_adapter is not None
+            else None
+        )
         self._message_loop_owns_writes = False
         self._in_message_loop_task = False
         self.reader = reader
@@ -395,8 +458,96 @@ class PeerConnection:
         self.writer.write(payload)
         await asyncio.wait_for(self.writer.drain(), timeout=write_timeout)
 
+    def _invoke_libp2p_hook(
+        self, cb: Optional[Callable[[], None]], *, name: str
+    ) -> None:
+        """Run send/egress counters without letting a hook abort the libp2p wire path."""
+        if cb is None:
+            return
+        try:
+            cb()
+        except Exception as exc:
+            logger.warning(
+                "[P2P] %s hook failed to %s: %s",
+                name,
+                self.peer_id or self.host,
+                exc,
+            )
+
     async def _write_message(self, msg_type: str, data: Any) -> bool:
         """v1.3.93: native encode+write pump, or prepare+write when egress on."""
+        libp2p_ad = getattr(self, "_libp2p_adapter", None)
+        libp2p_pid = str(getattr(self, "_libp2p_peer_id", "") or "").strip()
+        if libp2p_ad is not None and libp2p_pid:
+            from network.transport.errors import TransportValidationError
+            from network.transport.libp2p_adapter.wire_bridge import (
+                prepare_abs_wire_frame,
+            )
+
+            codec = self._effective_wire_codec()
+            try:
+                decision, frame = prepare_abs_wire_frame(
+                    peer_id=libp2p_pid,
+                    msg_type=str(msg_type),
+                    payload=data,
+                    codec=codec,
+                )
+            except TransportValidationError as exc:
+                logger.warning(
+                    "[P2P] libp2p abs wire prepare refused to %s: %s",
+                    self.peer_id or libp2p_pid,
+                    exc,
+                )
+                self._invoke_libp2p_hook(self._on_egress_reject, name="egress_reject")
+                return False
+            if (not decision.ok) or not frame:
+                logger.warning(
+                    "[P2P] libp2p abs wire prepare refused to %s",
+                    self.peer_id or libp2p_pid,
+                )
+                self._invoke_libp2p_hook(self._on_egress_reject, name="egress_reject")
+                return False
+            # rust-libp2p `/abs/wire` is request-response: send_wire blocks until
+            # the remote ACK. Application replies are a later inbox frame, not that
+            # ACK. Prepare-fail stays HARD REFUSE above; the ACK wait moves off the
+            # send loop onto the dedicated send pool (never the default executor).
+            try:
+                send_pool, _ = _ensure_libp2p_io_pools()
+                wire_fut = asyncio.get_running_loop().run_in_executor(
+                    send_pool,
+                    _libp2p_send_wire_bg,
+                    libp2p_ad,
+                    libp2p_pid,
+                    bytes(frame),
+                )
+                if str(msg_type) in (MSG_HANDSHAKE, MSG_HANDSHAKE_ACK):
+                    # Handshake frames must complete before anything else is
+                    # sent on this session. Fire-and-forget let the responder's
+                    # STATUS (separate pool thread) overtake HANDSHAKE_ACK, so the
+                    # initiator failed on a non-ACK first frame while the
+                    # responder had already registered it (asymmetric mesh).
+                    if not await asyncio.wait_for(
+                        wire_fut, timeout=_LIBP2P_HANDSHAKE_SEND_TIMEOUT_SEC
+                    ):
+                        self._invoke_libp2p_hook(self._on_send_fail, name="send_fail")
+                        return False
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "[P2P] libp2p %s send_wire timeout to %s",
+                    msg_type,
+                    self.peer_id or libp2p_pid,
+                )
+                self._invoke_libp2p_hook(self._on_send_fail, name="send_fail")
+                return False
+            except Exception as exc:
+                logger.warning(
+                    "[P2P] libp2p send_abs_wire schedule failed to %s: %s",
+                    self.peer_id or libp2p_pid,
+                    exc,
+                )
+                self._invoke_libp2p_hook(self._on_send_fail, name="send_fail")
+                return False
+            return True
         if (
             self._native_conn is not None
             and hasattr(self._native_conn, "write_message")
@@ -457,6 +608,10 @@ class PeerConnection:
         """
         if not batch:
             return []
+        libp2p_ad = getattr(self, "_libp2p_adapter", None)
+        libp2p_pid = str(getattr(self, "_libp2p_peer_id", "") or "").strip()
+        if libp2p_ad is not None and libp2p_pid:
+            return [await self._write_message(msg_type, data) for msg_type, data, _fut in batch]
         if len(batch) == 1:
             msg_type, data, _fut = batch[0]
             return [await self._write_message(msg_type, data)]
@@ -1062,6 +1217,19 @@ class PeerConnection:
         v1.3.94: prefers read_messages batch drain into `_pending_msgs`.
         """
         limit = _max_p2p_line_bytes(config)
+        inbound = getattr(self, "_libp2p_inbound", None)
+        if inbound is not None:
+            try:
+                item = await asyncio.wait_for(
+                    inbound.get(), timeout=self._native_poll_wait_sec()
+                )
+            except asyncio.TimeoutError:
+                return {"type": MSG_IDLE, "data": None}
+            if item is None:
+                return None
+            if isinstance(item, dict) and item.get("wire_codec"):
+                self._note_peer_wire_codec(item.get("wire_codec"))
+            return item
         try:
             # v1.3.94/92: native transport fused read+wire parse (batch when available)
             if self._native_conn is not None and (
@@ -1317,6 +1485,12 @@ class PeerConnection:
                     pass
         except Exception:
             pass
+        lp_q = getattr(self, "_libp2p_inbound", None)
+        if lp_q is not None:
+            try:
+                lp_q.put_nowait(None)
+            except Exception as exc:
+                logger.debug("[P2P] libp2p inbound close wake failed: %s", exc)
         if self._native_conn is not None:
             try:
                 self._native_io_call(self._native_conn.close)
@@ -1461,6 +1635,16 @@ class P2PNode:
         self._native_tls = bool(
             self._use_native_transport and p2p_tls_enabled(config)
         )
+        # ADR 0020: libp2p live mesh — exclusive with native TCP(+TLS) listener.
+        # feature_libp2p=true never falls back to TCP+TLS (see _start_libp2p_listen).
+        self._use_libp2p_transport = bool(getattr(config, "feature_libp2p", False))
+        self._libp2p_sessions: Dict[str, PeerConnection] = {}
+        self._libp2p_listening = False
+        self._libp2p_listen_addrs: List[str] = []
+        self._libp2p_wire_refuse_total = 0
+        if self._use_libp2p_transport:
+            self._use_native_transport = False
+            self._native_tls = False
         self._native_read_message = False
         self._native_write_message = False
         self._native_read_messages = False
@@ -1633,6 +1817,14 @@ class P2PNode:
 
         self.transport_adapter = NativeTransportAdapter(
             require_native=bool(_want_native_rl),
+        )
+        # ADR 0019/0020: dual-stack selector + PeerManager ban hooks (FEATURE_LIBP2P).
+        from network.transport.dual_stack import DualStackDialer
+        from network.transport.libp2p_adapter.peer_policy import Libp2pPeerPolicy
+
+        self._dual_stack = DualStackDialer.from_config(self.config)
+        self._dual_stack.attach_peer_policy(
+            Libp2pPeerPolicy(peer_manager=self.peer_manager)
         )
         # Step D: application dispatcher (type → handler registry; tip-evidence DI).
         from network.p2p_dispatch import (
@@ -2038,7 +2230,9 @@ class P2PNode:
 
         # Запускаем TCP-сервер (asyncio TLS path OR native plain-TCP transport)
         try:
-            if self._use_native_transport:
+            if self._use_libp2p_transport:
+                await self._start_libp2p_listen()
+            elif self._use_native_transport:
                 if self._native_tls:
                     tls_errors, tls_warn = validate_p2p_tls_config(self.config)
                     for warn in tls_warn:
@@ -2094,6 +2288,15 @@ class P2PNode:
                 print(
                     f"[P2P] Listening on {self.config.p2p_host}:{self.config.p2p_port} ({tls_label})"
                 )
+        except RuntimeError as e:
+            # ADR 0020: feature_libp2p without a native swarm is refused — never
+            # fall back to TCP+TLS on the same config. Non-libp2p RuntimeErrors
+            # keep pin behavior (propagate).
+            if not self._use_libp2p_transport:
+                raise
+            print(f"[P2P] libp2p start refused: {e}")
+            self._running = False
+            return
         except OSError as e:
             print(f"[P2P] Could not bind port {self.config.p2p_port}: {e}")
             print("[P2P] Hint: stop other node — .\\scripts\\stop_node.ps1 — or use --port 5001")
@@ -2115,11 +2318,201 @@ class P2PNode:
         asyncio.create_task(self._solo_node_hint())
         asyncio.create_task(self._catch_up_loop())
 
-        if self._use_native_transport and self._native_listener is not None:
+        if self._use_libp2p_transport:
+            await self._libp2p_inbox_loop()
+        elif self._use_native_transport and self._native_listener is not None:
             await self._native_accept_loop()
         elif self._server:
             async with self._server:
                 await self._server.serve_forever()
+
+    async def _start_libp2p_listen(self) -> None:
+        """Listen on rust-libp2p swarm. Fail closed if native swarm is missing."""
+        from network.transport.libp2p_adapter.adapter import native_libp2p_available
+
+        adapter = self._dual_stack.libp2p
+        if not native_libp2p_available() or not adapter.rust_backend:
+            raise RuntimeError(
+                "feature_libp2p=true but abs_native.libp2p_available() is false "
+                "(rebuild with Cargo feature libp2p; no TCP+TLS fallback)"
+            )
+        port = int(self.config.p2p_port)
+        host = str(self.config.p2p_host or "0.0.0.0")
+        if host in ("0.0.0.0", "::", ""):
+            ma = f"/ip4/0.0.0.0/tcp/{port}"
+        else:
+            ma = f"/ip4/{host}/tcp/{port}"
+        addrs = await asyncio.to_thread(adapter.listen, ma)
+        self._libp2p_listen_addrs = [str(a) for a in (addrs or [])]
+        self._libp2p_listening = True
+        print(
+            f"[P2P] Listening on {ma} (libp2p Noise/Yamux ADR 0020) "
+            f"addrs={self._libp2p_listen_addrs}"
+        )
+
+    def _libp2p_admit_raw_frame(self, peer_id: str, frame: bytes) -> Optional[Dict]:
+        """Admit one `/abs/wire` frame. None means REFUSE (do not dispatch)."""
+        from network.transport.libp2p_adapter.wire_bridge import admit_abs_wire_frame
+
+        decision = admit_abs_wire_frame(
+            bytes(frame),
+            peer_id=str(peer_id),
+            rate_table=self._rl_table,
+            max_bytes=_max_p2p_line_bytes(self.config),
+            allowed_types=list(ALLOWED_WIRE_TYPES),
+        )
+        if (not decision.ok) or decision.frame is None:
+            self._libp2p_wire_refuse_total = int(self._libp2p_wire_refuse_total or 0) + 1
+            return None
+        fr = decision.frame
+        return {
+            "type": fr.msg_type,
+            "data": fr.data,
+            "wire_codec": fr.wire_codec,
+            "nbytes": int(fr.raw_len),
+        }
+
+    def _release_libp2p_session(self, peer: PeerConnection) -> None:
+        """Drop a rust session that never completed the Absolute handshake."""
+        peer._libp2p_role = ""
+        peer._libp2p_inbound_handler = False
+        peer._libp2p_message_loop = False
+        lp = str(getattr(peer, "_libp2p_peer_id", "") or "")
+        if lp and self._libp2p_sessions.get(lp) is peer:
+            self._libp2p_sessions.pop(lp, None)
+
+    def _new_libp2p_peer(self, host: str, port: int, libp2p_peer_id: str) -> PeerConnection:
+        existing = self._libp2p_sessions.get(str(libp2p_peer_id))
+        if existing is not None:
+            if host and str(existing.host or "") in ("", "?", "libp2p"):
+                existing.host = str(host)
+            if int(port or 0) > 0:
+                existing.port = int(port)
+            return existing
+        qmax, dto = self._peer_send_queue_params()
+        peer = PeerConnection(
+            None,
+            None,
+            send_queue_max=qmax,
+            drain_timeout_sec=dto,
+            libp2p_adapter=self._dual_stack.libp2p,
+            libp2p_peer_id=str(libp2p_peer_id),
+        )
+        peer.host = str(host or libp2p_peer_id[:16] or "libp2p")
+        peer.port = int(port or 0)
+        self._libp2p_sessions[str(libp2p_peer_id)] = peer
+        return peer
+
+    async def _libp2p_on_raw_frame(self, peer_id: str, frame: bytes) -> None:
+        admitted = self._libp2p_admit_raw_frame(peer_id, frame)
+        if admitted is None:
+            return
+        pid = str(peer_id)
+        peer = self._libp2p_sessions.get(pid)
+        spawn_inbound = False
+        if peer is None:
+            peer = self._new_libp2p_peer("", 0, pid)
+            self._attach_peer_hooks(peer)
+            spawn_inbound = True
+        else:
+            role = str(getattr(peer, "_libp2p_role", "") or "")
+            if (
+                role != "outbound"
+                and not getattr(peer, "_libp2p_inbound_handler", False)
+                and not getattr(peer, "_libp2p_message_loop", False)
+            ):
+                spawn_inbound = True
+        kind = str(admitted.get("type") or "")
+        registered = bool(
+            getattr(peer, "peer_id", None)
+            and self.peers.get(peer.peer_id) is peer
+        )
+        # Noise reconnect Absolute HS into a live Absolute epoch must not
+        # enter message_loop as hard mid_session_handshake (soft-refuse only).
+        if registered and kind in (MSG_HANDSHAKE, MSG_HANDSHAKE_ACK):
+            self._handshake_rejects = int(self._handshake_rejects or 0) + 1
+            self._strike_peer_sync(peer, "mid_session_handshake_libp2p")
+            return
+        # State-root solicit must not sit behind NEW_BLOCK apply on the
+        # per-peer message_loop (peer_probe_ok would stay empty).
+        if registered and kind in (MSG_STATE_ROOT_REQUEST, MSG_STATE_ROOT_RESPONSE):
+            await self._handle_message(peer, admitted)
+            return
+        q = getattr(peer, "_libp2p_inbound", None)
+        if q is None:
+            return
+        try:
+            q.put_nowait(admitted)
+        except asyncio.QueueFull:
+            self._libp2p_wire_refuse_total = int(self._libp2p_wire_refuse_total or 0) + 1
+            return
+        if spawn_inbound and not getattr(peer, "_libp2p_inbound_handler", False):
+            peer._libp2p_inbound_handler = True
+            asyncio.create_task(self._handle_libp2p_incoming(peer))
+
+    async def _libp2p_inbox_loop(self) -> None:
+        adapter = self._dual_stack.libp2p
+        _, inbox_pool = _ensure_libp2p_io_pools()
+        loop = asyncio.get_running_loop()
+        while self._running:
+            try:
+                items = await loop.run_in_executor(inbox_pool, adapter.poll_inbox)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                if not self._running:
+                    break
+                logger.warning("[P2P] libp2p poll_inbox error: %s", exc)
+                await asyncio.sleep(0.2)
+                continue
+            if not items:
+                await asyncio.sleep(0.05)
+                continue
+            for peer_id, frame in items:
+                try:
+                    await self._libp2p_on_raw_frame(str(peer_id), bytes(frame))
+                except Exception as exc:
+                    logger.warning("[P2P] libp2p inbound frame error: %s", exc)
+
+    async def _handle_libp2p_incoming(self, peer: PeerConnection) -> None:
+        """Inbound Absolute session over rust-libp2p `/abs/wire`."""
+        if self._is_addr_banned(peer.host, peer.port):
+            peer.close()
+            return
+        admit = self.peer_manager.allow_inbound(str(peer.host or ""))
+        if not admit.allowed:
+            self._handshake_rejects = int(self._handshake_rejects or 0) + 1
+            await peer.send(
+                MSG_HANDSHAKE_ACK,
+                {"accepted": False, "reason": admit.reason or "max_peers"},
+            )
+            self._release_libp2p_session(peer)
+            peer.close()
+            return
+        ok = await self._do_handshake(peer, initiator=False)
+        if not ok:
+            self._release_libp2p_session(peer)
+            peer.close()
+            return
+        if self._is_banned(self._peer_key(peer)):
+            self._release_libp2p_session(peer)
+            peer.close()
+            return
+        reg = self.peer_manager.register(
+            peer,
+            inbound=True,
+            local_node_id=self._local_node_id(),
+        )
+        if not reg.allowed:
+            if not (peer.peer_id and self.peers.get(peer.peer_id) is peer):
+                self._release_libp2p_session(peer)
+            peer.close()
+            return
+        print(f"[P2P] Connected (libp2p): {peer}")
+        self._bind_bootstraps_for_peer(peer)
+        self._schedule_sync(peer)
+        peer._libp2p_message_loop = True
+        await self._message_loop(peer)
 
     async def _native_accept_loop(self) -> None:
         """Accept loop for P2PNativeListener (v1.3.90).
@@ -2199,6 +2592,7 @@ class P2PNode:
 
     def stop(self):
         self._running = False
+        self._libp2p_listening = False
         if self._server:
             self._server.close()
         if self._native_listener is not None:
@@ -2207,6 +2601,13 @@ class P2PNode:
             except Exception:
                 pass
             self._native_listener = None
+        ds = getattr(self, "_dual_stack", None)
+        if ds is not None:
+            try:
+                ds.libp2p.close()
+            except Exception as exc:
+                logger.debug("[P2P] libp2p adapter close failed: %s", exc)
+        self._libp2p_sessions.clear()
         self.peer_manager.clear(close=True)
         print("[P2P] Stopped")
 
@@ -2348,6 +2749,12 @@ class P2PNode:
         # Не подключаться к самому себе
         if port == self.config.p2p_port and host in ("127.0.0.1", "localhost", "0.0.0.0"):
             return False
+        if self._use_libp2p_transport and self._host_looks_like_libp2p_peer_id(host):
+            logger.debug(
+                "[P2P] skip libp2p dial: host looks like PeerId, not DNS (%s)",
+                host[:24],
+            )
+            return False
         if self._is_addr_banned(host, port):
             return False
         self._prune_stale_peers()
@@ -2363,7 +2770,62 @@ class P2PNode:
             return False
 
         try:
-            if self._use_native_transport and hasattr(native, "p2p_native_connect"):
+            if self._use_libp2p_transport:
+                from network.transport.errors import TransportCapabilityError
+                from network.transport.types import PeerEndpoint
+
+                try:
+                    result = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            self._dual_stack.dial,
+                            PeerEndpoint(host=str(host), port=int(port)),
+                        ),
+                        timeout=20,
+                    )
+                except TransportCapabilityError as exc:
+                    logger.debug("[P2P] libp2p dial failed %s: %s", addr, exc)
+                    return False
+                handle = dict((result or {}).get("handle") or {})
+                remote = str(handle.get("peer_id") or "").strip()
+                if not remote or not handle.get("connected"):
+                    logger.debug("[P2P] libp2p dial incomplete %s handle=%s", addr, handle)
+                    return False
+                existing = self._libp2p_sessions.get(remote)
+                if existing is not None and existing.peer_id and existing.peer_id in self.peers:
+                    return True
+                peer = self._new_libp2p_peer(host, int(port), remote)
+                if peer.peer_id and peer.peer_id in self.peers:
+                    return True
+                # A failed handshake must not leave _libp2p_role=outbound on the
+                # reused session (later dials would skip the Absolute handshake).
+                # Never reset a session that already completed the Absolute handshake
+                # or whose inbound handshake/message loop is still running (a
+                # passive redial racing the responder re-spawned a second inbound
+                # handler that closed the registered peer: asymmetric mesh).
+                if not (
+                    (peer.peer_id and peer.peer_id in self.peers)
+                    or getattr(peer, "_libp2p_inbound_handler", False)
+                    or getattr(peer, "_libp2p_message_loop", False)
+                ):
+                    peer._libp2p_role = ""
+                    peer._libp2p_inbound_handler = False
+                    peer._libp2p_message_loop = False
+                local_id = str(self._dual_stack.libp2p.peer_id or "")
+                # One Absolute handshake initiator per Noise session (lexicographic PeerId).
+                if local_id and remote and local_id > remote:
+                    peer._libp2p_role = "passive"
+                    self._attach_peer_hooks(peer)
+                    peer.host = host
+                    peer.port = int(port)
+                    peer.dial_target = addr
+                    for _ in range(50):
+                        if peer.peer_id and peer.peer_id in self.peers:
+                            return True
+                        await asyncio.sleep(0.1)
+                    return bool(peer.peer_id and peer.peer_id in self.peers)
+                peer._libp2p_role = "outbound"
+                self._native_connect_total = int(self._native_connect_total or 0) + 1
+            elif self._use_native_transport and hasattr(native, "p2p_native_connect"):
                 max_bytes = _max_p2p_line_bytes(self.config)
                 tls_args = {}
                 if self._native_tls:
@@ -2414,9 +2876,13 @@ class P2PNode:
 
             ok = await self._do_handshake(peer, initiator=True)
             if not ok:
+                if self._use_libp2p_transport:
+                    self._release_libp2p_session(peer)
                 peer.close()
                 return False
             if self._is_banned(self._peer_key(peer)):
+                if self._use_libp2p_transport:
+                    self._release_libp2p_session(peer)
                 peer.close()
                 return False
 
@@ -2458,6 +2924,8 @@ class P2PNode:
 
             # Синхронизация если отстаём
             self._schedule_sync(peer)
+            if self._use_libp2p_transport:
+                peer._libp2p_message_loop = True
             asyncio.create_task(self._message_loop(peer))
             return True
 
@@ -2471,6 +2939,30 @@ class P2PNode:
         )
 
     # ── Handshake ────────────────────────────────────────────────────────────
+
+    async def _recv_handshake_reply(
+        self, peer: PeerConnection, *, timeout_sec: float = 10.0
+    ):
+        """Wait for the handshake reply without treating one poll window as failure.
+
+        On libp2p the ACK is a later `/abs/wire` inbox frame (send_wire only
+        returns the transport ACK). `recv()` yields MSG_IDLE after ~0.5s; failing
+        the initiator on the first IDLE while the responder already registered us
+        leaves an asymmetric session (responder soft-refuses every redial as
+        mid_session_handshake_libp2p). Other transports keep a single recv().
+        """
+        if getattr(peer, "_libp2p_inbound", None) is None:
+            return await peer.recv(self.config)
+        deadline = time.monotonic() + max(0.5, float(timeout_sec))
+        while True:
+            msg = await peer.recv(self.config)
+            if (
+                isinstance(msg, dict)
+                and msg.get("type") == MSG_IDLE
+                and time.monotonic() < deadline
+            ):
+                continue
+            return msg
 
     async def _do_handshake(self, peer: PeerConnection, initiator: bool) -> bool:
         our_height = self.blockchain.get_height()
@@ -2545,7 +3037,7 @@ class P2PNode:
             native_policy_applied = True
         elif initiator:
             await peer.send(MSG_HANDSHAKE, our_info)
-            msg = await peer.recv(self.config)
+            msg = await self._recv_handshake_reply(peer)
             if not msg or msg.get("type") != MSG_HANDSHAKE_ACK:
                 return False
             ack = msg.get("data", {})
@@ -2898,6 +3390,10 @@ class P2PNode:
                     "rate_limited",
                     # Catch-up / tip races under partial mesh — drop tip, do not ban.
                     "tip_unknown_parent",
+                    # libp2p Noise reconnect can re-send the Absolute handshake into
+                    # a live Absolute epoch (session lifetime mismatch). Soft-refuse
+                    # only — TCP+TLS still hard-bans mid_session_handshake.
+                    "mid_session_handshake_libp2p",
                 }
             )
             self._SOFT_REFUSE_STRIKE_REASONS = soft
@@ -3026,9 +3522,19 @@ class P2PNode:
             if self._strike_peer_sync(peer, f"unknown_type:{msg_type}"):
                 self._remove_peer(peer.peer_id, peer)
             return
-        # Mid-session handshake is abuse (initial handshake uses _do_handshake recv).
+        # Mid-session handshake is abuse on TCP+TLS (initial HS uses _do_handshake).
+        # On libp2p, Noise can reconnect while the Absolute epoch is still live;
+        # that re-HS is soft-refused (no 300s ban). Real TCP mid-session HS still bans.
         if msg_type in (MSG_HANDSHAKE, MSG_HANDSHAKE_ACK):
             self._handshake_rejects = int(self._handshake_rejects or 0) + 1
+            if bool(getattr(self, "_use_libp2p_transport", False)):
+                logger.warning(
+                    "[P2P] mid-session %s from %s (libp2p soft-refuse)",
+                    msg_type,
+                    peer.peer_id or self._peer_key(peer),
+                )
+                self._strike_peer_sync(peer, "mid_session_handshake_libp2p")
+                return
             logger.warning(
                 "[P2P] mid-session %s from %s",
                 msg_type,
@@ -6319,6 +6825,16 @@ class P2PNode:
                     self._discovery_dial_rejects_total or 0
                 ) + 1
                 continue
+            parts = addr.rsplit(":", 1)
+            if (
+                self._use_libp2p_transport
+                and len(parts) == 2
+                and self._host_looks_like_libp2p_peer_id(parts[0])
+            ):
+                self._discovery_dial_rejects_total = int(
+                    self._discovery_dial_rejects_total or 0
+                ) + 1
+                continue
             self._remember_addr(addr)
             parts = addr.rsplit(":", 1)
             if len(parts) == 2:
@@ -6375,7 +6891,10 @@ class P2PNode:
         Stops sticky-first discovery eclipse: one random peer must not cancel bootstrap.
         """
         while self._running:
-            await asyncio.sleep(20)
+            # Redial fast while the mesh is empty (libp2p initiator is the smaller
+            # PeerId; a passive dial attempt must not wait 20s for the next round).
+            delay = 5.0 if not self.peers else 20.0
+            await asyncio.sleep(delay)
             try:
                 if not self.config.bootstrap_peers:
                     continue
@@ -6646,7 +7165,24 @@ class P2PNode:
     def _remove_peer(self, peer_id: str, expected: Optional[PeerConnection] = None):
         peer = self.peer_manager.unregister(peer_id, expected, close=True)
         if peer is not None:
+            lp = str(getattr(peer, "_libp2p_peer_id", "") or "")
+            if lp and self._libp2p_sessions.get(lp) is peer:
+                self._libp2p_sessions.pop(lp, None)
             print(f"[P2P] Disconnected: {peer_id[:12]}")
+
+    @staticmethod
+    def _host_looks_like_libp2p_peer_id(host: str) -> bool:
+        """True when *host* is a rust-libp2p PeerId, not a dialable DNS/IP.
+
+        Discovery/reconnect must not emit ``/dns4/<PeerId>/tcp/5000`` — that
+        strikes the peer and is never a valid mesh address.
+        """
+        h = str(host or "").strip()
+        if h.startswith("12D3KooW") or h.startswith("12D3Koo"):
+            return True
+        if h.startswith("Qm") and len(h) >= 46 and ":" not in h:
+            return True
+        return False
 
     # ── Статистика ───────────────────────────────────────────────────────────
 
@@ -7438,4 +7974,56 @@ class P2PNode:
                 status.setdefault("solicit_hub", True)
         else:
             status.setdefault("solicit_hub", False)
+        try:
+            status["libp2p"] = self._libp2p_status_block()
+        except Exception as exc:
+            logger.warning("[P2P] libp2p status merge failed: %s", exc)
+            status["libp2p"] = {
+                "feature_libp2p": bool(getattr(self.config, "feature_libp2p", False)),
+                "error": str(exc),
+                "honesty": "ADR0019_rust_libp2p_lab_not_prod_mesh",
+            }
         return status
+
+    def _libp2p_status_block(self) -> Dict:
+        """libp2p metrics for /status. ADR 0020 only when the live swarm is listening."""
+        from network.transport.libp2p_adapter.status_metrics import (
+            empty_libp2p_status_metrics,
+            merge_libp2p_status_metrics,
+        )
+
+        feature = bool(getattr(self.config, "feature_libp2p", False))
+        listening = bool(getattr(self, "_libp2p_listening", False))
+        block: Dict = {
+            "feature_libp2p": feature,
+            "active": bool(feature and listening),
+            "default_mesh": bool(feature and listening),
+            "honesty": (
+                "ADR0020_experimental_libp2p_industrial_mesh"
+                if feature and listening
+                else "ADR0019_rust_libp2p_lab_not_prod_mesh"
+            ),
+            "peer_policy": False,
+            "rust_backend": False,
+            "listen_addrs": list(getattr(self, "_libp2p_listen_addrs", []) or []),
+            "wire_refuse_total": int(getattr(self, "_libp2p_wire_refuse_total", 0) or 0),
+        }
+        block.update(empty_libp2p_status_metrics())
+        ds = getattr(self, "_dual_stack", None)
+        if ds is None:
+            return block
+        try:
+            caps = dict(ds.capability_status() or {})
+            lib = dict(caps.get("libp2p") or {})
+            block["rust_backend"] = bool(lib.get("rust_backend") or lib.get("noise"))
+            pol = lib.get("peer_policy") if isinstance(lib.get("peer_policy"), dict) else {}
+            block["peer_policy"] = bool(pol.get("attached"))
+            merge_libp2p_status_metrics(block, lib)
+            merge_libp2p_status_metrics(block, dict(ds.metrics() or {}))
+            if listening:
+                block["active"] = True
+                block["default_mesh"] = True
+                block["honesty"] = "ADR0020_experimental_libp2p_industrial_mesh"
+        except Exception as exc:
+            block["error"] = str(exc)
+        return block

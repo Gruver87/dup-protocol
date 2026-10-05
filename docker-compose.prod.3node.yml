@@ -48,6 +48,17 @@ x-abs-prod-env: &abs-prod-env
   GENESIS_STRICT_MAINNET: ${GENESIS_STRICT_MAINNET:-false}
   GENESIS_ARTIFACT_PATH: ${GENESIS_ARTIFACT_PATH:-/app/data/shared/genesis_block.json}
   VALIDATORS_MANIFEST_PATH: data/validators.manifest.json
+  # ADR 0020: industrial mesh transport = libp2p (Noise); mutually exclusive with P2P TLS.
+  FEATURE_LIBP2P: "true"
+  ABS_LIBP2P_KEY_PATH: /app/data/libp2p/identity.key
+  # Docker bridge has no IGD/mDNS. rust /dns4/node2 is treated as mDNS (node2.)
+  # and HOL-stalls the swarm; Python resolves compose names to /ip4 instead.
+  ABS_LIBP2P_MDNS: "false"
+  # Python `_bootstrap_retry_loop` owns redial. rust reconnect HOL-stalls
+  # Noise inbound while retrying connection-refused boot dials.
+  ABS_LIBP2P_RECONNECT: "false"
+  # Handshake retry must outlive rust idle close (default 60s).
+  ABS_LIBP2P_IDLE_CONNECTION_TIMEOUT_SECS: "300"
 
 x-prod-node-build: &prod-node-build
   image: ${ABS_PROD_IMAGE:-abs-blockchain-prod:local}
@@ -152,6 +163,8 @@ services:
         if [ -d /seed-from/chainstore ]; then
           rm -rf /seed-to/chainstore
           cp -a /seed-from/chainstore /seed-to/
+          # Volume root is created as root by alpine seed; runtime USER is absnode (10001).
+          chown -R 10001:10001 /seed-to
           echo "node2 chainstore seeded from node1 (rocksdb)"
           exit 0
         fi
@@ -160,6 +173,7 @@ services:
         sqlite3 /seed-from/blockchain.db "PRAGMA wal_checkpoint(TRUNCATE);"
         rm -f /seed-to/blockchain.db /seed-to/blockchain.db-shm /seed-to/blockchain.db-wal
         cp /seed-from/blockchain.db /seed-to/blockchain.db
+        chown -R 10001:10001 /seed-to
         echo "node2 DB seeded from node1 (sqlite legacy)"
     restart: "no"
     networks:
@@ -185,6 +199,8 @@ services:
         if [ -d /seed-from/chainstore ]; then
           rm -rf /seed-to/chainstore
           cp -a /seed-from/chainstore /seed-to/
+          # Volume root is created as root by alpine seed; runtime USER is absnode (10001).
+          chown -R 10001:10001 /seed-to
           echo "node3 chainstore seeded from node1 (rocksdb)"
           exit 0
         fi
@@ -193,6 +209,7 @@ services:
         sqlite3 /seed-from/blockchain.db "PRAGMA wal_checkpoint(TRUNCATE);"
         rm -f /seed-to/blockchain.db /seed-to/blockchain.db-shm /seed-to/blockchain.db-wal
         cp /seed-from/blockchain.db /seed-to/blockchain.db
+        chown -R 10001:10001 /seed-to
         echo "node3 DB seeded from node1 (sqlite legacy)"
     restart: "no"
     networks:
@@ -210,7 +227,7 @@ services:
     environment:
       <<: *abs-prod-env
       NODE_ID: docker-prod-mesh-2
-      BOOTSTRAP_PEERS: node1:5000
+      BOOTSTRAP_PEERS: node1:5000,node3:5000
     volumes:
       - abs-prod-mesh2-data:/app/data
       - ./data/prod_mesh/shared:/app/data/shared

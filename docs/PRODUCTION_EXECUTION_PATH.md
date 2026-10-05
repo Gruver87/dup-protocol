@@ -1,9 +1,8 @@
 # Production execution path (honest map)
 
-**Scope:** industrial pin ([`dup-protocol`](https://github.com/Gruver87/dup-protocol)) **TCP+TLS** mesh  
-and Experimental ([`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)) when run under **prod JSON** with **`feature_libp2p=false`** (same TCP+TLS path), `feature_long_range=false`, bridge OFF.
+**Scope:** industrial pin ([`dup-protocol`](https://github.com/Gruver87/dup-protocol)) prod profile `778888` — **default 3-node mesh JSON:** rust-libp2p (ADR 0020, `feature_libp2p=true`, `p2p_tls_enabled=false`). **Alternate:** TCP+TLS via `docker/node.prod.json` / ceremony (`feature_libp2p=false`). Experimental ([`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)) is a separate tree; `feature_long_range=false`, bridge OFF on prod.
 
-**Honesty:** Experimental STRICT soaks that enable ADR 0020 libp2p Noise are a **different transport** — do not cite this map as evidence for that mesh. Pin never enables libp2p.
+**Honesty:** Freeze tag `v1.3.1339-tip-v2-industrial` + `375d14f` = **TCP+TLS** soak evidence. Pin libp2p mesh soak/probe **pending** (`pin-libp2p-cutover-pending`). Do **not** cite Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`) as pin proof.
 
 This is **not** a mainnet readiness claim. Parallel R&D paths (libp2p, Long-Range, Beacon/Casper demos) exist in-tree but are **off** / lab-only unless an ADR flips them.
 
@@ -25,7 +24,7 @@ wire ingress
 | Stage | Module / entry | Notes |
 |-------|----------------|-------|
 | HTTP / JSON-RPC ingress | `api/http.py` (`RESTHandler`, `JSONRPCHandler`, `_handle_send_tx_obj`) | Body size + rate limit + RPC API key / JWT where configured |
-| P2P wire ingress | `network/p2p_node.py` (+ TLS transport) | Soft-refuse / score; not hard-ban default |
+| P2P wire ingress | `network/p2p_node.py` (libp2p or TLS transport) | Mutually exclusive profiles; soft-refuse / score; not hard-ban default |
 | Semantic validation | `middleware/validators.py`, `blockchain/tx_validator.py` | Address / amount / shape |
 | Tx identity hash | `core/tx_identity.py` → `Transaction` / mempool `add` | Client `hash` never becomes alternate identity |
 | Signature + sender bind | `crypto/wallet.py` (`verify_transaction_signature`, `_transaction_signature_material`) | `derive_address(public_key) == from` |
@@ -42,7 +41,7 @@ wire ingress
 
 | Surface | Where | Status |
 |---------|-------|--------|
-| libp2p | Experimental `feature_libp2p` | Lab / opt-in; pin refuses |
+| libp2p (when off) | `feature_libp2p=false` | TCP+TLS alternate; mesh JSON defaults **true** after ADR 0020 |
 | Long-Range / weak subjectivity | `feature_long_range`, `consensus/long_range/` | Lab-only until ADR 0017 on disk |
 | Bridge lock/mint live | `bridge/*` | **OFF** in prod JSON / cutover examples only |
 | NFT / AI / MEV sprouts | `features/*` | ADR 0016 Profile C; prod flags **false** |

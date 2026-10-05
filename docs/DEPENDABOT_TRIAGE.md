@@ -25,9 +25,9 @@
 |----|---------|----------|
 | [#7](https://github.com/Gruver87/dup-protocol/pull/7) | pyo3 0.22→0.29 | Required for pyo3 RUSTSEC clear; ~386 compile breaks (`new_bound` / `with_gil` API). Tracked; interim ignores in [`.cargo/audit.toml`](../.cargo/audit.toml) |
 | — | rkyv via rust_decimal | `RUSTSEC-2026-0235` ignored interim (optional feature unused; `default-features=false` + `std` only). Prefer dropping optional lock edges later rather than enabling `rkyv` feature. |
-| — | hickory-proto via libp2p-mdns | `RUSTSEC-2026-0119` ignored interim (ADR 0019 opt-in mDNS lab; needs upstream libp2p-mdns → hickory≥0.26). Prod mesh stays TCP+TLS. |
+| — | hickory-proto via libp2p-mdns | `RUSTSEC-2026-0119` ignored interim (ADR 0019 opt-in mDNS lab; needs upstream libp2p-mdns → hickory≥0.26). Default prod mesh JSON is libp2p (ADR 0020); TCP+TLS is alternate profile. |
 | — | ring 0.16 / rustls-webpki 0.101 via libp2p-tls | `RUSTSEC-2025-0009`, `0098/0099/0104` ignored interim (stale optional tls lock edges; Noise+TCP path only). Prefer lockfile prune or upstream libp2p-tls bump. |
-| — | h2 0.3.27 via hyper 0.14 / igd-next | `RUSTSEC-2026-0258` ignored interim (libp2p UPnP lab; patch is h2≥0.4.16 → hyper 1.x). Prod mesh stays TCP+TLS. |
+| — | h2 0.3.27 via hyper 0.14 / igd-next | `RUSTSEC-2026-0258` ignored interim (libp2p UPnP lab; patch is h2≥0.4.16 → hyper 1.x). Default prod mesh JSON is libp2p (ADR 0020); TCP+TLS is alternate profile. |
 | [#2](https://github.com/Gruver87/dup-protocol/pull/2) | rand 0.8→0.10 | Dev-dep churn; wait for pyo3 wave |
 | [#10](https://github.com/Gruver87/dup-protocol/pull/10) | socket2 0.5→0.6 | Native P2P surface; needs soak |
 | [#12](https://github.com/Gruver87/dup-protocol/pull/12) | redis major | Mesh rate-limit path |

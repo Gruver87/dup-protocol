@@ -15,6 +15,9 @@ def main() -> int:
     from runtime.mainnet_constants import MAINNET_V1_CHAIN_ID
 
     errors: list[str] = []
+    # ADR 0020: k8s defaults to the TCP+TLS alternate. libp2p is allowed only when
+    # exclusive with p2p_tls_enabled; TLS-secret wiring is then not required.
+    libp2p_mode = False
 
     cfg_path = K8S / "node.prod.k8s.json"
     if not cfg_path.is_file():
@@ -49,8 +52,21 @@ def main() -> int:
                 errors.append(f"node.prod.k8s.json: {key} must be > 0")
         if not cfg.get("follower_genesis_sync"):
             errors.append("node.prod.k8s.json: follower_genesis_sync required for k8s scale-out")
-        if cfg.get("p2p_tls_enabled") is not True:
-            errors.append("node.prod.k8s.json: p2p_tls_enabled must be true")
+        libp2p_mode = cfg.get("feature_libp2p") is True
+        if not isinstance(cfg.get("feature_libp2p"), bool):
+            errors.append(
+                "node.prod.k8s.json: feature_libp2p must be an explicit bool (ADR 0020)"
+            )
+        if libp2p_mode:
+            if cfg.get("p2p_tls_enabled") is not False:
+                errors.append(
+                    "node.prod.k8s.json: ADR 0020 libp2p requires p2p_tls_enabled=false "
+                    "(transports are mutually exclusive)"
+                )
+        elif cfg.get("p2p_tls_enabled") is not True:
+            errors.append(
+                "node.prod.k8s.json: p2p_tls_enabled must be true when feature_libp2p=false"
+            )
         if cfg.get("bridge_enabled") is not False:
             errors.append("node.prod.k8s.json: bridge_enabled must be false until L1 audit")
         if cfg.get("tip_safety_enforce") is not True:
@@ -79,7 +95,6 @@ def main() -> int:
             "feature_ai_validator",
             "feature_smart_accounts",
             "feature_validator_selection",
-            "feature_libp2p",
             "feature_long_range",
         ):
             # Missing key = off. True is refuse. Do not treat None as a freeze break.
@@ -88,15 +103,17 @@ def main() -> int:
                     f"node.prod.k8s.json: ADR 0016 forbids {key}=true "
                     f"(got {cfg.get(key)!r})"
                 )
-        for key in ("feature_libp2p", "feature_long_range"):
-            if cfg.get(key) is not False:
-                errors.append(
-                    f"node.prod.k8s.json: {key} must be explicit false "
-                    f"(Hybrid freeze; R&D is Gruver87/dup-protocol-experimental)"
-                )
-        for key in ("p2p_tls_cert_path", "p2p_tls_key_path", "p2p_tls_ca_path"):
-            if not str(cfg.get(key) or "").strip():
-                errors.append(f"node.prod.k8s.json: {key} required when P2P TLS enabled")
+        if cfg.get("feature_long_range") is not False:
+            errors.append(
+                "node.prod.k8s.json: feature_long_range must be explicit false "
+                "(ADR 0017 lab-only)"
+            )
+        if not libp2p_mode:
+            for key in ("p2p_tls_cert_path", "p2p_tls_key_path", "p2p_tls_ca_path"):
+                if not str(cfg.get(key) or "").strip():
+                    errors.append(
+                        f"node.prod.k8s.json: {key} required when P2P TLS enabled"
+                    )
 
     cm = (K8S / "configmap.yaml").read_text(encoding="utf-8")
     if 'DEPLOYMENT_MODE: "prod"' not in cm:
@@ -142,10 +159,16 @@ def main() -> int:
         errors.append("statefulset.yaml: must use deploy/k8s/entrypoint.sh")
     if "wait-redis" not in sts:
         errors.append("statefulset.yaml: initContainer wait-redis required")
-    if "abs-p2p-tls" not in sts or "p2p_tls_secrets" not in sts:
-        errors.append("statefulset.yaml: abs-p2p-tls secret mount required")
-    if "projected:" not in sts or "abs-p2p-tls-node-0" not in sts:
-        errors.append("statefulset.yaml: projected per-pod P2P TLS secrets required")
+    if libp2p_mode:
+        if 'FEATURE_LIBP2P: "true"' not in cm:
+            errors.append('configmap.yaml: FEATURE_LIBP2P must be "true" for libp2p k8s mode')
+        if "ABS_LIBP2P_KEY_PATH" not in cm:
+            errors.append("configmap.yaml: ABS_LIBP2P_KEY_PATH required for libp2p k8s mode")
+    else:
+        if "abs-p2p-tls" not in sts or "p2p_tls_secrets" not in sts:
+            errors.append("statefulset.yaml: abs-p2p-tls secret mount required")
+        if "projected:" not in sts or "abs-p2p-tls-node-0" not in sts:
+            errors.append("statefulset.yaml: projected per-pod P2P TLS secrets required")
 
     cm_json_start = cm.find("node.prod.k8s.json:")
     if cm_json_start < 0:

@@ -56,14 +56,16 @@ def test_prod_requires_deploy_salt_flag():
     assert any("evm_require_deploy_salt" in e for e in errs)
 
 
-def test_prod_validate_blocks_libp2p_and_long_range():
+def test_prod_validate_allows_libp2p_but_refuses_long_range():
+    """ADR 0020: libp2p is the pin mesh transport; ADR 0017 long_range stays refused."""
     cfg = Config()
     cfg.deployment_mode = "prod"
     cfg.require_wallet_file = False
     cfg.rpc_api_key_required = False
     cfg.feature_libp2p = True
+    cfg.p2p_tls_enabled = False
     errs = cfg.validate()
-    assert any("FEATURE_LIBP2P" in e for e in errs)
+    assert not any("feature_libp2p" in e.lower() for e in errs), errs
 
     cfg.feature_libp2p = False
     cfg.feature_long_range = True
@@ -71,12 +73,24 @@ def test_prod_validate_blocks_libp2p_and_long_range():
     assert any("FEATURE_LONG_RANGE" in e for e in errs)
 
 
-def test_dev_validate_refuses_unimplemented_libp2p_and_long_range():
+def test_prod_validate_refuses_libp2p_with_p2p_tls():
+    """ADR 0020: Noise and native mTLS are mutually exclusive."""
+    cfg = Config()
+    cfg.deployment_mode = "prod"
+    cfg.require_wallet_file = False
+    cfg.rpc_api_key_required = False
+    cfg.feature_libp2p = True
+    cfg.p2p_tls_enabled = True
+    errs = cfg.validate()
+    assert any("feature_libp2p" in e and "p2p_tls_enabled" in e for e in errs), errs
+
+
+def test_dev_validate_allows_libp2p_but_refuses_long_range():
     cfg = Config()
     assert cfg.deployment_mode != "prod"
     cfg.feature_libp2p = True
     errs = cfg.validate()
-    assert any("FEATURE_LIBP2P" in e and "not implemented" in e for e in errs)
+    assert not any("libp2p" in e.lower() for e in errs), errs
 
     cfg.feature_libp2p = False
     cfg.feature_long_range = True
@@ -84,16 +98,17 @@ def test_dev_validate_refuses_unimplemented_libp2p_and_long_range():
     assert any("FEATURE_LONG_RANGE" in e and "not implemented" in e for e in errs)
 
 
-def test_env_libp2p_true_fails_validate_not_silent_coerce(monkeypatch):
+def test_env_libp2p_true_accepted_long_range_true_still_refused(monkeypatch):
     monkeypatch.setenv("FEATURE_LIBP2P", "true")
     monkeypatch.setenv("FEATURE_LONG_RANGE", "true")
+    monkeypatch.delenv("P2P_TLS_ENABLED", raising=False)
     cfg = Config()
     cfg.deployment_mode = "prod"
     cfg.apply_env()
     assert cfg.feature_libp2p is True
     assert cfg.feature_long_range is True
     errs = cfg.validate()
-    assert any("FEATURE_LIBP2P" in e for e in errs)
+    assert not any("feature_libp2p" in e.lower() for e in errs), errs
     assert any("FEATURE_LONG_RANGE" in e for e in errs)
 
 
@@ -126,7 +141,7 @@ def test_prod_validate_vault_http_addr_refused(monkeypatch):
     assert any("https://" in e for e in errs)
 
 
-def test_static_prod_gate_rejects_libp2p_true(tmp_path, monkeypatch):
+def test_static_prod_gate_libp2p_tls_xor(tmp_path, monkeypatch):
     root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     script_path = os.path.join(root, "scripts", "prod_gate.py")
     spec = importlib.util.spec_from_file_location("prod_gate_libp2p", script_path)
@@ -164,13 +179,27 @@ def test_static_prod_gate_rejects_libp2p_true(tmp_path, monkeypatch):
         "rate_limit_rpm": 120,
         "feature_libp2p": True,
     }
+    assert "feature_libp2p" not in prod_gate.BLOCKED_FEATURES
     for feature in prod_gate.BLOCKED_FEATURES:
-        if feature != "feature_libp2p":
-            config[feature] = False
+        config[feature] = False
     (prod_dir / "node.prod.json").write_text(json.dumps(config), encoding="utf-8")
     monkeypatch.setattr(prod_gate, "ROOT", Path(tmp_path))
     errors = prod_gate.check_file("docker/node.prod.json")
-    assert any("feature_libp2p" in err for err in errors)
+    assert any("ADR 0020" in err and "p2p_tls_enabled=false" in err for err in errors), errors
+
+    # Exclusive libp2p mesh (TLS off) is accepted by the ADR 0020 transport branch.
+    config["p2p_tls_enabled"] = False
+    (prod_dir / "node.prod.json").write_text(json.dumps(config), encoding="utf-8")
+    errors = prod_gate.check_file("docker/node.prod.json")
+    assert not any("ADR 0020" in err for err in errors), errors
+    assert not any("p2p_tls" in err for err in errors), errors
+    assert not any("feature_libp2p" in err for err in errors), errors
+
+    # long_range stays refused regardless of transport.
+    config["feature_long_range"] = True
+    (prod_dir / "node.prod.json").write_text(json.dumps(config), encoding="utf-8")
+    errors = prod_gate.check_file("docker/node.prod.json")
+    assert any("feature_long_range" in err for err in errors), errors
 
 
 def test_static_prod_gate_rejects_nft_true(tmp_path, monkeypatch):

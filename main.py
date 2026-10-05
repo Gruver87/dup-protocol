@@ -1960,26 +1960,60 @@ class NodeOrchestrator:
             # Peers present require consistency even when mesh_min_peers_before_mine=0.
             if self.p2p and (connected > 0 or _min_mesh_peers > 0):
                 if _min_mesh_peers > 0 and connected < _min_mesh_peers:
+                    # Under-mesh: heal before skip (tip plateaus when peers=1
+                    # under mesh_min=2). Rate-limit dials — a 1 Hz reconnect
+                    # storm amplifies HOL on the event loop / HTTP.
+                    now_m = time.time()
+                    last_m = float(getattr(self, "_under_mesh_reconnect_ts", 0.0) or 0.0)
+                    if now_m - last_m >= 8.0:
+                        self._under_mesh_reconnect_ts = now_m
+                        try:
+                            recon = getattr(self.p2p, "reconnect_known_peers", None)
+                            if recon is not None:
+                                await recon()
+                        except Exception as _recon_err:
+                            _node_log.warning(
+                                "[Mining] under-mesh reconnect_known_peers: %s", _recon_err
+                            )
                     continue
                 if connected == 0:
                     continue
                 local_h = self.blockchain.get_height()
                 local_root = str(self.blockchain.get_state_root() or "")
+                wire_soft_fail = False
                 if not getattr(self.p2p, "_state_consistent", False) and self.sync_engine:
-                    try:
-                        loop = asyncio.get_running_loop()
-                        ex = getattr(self, "sync_executor", None) or getattr(
-                            self.p2p, "sync_executor", None
-                        )
-                        await loop.run_in_executor(ex, self.sync_engine.sync_state)
-                    except Exception as _sync_probe_err:
-                        print(f"[Mining] sync_state probe failed: {_sync_probe_err}")
-                        if hasattr(self.p2p, "force_inconsistent"):
-                            self.p2p.force_inconsistent("mining_probe_failed")
-                        else:
-                            self.p2p._state_consistent = False
-                if connected > 0 and not getattr(self.p2p, "_state_consistent", False):
-                    continue
+                    # Respect wire-probe backoff — do not pile 70s solicits on
+                    # every mine tick (GIL/HTTP HOL -> /health/ready timeout).
+                    eng = self.sync_engine
+                    fail_ts = float(getattr(eng, "_wire_probe_fail_ts", 0.0) or 0.0)
+                    backoff = float(getattr(eng, "_wire_probe_backoff_sec", 8.0) or 8.0)
+                    in_backoff = fail_ts > 0.0 and (time.time() - fail_ts) < max(0.0, backoff)
+                    if in_backoff:
+                        wire_soft_fail = True
+                    else:
+                        try:
+                            loop = asyncio.get_running_loop()
+                            ex = getattr(self, "sync_executor", None) or getattr(
+                                self.p2p, "sync_executor", None
+                            )
+                            await loop.run_in_executor(ex, eng.sync_state)
+                        except Exception as _sync_probe_err:
+                            print(f"[Mining] sync_state probe failed: {_sync_probe_err}")
+                            # Prod: lockdown (fail-closed). Non-prod: soft-skip this
+                            # tick without a sticky force_inconsistent.
+                            if bool(getattr(self.config, "is_production", False)):
+                                if hasattr(self.p2p, "force_inconsistent"):
+                                    self.p2p.force_inconsistent("mining_probe_failed")
+                                else:
+                                    self.p2p._state_consistent = False
+                            else:
+                                wire_soft_fail = True
+                        fail_ts2 = float(getattr(eng, "_wire_probe_fail_ts", 0.0) or 0.0)
+                        if fail_ts2 > 0.0:
+                            wire_soft_fail = True
+                # Sticky-inconsistent is not a hard `continue` here: mesh_ready_for_mining
+                # still refuses unless wire roots match at the local tip (or STATUS heights
+                # are unanimous AND state_consistent; wire_soft_fail only relaxes non-prod).
                 if _min_mesh_peers > 0:
                     peer_heights = [
                         int(getattr(p, "height", 0) or 0) for p in peers.values()
@@ -1988,10 +2022,35 @@ class NodeOrchestrator:
 
                     wire_roots = []
                     try:
-                        wire_roots = await self.p2p.request_peer_state_roots()
+                        # Skip fresh wire solicit while in soft-fail backoff — the
+                        # prior sync_state already timed out; another 70s piles HOL.
+                        # When consistent, reuse a short cache so 1 Hz mine ticks
+                        # do not pile 60s solicits on the event loop.
+                        if not wire_soft_fail:
+                            now_w = time.time()
+                            cache = getattr(self, "_wire_roots_cache", None)
+                            cache_ts = float(
+                                getattr(self, "_wire_roots_cache_ts", 0.0) or 0.0
+                            )
+                            cache_h = int(
+                                getattr(self, "_wire_roots_cache_height", -1) or -1
+                            )
+                            if (
+                                isinstance(cache, list)
+                                and cache_h == int(local_h)
+                                and (now_w - cache_ts) < 3.0
+                            ):
+                                wire_roots = cache
+                            else:
+                                wire_roots = await self.p2p.request_peer_state_roots()
+                                self._wire_roots_cache = list(wire_roots)
+                                self._wire_roots_cache_ts = now_w
+                                self._wire_roots_cache_height = int(local_h)
                     except Exception as exc:
                         print(f"[Mining] request_peer_state_roots failed: {exc}")
                         wire_roots = []
+                        wire_soft_fail = True
+                        self._wire_roots_cache = None
                         if bool(getattr(self.config, "is_production", False)):
                             if hasattr(self.p2p, "force_inconsistent"):
                                 self.p2p.force_inconsistent("mining_wire_roots_failed")
@@ -2020,8 +2079,15 @@ class NodeOrchestrator:
                         local_root=local_root,
                         state_consistent=bool(getattr(self.p2p, "_state_consistent", False)),
                         peer_heights=peer_heights,
+                        wire_soft_fail=bool(wire_soft_fail)
+                        and (not bool(getattr(self.config, "is_production", False))),
                     ):
                         continue
+                elif connected > 0 and not getattr(
+                    self.p2p, "_state_consistent", False
+                ):
+                    # mesh_min=0 path: keep fail-closed skip when inconsistent.
+                    continue
 
             if self.sharding and hasattr(self.sharding, "process_cross_shard_transactions"):
                 try:

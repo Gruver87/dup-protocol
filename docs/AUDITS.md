@@ -32,7 +32,9 @@ Related: [SECURITY.md](../SECURITY.md) · [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_
 
 ## Safe Hybrid work (Exp→pin honesty CLOSED — code tip `adc8547`)
 
-Experimental owns libp2p / Long-Range R&D. **B1** (libp2p 48h) is **PASS** on Experimental — that is **not** a Hybrid transport cutover. Honesty Exp→pin merge is **CLOSED** (units + `industrial_gate`; **not** a new 48h soak). Working tip: `git rev-parse --short HEAD`. On **this** pin, prefer:
+**ADR 0020:** working-tip prod 3-node mesh JSON on this pin is **rust-libp2p** (`feature_libp2p=true`). Freeze tag `v1.3.1339-tip-v2-industrial` remains **TCP+TLS** sealed evidence. **Pin libp2p 48h soak + post-cutover mesh probe: not completed** — placeholder `docs/evidence/runs/pin-libp2p-cutover-pending/`.
+
+Experimental owns Long-Range R&D and completed libp2p soaks on **its** tree (**B1 PASS** there) — **do not** cite `3c801b87`, `lp2pstrict1`, or `0a7932c4` as pin libp2p proof. Honesty Exp→pin merge is **CLOSED** (units + `industrial_gate`; **not** pin libp2p soak). Working tip: `git rev-parse --short HEAD`. On **this** pin, prefer:
 
 1. External audit engagement prep — [FIRM_KICKOFF_CHECKLIST.md](FIRM_KICKOFF_CHECKLIST.md) · [AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md) · [AUDIT_PACK_CHECKLIST.md](AUDIT_PACK_CHECKLIST.md) · regenerate audit pack (**Phase 6 / org**)
 2. Ops dry-runs (DR / ceremony / bridge-OFF) — no prod secret `-Force` unless cutover day
@@ -50,4 +52,4 @@ python scripts/industrial_gate.py
 
 Optional Exp Phase 6 appendix (prep only, **not** pin PASS): [EXTERNAL_AUDIT_ENGAGEMENT](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/EXTERNAL_AUDIT_ENGAGEMENT.md) · [phase6prep1](https://github.com/Gruver87/dup-protocol-experimental/tree/main/evidence/runs/phase6prep1).
 
-**Do not:** port libp2p/Long-Range from Experimental · flip refused `feature_*` · claim Experimental soaks (`3c801b87`, `0a7932c4`, `lr2hmesh`, `lr48pass1`, `evm48pass1`) as Hybrid tip-v2 evidence · run Experimental soaks from this tree.
+**Do not:** enable `feature_long_range` on prod · claim Experimental soaks (`3c801b87`, `lp2pstrict1`, `0a7932c4`, `lr2hmesh`, `lr48pass1`, `evm48pass1`) as **pin** libp2p/tip-v2 evidence · claim pin libp2p soak PASS without `pin-libp2p-cutover-pending` (or successor) pack · run Experimental soak scripts as pin proof.

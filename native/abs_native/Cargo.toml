@@ -9,8 +9,15 @@ name = "abs_native"
 crate-type = ["cdylib", "rlib"]
 
 [features]
+# extension-module: maturin wheels (CPython loads the cdylib; do not link libpython).
+# cargo test / clippy --all-targets MUST use --no-default-features so PyO3 links
+# the interpreter at PYO3_PYTHON. Canonical runner: scripts/cargo_test_abs_native.py
 default = ["extension-module"]
 extension-module = ["pyo3/extension-module"]
+# cargo test / embedding: initialize CPython on first GIL (incompatible with extension-module)
+auto-initialize = ["pyo3/auto-initialize"]
+# ADR 0019/0020 — rust-libp2p swarm (pin industrial mesh when feature_libp2p=true)
+libp2p = ["dep:libp2p", "dep:tokio", "dep:futures", "dep:async-trait"]
 
 [dependencies]
 hex = "0.4"
@@ -29,6 +36,30 @@ primitive-types = "0.12"
 num-bigint = "0.4"
 num-traits = "0.2"
 rust_decimal = { version = "1", default-features = false, features = ["std"] }
+libp2p = { version = "0.54", optional = true, default-features = false, features = [
+    "tokio",
+    "tcp",
+    "noise",
+    "yamux",
+    "ping",
+    "identify",
+    "request-response",
+    "gossipsub",
+    "mdns",
+    "kad",
+    "relay",
+    "autonat",
+    "dcutr",
+    "rendezvous",
+    "dns",
+    "quic",
+    "websocket",
+    "upnp",
+    "macros",
+] }
+tokio = { version = "1", optional = true, features = ["rt-multi-thread", "macros", "sync", "time"] }
+futures = { version = "0.3", optional = true }
+async-trait = { version = "0.1", optional = true }
 
 [dev-dependencies]
 rand = "0.8"

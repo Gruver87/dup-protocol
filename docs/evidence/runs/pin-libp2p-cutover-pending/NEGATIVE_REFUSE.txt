@@ -1,0 +1,3 @@
+﻿feature_libp2p=true + p2p_tls_enabled=true -> Config.validate refuses (Noise ≠ mTLS)
+docker_prod_3node.ps1 -P2pTls -> FAIL (ADR 0020)
+Wheel without Cargo libp2p + mesh JSON true -> boot RuntimeError in _start_libp2p_listen (unit: test_libp2p_industrial_cutover)

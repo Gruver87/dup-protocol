@@ -1,0 +1,9 @@
+﻿started_at: 2026-10-05T05:34:35+02:00
+checked_at: 2026-10-05T06:04:20.4724230+02:00
+log: logs/soak_48h_libp2p_industrial.log
+ok_port: 18
+mesh_ok: 6
+warn: 0
+fail: 0
+status: IN_PROGRESS hard_fails=0 so far — NOT a soak PASS
+mesh: h661 peers=2 libp2p active (sample at check time; tip still advancing)

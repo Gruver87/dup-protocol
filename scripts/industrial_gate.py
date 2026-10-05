@@ -78,6 +78,11 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         "_housekeeping_payload_ok",
         "peer_send_fail",
         "mid_session_handshake",
+        "_start_libp2p_listen",
+        "_libp2p_admit_raw_frame",
+        "send_abs_wire",
+        "ADR0020_experimental_libp2p_industrial_mesh",
+        "no TCP+TLS fallback",
     ):
         if needle not in p2p_mod:
             errors.append(f"p2p_node.py missing wire-reject surface: {needle}")
@@ -86,6 +91,7 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         "shape_rejects_total",
         "rate_limit_drops",
         "_status_p2p_hardening_snapshot",
+        "libp2p_rust_backend",
     ):
         if needle not in http_src:
             errors.append(f"api/http.py missing status honesty surface: {needle}")
@@ -228,7 +234,8 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
                 errors.append(f"{rel}: redis_url must be non-empty for mesh/k8s")
         # ADR 0016: explicit true is refuse. Missing sprout key is overlay-off
         # (prod apply_env still fail-closes). Mesh JSON pins the sprout set.
-        # libp2p / long_range must be explicit false (unimplemented on Hybrid).
+        # ADR 0020: feature_libp2p is the industrial mesh transport (explicit bool,
+        # exclusive with p2p_tls_enabled). long_range must stay explicit false (ADR 0017).
         _feature_keys = (
             "feature_zk",
             "feature_minivm",
@@ -244,18 +251,25 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
             "feature_ai_validator",
             "feature_smart_accounts",
             "feature_validator_selection",
-            "feature_libp2p",
             "feature_long_range",
         )
         for fk in _feature_keys:
             if prod_cfg.get(fk) is True:
                 errors.append(f"{rel}: ADR 0016 forbids {fk}=true on prod JSON")
-        for fk in ("feature_libp2p", "feature_long_range"):
-            if prod_cfg.get(fk) is not False:
-                errors.append(
-                    f"{rel}: {fk} must be explicit false "
-                    "(Hybrid freeze; R&D is Gruver87/dup-protocol-experimental)"
-                )
+        if prod_cfg.get("feature_long_range") is not False:
+            errors.append(
+                f"{rel}: feature_long_range must be explicit false "
+                "(ADR 0017 lab-only; not in industrial mesh)"
+            )
+        if not isinstance(prod_cfg.get("feature_libp2p"), bool):
+            errors.append(
+                f"{rel}: feature_libp2p must be an explicit bool (ADR 0020 transport selector)"
+            )
+        if prod_cfg.get("feature_libp2p") is True and prod_cfg.get("p2p_tls_enabled") is True:
+            errors.append(
+                f"{rel}: ADR 0020 forbids p2p_tls_enabled=true with feature_libp2p=true "
+                "(Noise replaces mTLS; transports are mutually exclusive)"
+            )
         if prod_cfg.get("allow_state_root_rewrite") is True:
             errors.append(
                 f"{rel}: allow_state_root_rewrite must be false on prod JSON"
@@ -266,13 +280,24 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         if "mesh" in Path(rel).name.lower():
             mesh_json_cfgs.append((rel, prod_cfg))
             for fk in _feature_keys:
-                if fk in ("feature_libp2p", "feature_long_range"):
+                if fk == "feature_long_range":
                     continue
                 if fk in prod_cfg and prod_cfg.get(fk) is not False:
                     errors.append(
                         f"{rel}: ADR 0016 requires {fk}=false on prod mesh "
                         f"(got {prod_cfg.get(fk)!r})"
                     )
+            # ADR 0020 pin industrial mesh cutover: libp2p true, native p2p_tls off.
+            if prod_cfg.get("feature_libp2p") is not True:
+                errors.append(
+                    f"{rel}: ADR 0020 requires feature_libp2p=true on pin industrial "
+                    f"prod mesh (got {prod_cfg.get('feature_libp2p')!r})"
+                )
+            if prod_cfg.get("p2p_tls_enabled") is not False:
+                errors.append(
+                    f"{rel}: ADR 0020 libp2p mesh requires p2p_tls_enabled=false "
+                    f"(got {prod_cfg.get('p2p_tls_enabled')!r})"
+                )
     # Compose env freeze vs prod JSON (3-node mesh + single-node).
     import re
 
@@ -334,6 +359,7 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
     mesh_env = dict(shared_compose_env)
     mesh_env["REDIS_RATE_LIMIT"] = "redis_rate_limit_enabled"
     mesh_env["REDIS_URL"] = "redis_url"
+    mesh_env["FEATURE_LIBP2P"] = "feature_libp2p"
     _freeze_compose_json("docker-compose.prod.3node.yml", mesh_json_cfgs, mesh_env)
 
     single_json: list[tuple[str, dict]] = []
@@ -410,11 +436,28 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
     metrics_py = (ROOT / "observability" / "metrics.py").read_text(encoding="utf-8")
     if "abs_l1_rpc_probed" not in metrics_py:
         errors.append("metrics.py missing abs_l1_rpc_probed")
-    if not prod_tls_enabled:
+    libp2p_mesh = any(c.get("feature_libp2p") is True for _, c in mesh_json_cfgs)
+    if not prod_tls_enabled and not libp2p_mesh:
         warnings.append(
             "prod mesh JSON: p2p_tls_enabled is not true "
             "(enable TLS overlay / -P2pTls for public mainnet wire)"
         )
+    if not (ROOT / "docs" / "adr" / "0020-libp2p-industrial-mesh.md").is_file():
+        errors.append("missing ADR 0020 libp2p industrial mesh")
+    else:
+        adr20_txt = (ROOT / "docs" / "adr" / "0020-libp2p-industrial-mesh.md").read_text(
+            encoding="utf-8"
+        )
+        if "Does not apply to Hybrid" in adr20_txt:
+            errors.append(
+                "ADR 0020 must be rebound to pin industrial mesh cutover "
+                "(stale 'Does not apply to Hybrid / audit-pin')"
+            )
+    cfg_src_20 = (ROOT / "runtime" / "config.py").read_text(encoding="utf-8")
+    if "FEATURE_LIBP2P" not in cfg_src_20:
+        errors.append("runtime/config.py must include FEATURE_LIBP2P (ADR 0020 mesh)")
+    if not (ROOT / "network" / "transport" / "libp2p_adapter" / "adapter.py").is_file():
+        errors.append("missing network/transport/libp2p_adapter/adapter.py (ADR 0020)")
     # ADR 0003 — sync consistency boundary + solicit hub
     p2p_src = (ROOT / "network" / "p2p_node.py").read_text(encoding="utf-8")
     sync_src = (ROOT / "sync" / "sync_engine.py").read_text(encoding="utf-8")
@@ -1213,8 +1256,13 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         errors.append(f"fail-loud sync_engine inspect failed: {exc}")
     try:
         mesh_py = (ROOT / "runtime" / "mesh_mining.py").read_text(encoding="utf-8")
-        if "return bool(state_consistent)" not in mesh_py:
+        if "if state_consistent:" not in mesh_py:
             errors.append("mesh_ready_for_mining peer_heights path must gate on state_consistent")
+        if "wire_soft_fail and not wire_roots" not in mesh_py:
+            errors.append(
+                "mesh_ready_for_mining wire_soft_fail must only relax when no wire_roots "
+                "(real root mismatch still refuses)"
+            )
         if "state_consistent: bool = False" not in mesh_py:
             errors.append("mesh_ready_for_mining state_consistent default must be False")
     except Exception as exc:

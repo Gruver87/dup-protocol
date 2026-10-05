@@ -505,6 +505,7 @@ def _build_status_probe_payload(
         "mempool_store": mp_store,
         "p2p_running": bool(getattr(p2p, "_running", False)) if p2p else False,
         "p2p_hardening": p2p_hard,
+        "libp2p": dict(p2p_hard.get("libp2p") or {}),
     }
 
 
@@ -528,6 +529,7 @@ def _status_p2p_hardening_snapshot(cfg, p2p) -> Dict[str, Any]:
             logger.warning("config TLS status snapshot failed: %s", exc)
             status_error = str(exc)
             tls = {"status_error": str(exc)}
+    libp2p = dict(sec.get("libp2p") or {})
     out = {
         "rate_limit_per_sec": int(getattr(cfg, "p2p_max_messages_per_sec", 0) or 0) if cfg else 0,
         "tls_enabled": bool(tls.get("enabled")),
@@ -541,6 +543,20 @@ def _status_p2p_hardening_snapshot(cfg, p2p) -> Dict[str, Any]:
         "active_bans": int(sec.get("active_bans", 0) or 0),
         "attestation_local_fail": int(sec.get("attestation_local_fail", 0) or 0),
         "ops_errors": dict(sec.get("ops_errors") or {}),
+        # ADR 0019/0020 — nested block is the live-mesh truth; flat keys stay for probes.
+        "libp2p_feature": bool(libp2p.get("feature_libp2p")),
+        "libp2p_active": bool(libp2p.get("active")),
+        "libp2p_rust_backend": bool(libp2p.get("rust_backend") or libp2p.get("noise")),
+        "libp2p_peers": int(libp2p.get("libp2p_peers", 0) or 0),
+        "libp2p_dial_ok": int(libp2p.get("libp2p_dial_ok", 0) or 0),
+        "libp2p_block_denied": int(libp2p.get("libp2p_block_denied", 0) or 0),
+        "libp2p_conn_limit_denied": int(libp2p.get("libp2p_conn_limit_denied", 0) or 0),
+        "libp2p_relay_reservations": int(libp2p.get("libp2p_relay_reservations", 0) or 0),
+        "libp2p_kad_peers": int(libp2p.get("libp2p_kad_peers", 0) or 0),
+        "libp2p_honesty": str(
+            libp2p.get("honesty") or "ADR0019_rust_libp2p_lab_not_prod_mesh"
+        ),
+        "libp2p": libp2p,
     }
     if status_error:
         out["status_error"] = status_error
@@ -992,6 +1008,22 @@ def _quorum_height_aligned(local_height: int, peer_heights: list[int]) -> bool:
     local = int(local_height or 0)
     agree = sum(1 for h in peer_heights if abs(int(h) - local) <= 1)
     return agree * 2 > len(peer_heights)
+
+
+def _p2p_listener_bound(p2p) -> bool:
+    """True when a data-plane listener is bound.
+
+    Asyncio uses ``_server``, native TCP+TLS uses ``_native_listener``,
+    ADR 0020 rust-libp2p uses ``_libp2p_listening``. Missing all three
+    must fail /health/ready (bind failure must not paint green).
+    """
+    if p2p is None:
+        return False
+    return (
+        getattr(p2p, "_server", None) is not None
+        or getattr(p2p, "_native_listener", None) is not None
+        or bool(getattr(p2p, "_libp2p_listening", False))
+    )
 
 
 def _deep_ready_mesh_checks(
@@ -2029,10 +2061,9 @@ class RESTHandler(BaseHTTPRequestHandler):
                         checks["p2p_running"] = False
                     else:
                         # Listener must exist — bind failure clears _running (fail-closed).
-                        # Asyncio path uses _server; native TCP/TLS path uses _native_listener.
+                        # Asyncio _server / native _native_listener / ADR 0020 _libp2p_listening.
                         checks["p2p_running"] = bool(getattr(p2p, "_running", False)) and (
-                            getattr(p2p, "_server", None) is not None
-                            or getattr(p2p, "_native_listener", None) is not None
+                            _p2p_listener_bound(p2p)
                         )
                         # v1.3.125: prod native transport must expose semantic message-loop shell.
                         if (
@@ -2207,7 +2238,6 @@ class RESTHandler(BaseHTTPRequestHandler):
                     self._error(503, "Metrics collector unavailable")
                     return
                 validators = db.get_validators() if db else []
-                from crypto import native
                 native_crypto = native.native_crypto_status(
                     required=bool(getattr(cfg, "require_native_crypto", False))
                 )
@@ -2412,7 +2442,6 @@ class RESTHandler(BaseHTTPRequestHandler):
                 return
 
             if path == "/native/crypto":
-                from crypto import native
                 native_crypto = native.native_crypto_status(
                     required=bool(getattr(cfg, "require_native_crypto", False))
                 )
@@ -2506,7 +2535,6 @@ class RESTHandler(BaseHTTPRequestHandler):
                         })
                     if peer_heights:
                         peer_gap = max(p["gap"] for p in peer_heights)
-                from crypto import native
                 native_crypto = native.native_crypto_status(
                     required=bool(getattr(cfg, "require_native_crypto", False))
                 )
@@ -2906,6 +2934,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                         "jwt_auth": _JWT_AVAILABLE,
                     },
                     "p2p_hardening": p2p_hard,
+                    "libp2p": dict(p2p_hard.get("libp2p") or {}),
                 })
 
             elif path == "/tokenomics":

@@ -26,8 +26,9 @@ BRIDGE_PROD_FILES = [
 ]
 
 # Align with Config.validate() prod blocks + ADR 0016 kitchen-sink freeze.
-# feature_libp2p / feature_long_range are unimplemented on this freeze;
-# R&D lives in Gruver87/dup-protocol-experimental. Prod JSON must not copy true.
+# feature_long_range stays lab-only (ADR 0017). feature_libp2p is the ADR 0020
+# industrial mesh transport and is validated below (exclusive with p2p_tls_enabled),
+# so it is intentionally NOT in BLOCKED_FEATURES.
 BLOCKED_FEATURES = [
     "feature_zk",
     "feature_minivm",
@@ -43,7 +44,6 @@ BLOCKED_FEATURES = [
     "feature_ai_validator",
     "feature_smart_accounts",
     "feature_validator_selection",
-    "feature_libp2p",
     "feature_long_range",
 ]
 
@@ -140,18 +140,28 @@ def check_file(path: str) -> list[str]:
     if int(cfg.get("rate_limit_rpm", 120) or 0) <= 0:
         errors.append(f"{path}: rate_limit_rpm must be > 0 in prod")
 
-    # Prod profiles require P2P TLS(+mTLS) for mainnet-prep wire.
-    if cfg.get("p2p_tls_enabled") is not True:
-        errors.append(f"{path}: p2p_tls_enabled must be true for prod profiles")
-    if cfg.get("p2p_tls_require_client_cert") is not True:
-        errors.append(f"{path}: p2p_tls_require_client_cert must be true for prod mTLS")
-    for key in ("p2p_tls_cert_path", "p2p_tls_key_path", "p2p_tls_ca_path"):
-        if not str(cfg.get(key) or "").strip():
-            errors.append(f"{path}: {key} required when P2P TLS is enabled")
-    if cfg.get("p2p_tls_fail_closed") is False:
-        errors.append(f"{path}: p2p_tls_fail_closed must not be false in prod")
-    if cfg.get("p2p_tls_bind_identity") is False:
-        errors.append(f"{path}: p2p_tls_bind_identity must not be false in prod")
+    # ADR 0020: transports are exclusive. libp2p mesh uses Noise (p2p_tls off);
+    # otherwise prod profiles require P2P TLS(+mTLS) for the wire.
+    if cfg.get("feature_libp2p") is True:
+        if cfg.get("p2p_tls_enabled") is True:
+            errors.append(
+                f"{path}: ADR 0020 libp2p mesh must keep p2p_tls_enabled=false "
+                "(Noise is session crypto; mTLS overlay is split-brain)"
+            )
+        if cfg.get("feature_long_range") is True:
+            errors.append(f"{path}: feature_long_range must stay false")
+    else:
+        if cfg.get("p2p_tls_enabled") is not True:
+            errors.append(f"{path}: p2p_tls_enabled must be true for prod profiles")
+        if cfg.get("p2p_tls_require_client_cert") is not True:
+            errors.append(f"{path}: p2p_tls_require_client_cert must be true for prod mTLS")
+        for key in ("p2p_tls_cert_path", "p2p_tls_key_path", "p2p_tls_ca_path"):
+            if not str(cfg.get(key) or "").strip():
+                errors.append(f"{path}: {key} required when P2P TLS is enabled")
+        if cfg.get("p2p_tls_fail_closed") is False:
+            errors.append(f"{path}: p2p_tls_fail_closed must not be false in prod")
+        if cfg.get("p2p_tls_bind_identity") is False:
+            errors.append(f"{path}: p2p_tls_bind_identity must not be false in prod")
 
     backend = str(cfg.get("secret_backend") or "env").strip().lower()
     if backend in ("file", "null", "none", "off"):
