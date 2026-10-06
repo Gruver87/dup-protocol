@@ -251,6 +251,23 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         )
     if '"external_audit"' not in pma and "'external_audit'" not in pma:
         errors.append("pre_mainnet_audit report must embed external_audit summary")
+    vp2p = (ROOT / "scripts" / "verify_p2p_ci.py").read_text(encoding="utf-8")
+    if "def _default_prod_smoke_wallet" not in vp2p:
+        errors.append("verify_p2p_ci must default PROD_SMOKE_WALLET_PATH to validator-1 wallet")
+    if "max_attempts = max(need * 12, need + 8)" not in vp2p:
+        errors.append("verify_p2p_ci ready settle must allow longer KeepVolumes flaps")
+    if "exc2" not in vp2p or "Surface body" not in vp2p:
+        errors.append("verify_p2p_ci _post_json must surface HTTP body on non-auth errors")
+    if not (ROOT / "scripts" / "mempool_validation_sidecar.py").is_file():
+        errors.append("scripts/mempool_validation_sidecar.py missing (soak companion)")
+    else:
+        mvs = (ROOT / "scripts" / "mempool_validation_sidecar.py").read_text(
+            encoding="utf-8"
+        )
+        if "_refuse_empty_tx" not in mvs or "NOT 48h" not in mvs:
+            errors.append("mempool_validation_sidecar must refuse-smoke and honesty-label")
+    if not (ROOT / "scripts" / "start_mempool_validation_soak.ps1").is_file():
+        errors.append("scripts/start_mempool_validation_soak.ps1 missing")
     # Exp→pin ops tooling: Strict parallel worker + cargo honesty + soak FAIL pack.
     if not (ROOT / "scripts" / "health_watch_node.ps1").is_file():
         errors.append(

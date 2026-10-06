@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — verify_p2p_ci flake honesty + mempool validation sidecar
+
+- verify_p2p_ci: default validator-1 wallet, longer ready settle (*12), HTTP body surface on _post_json.
+- mempool_validation_sidecar + start_mempool_validation_soak.ps1 (companion; NOT 48h claim).
+- Units + industrial_gate needles. **Non-LR.** Mesh Quick optional (ops/CI). **Soak deferred.**
+
 ### Exp→pin merge wave — verify_prod_stack isolate_keys + pre_mainnet live_automated
 
 - verify_prod_stack.check_config_validate: scrub ambient TIP_SAFETY/FEATURE_*/BRIDGE_ENABLED before JSON validate; suppress binary-missing only when bridge off.

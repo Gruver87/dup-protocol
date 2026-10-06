@@ -97,6 +97,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Item | Evidence |
 |------|----------|
+| **Exp→pin merge wave (verify_p2p_ci flake + mempool sidecar)** | **CODE+GATE** 2026-10-06 — default prod smoke wallet, longer ready settle, HTTP body surface; mempool_validation_sidecar companion. Units + industrial_gate. **Mesh Quick optional this tip** (ops/CI). **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (verify_prod_stack isolate + pre_mainnet live_automated)** | **CODE+GATE** 2026-10-06 — ambient env isolate on JSON validate; pre_mainnet embeds live external_audit summary. Units + industrial_gate. **Mesh Quick optional this tip** (ops). **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (soak_preflight wire/libp2p flags)** | **CODE+GATE** 2026-10-06 — soak_preflight --require-wire-probe/--require-libp2p; prepare_48h_soak wires both (fixes unknown-arg break). Units + industrial_gate. **Mesh Quick optional this tip** (ops/prep). **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (grafana ops panels + proposer_audit hasattr)** | **CODE+GATE** 2026-10-06 — grafana panels 27–37 (RocksDB/under-mesh/mempool demote); proposers hasattr count_proposer_audit. Units + industrial_gate needles. **Mesh Quick optional this tip** (ops/grafana). **Soak deferred / not run / not started.** No Long-Range. |

@@ -165,7 +165,9 @@ def verify_health_ready_mesh(
     need = max(1, int(cycles))
     green = 0
     attempts = 0
-    max_attempts = max(need * 5, need + 2)
+    # Cold KeepVolumes restart: node2/3 can flap /health/ready for >15 attempts
+    # while peers_alive already true (6h soak relaunch evidence). Allow longer settle.
+    max_attempts = max(need * 12, need + 8)
     while green < need and attempts < max_attempts:
         attempts += 1
         if attempts > 1:
@@ -329,7 +331,10 @@ def _post_json(base_url: str, path: str, body: dict | None = None, timeout: floa
         if exc.code not in (401, 403) or (
             "JWT" not in raw and "jwt" not in raw.lower() and "Bearer" not in raw
         ):
-            raise
+            # Surface body — gas/signature/amount refusals must not be opaque 400s.
+            raise RuntimeError(
+                f"HTTP {exc.code} {path}: {raw[:400] if raw else exc.reason}"
+            ) from exc
         _ADMIN_TOKENS.pop(base, None)
         token = _admin_token(base, timeout=min(timeout, 10))
         req = urllib.request.Request(
@@ -338,8 +343,14 @@ def _post_json(base_url: str, path: str, body: dict | None = None, timeout: floa
             method="POST",
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
         )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode())
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode())
+        except urllib.error.HTTPError as exc2:
+            raw2 = exc2.read().decode(errors="replace")
+            raise RuntimeError(
+                f"HTTP {exc2.code} {path}: {raw2[:400] if raw2 else exc2.reason}"
+            ) from exc2
 
 
 def _oracle_post(base_url: str, path: str, body: dict, secret: str, timeout: float = 15) -> dict:
@@ -1567,8 +1578,22 @@ def _unique_recipient(salt: str = "") -> str:
     return "0x" + native.sha256_hex(seed.encode())[:40]
 
 
+_PROD_SMOKE_WALLET_REL = "data/prod_mesh/wallets/validator-1.wallet.json"
+
+
+def _default_prod_smoke_wallet() -> str:
+    """Ceremony miner wallet used by the local 3-node prod mesh (gitignored)."""
+    return os.path.join(ROOT, *_PROD_SMOKE_WALLET_REL.split("/"))
+
+
 def _prod_smoke_wallet_path() -> str:
-    return os.environ.get("PROD_SMOKE_WALLET_PATH", "").strip()
+    env = os.environ.get("PROD_SMOKE_WALLET_PATH", "").strip()
+    if env:
+        return env
+    default = _default_prod_smoke_wallet()
+    if os.path.isfile(default):
+        return default
+    return ""
 
 
 def _send_propagation_tx_signed(
@@ -1625,7 +1650,10 @@ def _send_propagation_tx(
         wallet_path = _prod_smoke_wallet_path()
         if wallet_path and os.path.isfile(wallet_path):
             return _send_propagation_tx_signed(url1, wallet_path, s1, attempt)
-        raise RuntimeError("prod tx propagation requires PROD_SMOKE_WALLET_PATH")
+        raise RuntimeError(
+            "prod tx propagation requires PROD_SMOKE_WALLET_PATH "
+            f"or {_default_prod_smoke_wallet()}"
+        )
 
     _ensure_signer_funded(url1, peer_urls)
     last_exc: Exception | None = None
@@ -1654,12 +1682,13 @@ def _verify_tx_propagation_multi(url1: str, target_urls: list[str], s1: dict) ->
             return False
         return True
     if str(s1.get("deployment_mode", "")).lower() == "prod":
-        if not _prod_smoke_wallet_path():
-            if _verify_p2p_skip_or_fail(
-                "tx propagation (auto_sign disabled in prod; use signed raw tx)"
-            ) != 0:
-                return False
-            return True
+        wallet_path = _prod_smoke_wallet_path()
+        if not wallet_path or not os.path.isfile(wallet_path):
+            print("FAIL: tx propagation (prod requires signed raw tx; auto_sign disabled)")
+            print("  set PROD_SMOKE_WALLET_PATH or place validator-1.wallet.json at")
+            print(f"  {_default_prod_smoke_wallet()}")
+            return False
+        print(f"OK: prod smoke signer {wallet_path}")
 
     if not _wait_topology_healthy(url1, expected_peers=max(1, len(target_urls)), timeout=90):
         print("WARN: P2P topology not fully healthy before tx propagation")
