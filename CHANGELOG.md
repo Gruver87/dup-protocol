@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — soak_preflight require_wire_probe / require_libp2p
+
+- soak_preflight: --require-wire-probe (full harness quick=False), --require-libp2p, peer retry, /status?probe=1 SLO, git_sha/dirty.
+- prepare_48h_soak: pass --require-libp2p when ADR 0020 mesh (not TLS); keep --require-wire-probe (was broken: unknown arg).
+- Units + industrial_gate needles. **Non-LR.** Mesh Quick optional (ops/prep). **Soak deferred.**
+
 ### Exp→pin merge wave — grafana ops panels + proposer_audit hasattr
 
 - deploy/grafana: panels 27–37 (RocksDB live gauges, P2P under-mesh/sync gap, mempool demote/backend).

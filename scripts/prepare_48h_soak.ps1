@@ -60,7 +60,12 @@ if (-not $SkipBakedNeedle) {
 
 Write-Host "2) soak_preflight.py" -ForegroundColor Cyan
 $argsList = @("scripts/soak_preflight.py", "--hours", $Hours, "--interval-sec", $IntervalSec)
-if ($wantTls) { $argsList += "--require-p2p-tls" }
+if ($wantTls) {
+    $argsList += "--require-p2p-tls"
+} else {
+    # ADR 0020 default mesh: rust-libp2p must be live (not lab honesty).
+    $argsList += "--require-libp2p"
+}
 # Prefer wire probe when mesh is up (fail-closed soak honesty).
 $argsList += "--require-wire-probe"
 python @argsList

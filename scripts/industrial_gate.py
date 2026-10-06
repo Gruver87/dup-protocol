@@ -224,6 +224,21 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append(
             "prepare_48h_soak must docker-cp check_baked_state_root.py into the running image"
         )
+    if "--require-wire-probe" not in prep48:
+        errors.append("prepare_48h_soak must pass --require-wire-probe to soak_preflight")
+    if "--require-libp2p" not in prep48:
+        errors.append(
+            "prepare_48h_soak must pass --require-libp2p for ADR 0020 libp2p mesh"
+        )
+    soak_pf = (ROOT / "scripts" / "soak_preflight.py").read_text(encoding="utf-8")
+    if "require_wire_probe" not in soak_pf or "--require-wire-probe" not in soak_pf:
+        errors.append("soak_preflight must accept --require-wire-probe")
+    if "require_libp2p" not in soak_pf or "--require-libp2p" not in soak_pf:
+        errors.append("soak_preflight must accept --require-libp2p (ADR 0020)")
+    if "quick=False" not in soak_pf or "peer_timeout=8.0" not in soak_pf:
+        errors.append(
+            "soak_preflight require_wire_probe must use full harness (not quick/3s)"
+        )
     # Exp→pin ops tooling: Strict parallel worker + cargo honesty + soak FAIL pack.
     if not (ROOT / "scripts" / "health_watch_node.ps1").is_file():
         errors.append(
