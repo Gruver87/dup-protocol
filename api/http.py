@@ -935,6 +935,42 @@ def _rust_bridge_health(cfg) -> Dict:
     return out
 
 
+_CEREMONY_STATUS_CACHE: dict = {}
+
+
+def _genesis_ceremony_status(cfg) -> Dict:
+    """Cached live-manifest check for GET /status (manifest is static at runtime)."""
+    manifest_path = str(getattr(cfg, "validators_manifest_path", "") or "")
+    if not manifest_path or not os.path.isfile(manifest_path):
+        return {"ready": False, "mainnet_addresses_ready": False}
+    try:
+        st = os.stat(manifest_path)
+        cache_key = (manifest_path, int(st.st_mtime_ns), int(st.st_size))
+    except OSError as exc:
+        return {"ready": False, "error": str(exc), "manifest_path": manifest_path}
+    hit = _CEREMONY_STATUS_CACHE.get(cache_key)
+    if isinstance(hit, dict):
+        return dict(hit)
+    try:
+        from runtime.genesis_ceremony import verify_live_manifest
+
+        cerr, artifact = verify_live_manifest(cfg, strict_addresses=False)
+        info = {
+            "ready": len(cerr) == 0,
+            "mainnet_addresses_ready": bool(artifact.get("mainnet_addresses_ready", False)),
+            "ceremony_hash": artifact.get("ceremony_hash"),
+            "validator_set_hash": artifact.get("validator_set_hash"),
+            "validators_count": artifact.get("validators_count", 0),
+            "manifest_path": manifest_path,
+            "errors": list(cerr)[:5],
+        }
+    except Exception as exc:
+        info = {"ready": False, "error": str(exc), "manifest_path": manifest_path}
+    _CEREMONY_STATUS_CACHE.clear()
+    _CEREMONY_STATUS_CACHE[cache_key] = info
+    return dict(info)
+
+
 def _derive_p2p_sync_status(
     *,
     peer_count: int,
@@ -2722,30 +2758,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     "canonical_head": None,
                     "attestation_count": 0,
                 }
-                genesis_ceremony_info = {"ready": False, "mainnet_addresses_ready": False}
-                manifest_path = getattr(cfg, "validators_manifest_path", "") or ""
-                if manifest_path and os.path.isfile(manifest_path):
-                    try:
-                        from runtime.genesis_ceremony import verify_live_manifest
-
-                        _cerr, artifact = verify_live_manifest(cfg, strict_addresses=False)
-                        genesis_ceremony_info = {
-                            "ready": len(_cerr) == 0,
-                            "mainnet_addresses_ready": bool(
-                                artifact.get("mainnet_addresses_ready", False)
-                            ),
-                            "ceremony_hash": artifact.get("ceremony_hash"),
-                            "validator_set_hash": artifact.get("validator_set_hash"),
-                            "validators_count": artifact.get("validators_count", 0),
-                            "manifest_path": manifest_path,
-                            "errors": _cerr[:5],
-                        }
-                    except Exception as exc:
-                        genesis_ceremony_info = {
-                            "ready": False,
-                            "error": str(exc),
-                            "manifest_path": manifest_path,
-                        }
+                genesis_ceremony_info = _genesis_ceremony_status(cfg)
                 ca = self.__class__.consensus_adapter
                 if ca and hasattr(ca, "get_stats"):
                     try:
@@ -2922,6 +2935,13 @@ class RESTHandler(BaseHTTPRequestHandler):
                     "monolith_summary": monolith_summary,
                     "mempool_size": mp.get_size(),
                     "mempool_stats": mp_stats,
+                    "mempool_store": {
+                        "store_backend": mp_stats.get("store_backend"),
+                        "store_demoted": bool(mp_stats.get("store_demoted")),
+                        "demote_count": int(mp_stats.get("demote_count") or 0),
+                        "demote_reason": str(mp_stats.get("demote_reason") or ""),
+                        "min_fee_satoshi": int(mp_stats.get("min_fee_satoshi") or 0),
+                    },
                     "sharding": sharding_info,
                     "coin": cfg.coin_symbol,
                     "coin_symbol": cfg.coin_symbol,

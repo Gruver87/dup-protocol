@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — ceremony status cache / mempool_store / libp2p metrics / pyo3 link
+
+- `GET /status`: cached `_genesis_ceremony_status` (mtime/size key); expose `mempool_store` demote/min_fee honesty.
+- Metrics: optional libp2p Prometheus export from security status (ADR 0020).
+- Native: `pyo3_link_tests` + `pub(crate) evm_opcode_supported` for cargo-test CPython link evidence.
+- Units + industrial_gate needles. **Non-LR.** Mesh Quick after native docker rebuild. **Soak deferred.**
+
 ### Exp→pin merge wave — status histogram / RocksDB gauges / wire sticky / catchup honesty
 
 - `observability/metrics`: `observe_status_ms` Prometheus histogram + live RocksDB compaction/flush/key gauges.

@@ -1473,7 +1473,7 @@ fn evm_stack_swap(stack: &Bound<'_, PyList>, depth: usize) -> PyResult<()> {
     Ok(())
 }
 
-fn evm_opcode_supported(op: u8) -> bool {
+pub(crate) fn evm_opcode_supported(op: u8) -> bool {
     matches!(
         op,
         0x00 | 0x01
@@ -1999,4 +1999,23 @@ fn abs_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     mempool_kernel::register(m)?;
     mempool_store::register(m)?;
     Ok(())
+}
+
+/// Fail-closed evidence that `cargo test --no-default-features` actually linked CPython.
+/// Skipped when `extension-module` is on (that feature deliberately does not link libpython).
+#[cfg(all(test, not(feature = "extension-module")))]
+mod pyo3_link_tests {
+    #[test]
+    fn cpython_is_linked_and_initialized() {
+        pyo3::prepare_freethreaded_python();
+        pyo3::Python::with_gil(|py| {
+            assert_eq!(py.version_info().major, 3);
+            assert!(
+                py.version_info().minor >= 10,
+                "abi3-py310 requires CPython >= 3.10, got {}.{}",
+                py.version_info().major,
+                py.version_info().minor
+            );
+        });
+    }
 }

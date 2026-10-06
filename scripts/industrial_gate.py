@@ -360,6 +360,22 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append("engine_io needs_genesis must log + fall back (not silent False)")
     if not (ROOT / "tests" / "unit" / "test_status_metrics_histogram.py").is_file():
         errors.append("test_status_metrics_histogram.py missing")
+    # Exp→pin status ceremony cache + mempool_store honesty + pyo3 link test.
+    http_src = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+    if "def _genesis_ceremony_status" not in http_src:
+        errors.append("api/http must cache genesis ceremony via _genesis_ceremony_status")
+    if '"mempool_store":' not in http_src or "min_fee_satoshi" not in http_src:
+        errors.append("GET /status must expose mempool_store demote/min_fee_satoshi honesty")
+    met2 = (ROOT / "observability" / "metrics.py").read_text(encoding="utf-8")
+    if "append_libp2p_prometheus_lines" not in met2:
+        errors.append("metrics must optionally export libp2p prometheus series (ADR 0020)")
+    librs = (ROOT / "native" / "abs_native" / "src" / "lib.rs").read_text(encoding="utf-8")
+    if "mod pyo3_link_tests" not in librs:
+        errors.append("abs_native lib.rs must include pyo3_link_tests (cargo test CPython link)")
+    if "pub(crate) fn evm_opcode_supported" not in librs:
+        errors.append("evm_opcode_supported must be pub(crate) for native test visibility")
+    if not (ROOT / "tests" / "unit" / "test_genesis_ceremony_status_cache.py").is_file():
+        errors.append("test_genesis_ceremony_status_cache.py missing")
     # Load real prod mesh JSON (bare Config() is always deployment_mode=dev).
     prod_tls_enabled = False
     prod_json_files = (

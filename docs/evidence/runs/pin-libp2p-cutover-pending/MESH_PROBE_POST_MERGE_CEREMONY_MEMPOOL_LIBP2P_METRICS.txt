@@ -1,0 +1,51 @@
+﻿MESH_PROBE_POST_MERGE_CEREMONY_MEMPOOL_LIBP2P_METRICS
+date: 2026-10-06 21:45:44 +02:00
+probe: probe_prod_mesh.ps1 -Quick
+docker: docker_prod_3node.ps1 -KeepVolumes
+units: test_genesis_ceremony_status_cache 2 PASS
+industrial_gate: OK
+soak: deferred / not run / not started
+long_range: not included
+---
+{
+  "ok": true,
+  "errors": [],
+  "warnings": [],
+  "timestamp": "2026-10-06T19:45:44.570213+00:00",
+  "chain_id": 778888,
+  "nodes": [
+    {
+      "url": "http://127.0.0.1:18180",
+      "role": "node1",
+      "reachable": true,
+      "height": 1805,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "02b1a461f166fd57a2a8778b7d47634a0dfdec7c6938a42c5dad3c2091be6472"
+    },
+    {
+      "url": "http://127.0.0.1:18181",
+      "role": "node2",
+      "reachable": true,
+      "height": 1805,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "02b1a461f166fd57a2a8778b7d47634a0dfdec7c6938a42c5dad3c2091be6472"
+    },
+    {
+      "url": "http://127.0.0.1:18182",
+      "role": "node3",
+      "reachable": true,
+      "height": 1805,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "02b1a461f166fd57a2a8778b7d47634a0dfdec7c6938a42c5dad3c2091be6472"
+    }
+  ],
+  "reachable": 3,
+  "expected": 3,
+  "ready": true
+}

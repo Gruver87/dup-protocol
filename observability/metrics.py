@@ -1961,6 +1961,24 @@ class MetricsCollector:
             lines.append(
                 f"abs_native_crypto_kernel_enabled{{node_id=\"{node_id}\",kernel=\"{safe_kernel}\"}} 1"
             )
+        # ADR 0020 / Slice Z: optional libp2p series from security status block.
+        libp2p_block = p2p_security.get("libp2p")
+        if isinstance(libp2p_block, dict):
+            try:
+                from network.transport.libp2p_adapter.prometheus_export import (
+                    append_libp2p_prometheus_lines,
+                )
+
+                append_libp2p_prometheus_lines(
+                    lines, libp2p_block, node_id=node_id
+                )
+            except Exception as exc:
+                # Fail-open for industrial series, but never silent.
+                import logging
+
+                logging.getLogger("observability.metrics").warning(
+                    "libp2p prometheus export skipped: %s", exc
+                )
         return "\n".join(lines) + "\n"
 
     @staticmethod
