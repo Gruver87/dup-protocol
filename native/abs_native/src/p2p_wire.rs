@@ -937,14 +937,14 @@ pub(crate) fn verify_wire_tx_signature_inner(
     if !data_s.is_empty() {
         payload.insert("data".into(), Value::String(data_s));
     }
+    // Parity with Wallet._canonical_tx_for_hash: always bind gas when present
+    // (including 21000) — never treat transfer stub as invisible default.
     let gas = obj
         .get("gas_limit")
         .or_else(|| obj.get("gas"))
         .and_then(json_i64);
     if let Some(g) = gas {
-        if g != 21000 {
-            payload.insert("gas_limit".into(), Value::Number(g.into()));
-        }
+        payload.insert("gas_limit".into(), Value::Number(g.into()));
     }
     let encoded = serde_json::to_string(&sort_keys_value(&Value::Object(payload)))
         .map_err(|_| "bad_tx_signature".to_string())?;

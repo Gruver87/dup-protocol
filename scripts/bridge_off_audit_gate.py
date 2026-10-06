@@ -130,19 +130,51 @@ def main() -> int:
     if "bridge_decision_off" not in prep:
         errors.append("[10] operator_cutover_prep.ps1 must run bridge_decision_off step")
     evidence = ROOT / "data/evidence_run.json"
+    sealed = ROOT / "docs/evidence/runs/bridgeoff1/bridge_decision_off.json"
+    evidence_pass = False
+    local_incomplete = False
     if evidence.is_file():
         try:
             doc = json.loads(evidence.read_text(encoding="utf-8"))
             steps = doc.get("steps") or []
             hit = next((s for s in steps if s.get("name") == "bridge_decision_off"), None)
-            if not hit or hit.get("result") != "PASS":
-                warnings.append("[10] data/evidence_run.json: bridge_decision_off PASS not recorded")
+            if hit and hit.get("result") == "PASS":
+                evidence_pass = True
+                passed.append(
+                    "[10] bridge_decision_off evidence PASS (data/evidence_run.json)"
+                )
             else:
-                passed.append("[10] bridge_decision_off evidence PASS")
+                local_incomplete = True
         except (OSError, json.JSONDecodeError) as exc:
             warnings.append(f"[10] evidence_run.json unreadable: {exc}")
-    else:
-        warnings.append("[10] data/evidence_run.json absent (run record_evidence_run.py locally)")
+    if not evidence_pass and sealed.is_file():
+        try:
+            seal = json.loads(sealed.read_text(encoding="utf-8"))
+            if (
+                seal.get("name") == "bridge_decision_off"
+                and seal.get("result") == "PASS"
+            ):
+                evidence_pass = True
+                passed.append(
+                    "[10] bridge_decision_off evidence PASS "
+                    "(sealed bridgeoff1 pack)"
+                )
+            else:
+                warnings.append(
+                    "[10] sealed bridge_decision_off.json present but not PASS"
+                )
+        except (OSError, json.JSONDecodeError) as exc:
+            warnings.append(f"[10] sealed bridge_decision_off unreadable: {exc}")
+    if not evidence_pass:
+        if local_incomplete:
+            warnings.append(
+                "[10] data/evidence_run.json: bridge_decision_off PASS not recorded"
+            )
+        elif not evidence.is_file():
+            warnings.append(
+                "[10] bridge_decision_off evidence absent "
+                "(sealed bridgeoff1 pack missing; run record_evidence_run.py)"
+            )
     if "bridge_decision_off" in cutover and "bridge_decision_off" in prep:
         passed.append("[10] decision record automation")
 

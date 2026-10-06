@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — honesty unit surface + bridgeoff sealed + wire gas bind
+
+- Units: soak_guard / soak ready-only rescore / status probe / native f64 hygiene / mempool get_for_block / mesh tip align / Transaction.from_dict / web console static / wallet gas required.
+- Sealed `docs/evidence/runs/bridgeoff1/` + `bridge_off_audit_gate` accepts sealed pack (not only local `evidence_run.json`).
+- `verify_p2p_ci._mesh_tips_aligned` (+ snapshot) for tip+1 / BehindOpen unit surface.
+- Native `p2p_wire`: always bind `gas_limit` when present (including 21000) — Wallet hash parity.
+- industrial_gate needles. **Non-LR.** **Soak deferred.** Mesh Quick after native rebuild.
+
 ### Exp→pin merge wave — industrial verify/check surface
 
 - `verify_full_blockchain` / `verify_hard_all` / `run_all_tests` (pin branding; HIGH honesty instead of Exp R&D suite).

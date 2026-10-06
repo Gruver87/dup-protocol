@@ -274,6 +274,45 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         )
     if "start_soak" in full_py.lower():
         errors.append("verify_full_blockchain must not start soak")
+    # Exp→pin honesty unit surface (ops soak helpers + money/gas refuse + CSP UI).
+    for rel, msg in (
+        ("tests/unit/test_soak_guard.py", "test_soak_guard.py missing"),
+        ("tests/unit/test_soak_ready_only_rescore.py", "test_soak_ready_only_rescore.py missing"),
+        ("tests/unit/test_status_probe_soak.py", "test_status_probe_soak.py missing"),
+        ("tests/unit/test_native_f64_unwrap_hygiene.py", "test_native_f64_unwrap_hygiene.py missing"),
+        ("tests/unit/test_mempool_get_for_block.py", "test_mempool_get_for_block.py missing"),
+        ("tests/unit/test_mesh_tip_catchup_helpers.py", "test_mesh_tip_catchup_helpers.py missing"),
+        ("tests/unit/test_transaction_from_dict.py", "test_transaction_from_dict.py missing"),
+        ("tests/unit/test_web_console_static.py", "test_web_console_static.py missing"),
+        ("tests/unit/test_bridge_decision_off_sealed.py", "test_bridge_decision_off_sealed.py missing"),
+        ("tests/unit/test_wallet_tx_gas_required.py", "test_wallet_tx_gas_required.py missing"),
+        ("tests/unit/test_no_invent_gas_21000.py", "test_no_invent_gas_21000.py missing"),
+        (
+            "docs/evidence/runs/bridgeoff1/bridge_decision_off.json",
+            "sealed bridgeoff1/bridge_decision_off.json missing",
+        ),
+    ):
+        if not (ROOT / rel).is_file():
+            errors.append(msg)
+    bog = (ROOT / "scripts" / "bridge_off_audit_gate.py").read_text(encoding="utf-8")
+    if "sealed bridgeoff1 pack" not in bog:
+        errors.append(
+            "bridge_off_audit_gate must accept sealed bridgeoff1 pack (not only local evidence_run)"
+        )
+    vci = (ROOT / "scripts" / "verify_p2p_ci.py").read_text(encoding="utf-8")
+    if "def _mesh_tips_aligned" not in vci:
+        errors.append(
+            "verify_p2p_ci must define _mesh_tips_aligned (tip+1 / BehindOpen unit surface)"
+        )
+    wire = (ROOT / "native" / "abs_native" / "src" / "p2p_wire.rs").read_text(encoding="utf-8")
+    if "always bind gas when present" not in wire:
+        errors.append(
+            "p2p_wire must always bind gas_limit when present (including 21000)"
+        )
+    if "if g != 21000" in wire:
+        errors.append(
+            "p2p_wire must not skip gas_limit bind when gas==21000 (signature parity)"
+        )
     # Load real prod mesh JSON (bare Config() is always deployment_mode=dev).
     prod_tls_enabled = False
     prod_json_files = (

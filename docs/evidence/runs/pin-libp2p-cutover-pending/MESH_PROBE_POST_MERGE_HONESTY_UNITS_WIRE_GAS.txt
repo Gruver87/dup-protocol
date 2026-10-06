@@ -1,0 +1,52 @@
+﻿MESH_PROBE_POST_MERGE_HONESTY_UNITS_WIRE_GAS
+date: 2026-10-06 20:54:03 +02:00
+probe: RESULT: OK (probe_prod_mesh.ps1 -Quick)
+docker: docker_prod_3node.ps1 -KeepVolumes (full rebuild for p2p_wire)
+native: build_native.ps1 OK abs_native 747355bdc2a22403
+units: 42 focused PASS
+industrial_gate: OK
+soak: deferred / not run / not started
+long_range: not included
+---
+{
+  "ok": true,
+  "errors": [],
+  "warnings": [],
+  "timestamp": "2026-10-06T18:53:46.106193+00:00",
+  "chain_id": 778888,
+  "nodes": [
+    {
+      "url": "http://127.0.0.1:18180",
+      "role": "node1",
+      "reachable": true,
+      "height": 1653,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "bbbc7183be864a6a00d7e828bac3a5d9c8887e78fba704a700159d3008fb782e"
+    },
+    {
+      "url": "http://127.0.0.1:18181",
+      "role": "node2",
+      "reachable": true,
+      "height": 1653,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "bbbc7183be864a6a00d7e828bac3a5d9c8887e78fba704a700159d3008fb782e"
+    },
+    {
+      "url": "http://127.0.0.1:18182",
+      "role": "node3",
+      "reachable": true,
+      "height": 1653,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "bbbc7183be864a6a00d7e828bac3a5d9c8887e78fba704a700159d3008fb782e"
+    }
+  ],
+  "reachable": 3,
+  "expected": 3,
+  "ready": true
+}

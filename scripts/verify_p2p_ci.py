@@ -662,6 +662,34 @@ def _ensure_signer_funded(primary_url: str, peer_urls: list[str] | None = None) 
         pass
 
 
+def _mesh_tip_snapshot(urls: list[str]) -> tuple[list[int], list[str], list[str]]:
+    """Return (heights, heads, state_roots) for the given HTTP URLs."""
+    heights: list[int] = []
+    heads: list[str] = []
+    roots: list[str] = []
+    for url in urls:
+        status = _api(f"{url}/status")
+        heights.append(int(status.get("height", 0) or 0))
+        heads.append(str(status.get("head_hash") or "").lower())
+        roots.append(str(status.get("state_root") or "").lower())
+    return heights, heads, roots
+
+
+def _mesh_tips_aligned(
+    heights: list[int], heads: list[str], roots: list[str], *, max_spread: int = 0
+) -> bool:
+    """True when tip height/head/root agree (ADR 0003-ish mesh catch-up gate)."""
+    if not heights or min(heights) < 1:
+        return False
+    if max(heights) - min(heights) > int(max_spread):
+        return False
+    if not heads[0] or len(set(heads)) != 1:
+        return False
+    if not roots[0] or len(set(roots)) != 1:
+        return False
+    return True
+
+
 def _pull_peer_mempools(peer_urls: list[str]) -> None:
     """Ask followers to reconcile + pull mempool when tips are aligned."""
     for url in peer_urls:

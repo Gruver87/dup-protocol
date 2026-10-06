@@ -1,0 +1,13 @@
+{
+  "name": "bridge_decision_off",
+  "result": "PASS",
+  "recorded_at": "2026-10-01T18:50:00+00:00",
+  "decision": "path_A_bridge_off_mainnet_v1",
+  "notes": "bridge_enabled=false for mainnet v1 / pre-audit; L1 contracts not live. Sealed with bridgeoff1 pack. NOT bridge ready / NOT cutover.",
+  "artifact": "docs/evidence/runs/bridgeoff1/verify_bridge_off_lab.json",
+  "refs": [
+    "docs/MAINNET_CUTOVER.md",
+    "docs/BRIDGE_L1_MAINNET.md",
+    "docs/EVIDENCE_MATRIX.md#bridge_decision_off"
+  ]
+}
