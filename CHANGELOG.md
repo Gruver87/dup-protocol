@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — shard_devnet env pin + audit engagement surface
+
+- start_shard_devnet: DEPLOYMENT_MODE=dev lab env pin + restore (no poison industrial_gate); ready 2/2 fail-closed.
+- Firm/ops docs: pin-honest DILIGENCE_BRIEF + EXTERNAL_AUDIT_ENGAGEMENT, DEMO/CEREMONY runbooks, ADR 0023, FIRM_OUTREACH, INVESTOR_DECK_SKELETON.
+- verify_audit_phase / 90d_all / engagement_prep + start_pre48h_maxload_2h (soft-skip Exp-only verify_experimental_rd).
+- Units + industrial_gate. **Non-LR.** Mesh Quick optional. **Soak deferred.**
+
 ### Exp→pin merge wave — full prepare_48h_soak + stop/status/secrets polish
 
 - prepare_48h_soak: disk free, docker healthy, image pin, baked needle, soak_preflight wire/libp2p, probe Quick, check_mesh_catchup×3, miner harness, logs/soak_48h_prep.json.

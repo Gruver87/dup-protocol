@@ -251,6 +251,27 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
     soak_st = (ROOT / "scripts" / "soak_status.ps1").read_text(encoding="utf-8")
     if "ALIVE pid=" not in soak_st or "soak_*h*.log" not in soak_st:
         errors.append("soak_status must report monitor ALIVE and glob soak_*h*.log")
+    shard_ps1 = (ROOT / "scripts" / "start_shard_devnet.ps1").read_text(encoding="utf-8")
+    if "Restore-LabEnvPin" not in shard_ps1 or "DEPLOYMENT_MODE" not in shard_ps1:
+        errors.append(
+            "start_shard_devnet must pin DEPLOYMENT_MODE=dev and restore ambient env"
+        )
+    for rel in (
+        "scripts/verify_audit_phase.ps1",
+        "scripts/verify_audit_90d_all.ps1",
+        "scripts/verify_audit_engagement_prep.ps1",
+        "scripts/start_pre48h_maxload_2h.ps1",
+        "docs/DILIGENCE_BRIEF.md",
+        "docs/EXTERNAL_AUDIT_ENGAGEMENT.md",
+        "docs/adr/0023-absolute-vm-opcode-map.md",
+    ):
+        if not (ROOT / rel).is_file():
+            errors.append(f"missing firm/ops surface: {rel}")
+    dil = (ROOT / "docs" / "DILIGENCE_BRIEF.md").read_text(encoding="utf-8")
+    if "3c801b87" in dil or "lp2pstrict1" in dil:
+        errors.append(
+            "pin DILIGENCE_BRIEF must not cite Experimental soak packs as pin evidence"
+        )
     soak_pf = (ROOT / "scripts" / "soak_preflight.py").read_text(encoding="utf-8")
     if "require_wire_probe" not in soak_pf or "--require-wire-probe" not in soak_pf:
         errors.append("soak_preflight must accept --require-wire-probe")
