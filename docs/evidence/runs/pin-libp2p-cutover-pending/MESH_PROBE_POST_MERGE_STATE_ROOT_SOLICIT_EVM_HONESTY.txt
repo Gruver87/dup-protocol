@@ -1,0 +1,51 @@
+﻿MESH_PROBE_POST_MERGE_STATE_ROOT_SOLICIT_EVM_HONESTY
+date: 2026-10-06 21:55:57 +02:00
+probe: probe_prod_mesh.ps1 -Quick
+docker: docker_prod_3node.ps1 -KeepVolumes
+units: test_state_root_solicit_evm_honesty 3 PASS
+industrial_gate: OK
+soak: deferred / not run / not started
+long_range: not included
+---
+{
+  "ok": true,
+  "errors": [],
+  "warnings": [],
+  "timestamp": "2026-10-06T19:55:57.393830+00:00",
+  "chain_id": 778888,
+  "nodes": [
+    {
+      "url": "http://127.0.0.1:18180",
+      "role": "node1",
+      "reachable": true,
+      "height": 1835,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "29a75e2d03116f13766ca618eb74ba7ff4f32e4ded2d0213205cabc53ae7f9ac"
+    },
+    {
+      "url": "http://127.0.0.1:18181",
+      "role": "node2",
+      "reachable": true,
+      "height": 1835,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "29a75e2d03116f13766ca618eb74ba7ff4f32e4ded2d0213205cabc53ae7f9ac"
+    },
+    {
+      "url": "http://127.0.0.1:18182",
+      "role": "node3",
+      "reachable": true,
+      "height": 1835,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "29a75e2d03116f13766ca618eb74ba7ff4f32e4ded2d0213205cabc53ae7f9ac"
+    }
+  ],
+  "reachable": 3,
+  "expected": 3,
+  "ready": true
+}

@@ -3517,7 +3517,9 @@ class RESTHandler(BaseHTTPRequestHandler):
             elif path == "/evm/supported-opcodes":
                 try:
                     from execution.evm_bytecode_validator import supported_opcodes_summary
-                    self._json(supported_opcodes_summary())
+                    from execution.evm_runtime import merge_compat_summary
+
+                    self._json(merge_compat_summary(supported_opcodes_summary()))
                 except Exception as e:
                     self._json({"error": str(e)})
 
@@ -6212,7 +6214,8 @@ class RESTHandler(BaseHTTPRequestHandler):
                     from execution.evm_bytecode_validator import validate_bytecode_hex
                     self._json(validate_bytecode_hex(str(raw)))
                 except Exception as e:
-                    self._json({"valid": False, "error": str(e)})
+                    # Probe/import failure is unavailable — not "invalid bytecode".
+                    self._error(503, f"bytecode validation unavailable: {e}")
 
             elif path == "/contract/deploy":
                 if not evm_adapter:

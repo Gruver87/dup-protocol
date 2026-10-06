@@ -6915,6 +6915,27 @@ class P2PNode:
             ctx["expected_state_root"] = str(blk.get("state_root") or "")
         return ctx
 
+    def _state_root_solicit_height(
+        self,
+        peer: PeerConnection,
+        height: Optional[int] = None,
+    ) -> int:
+        """Height to solicit from `peer`.
+
+        Ask local tip. Do not cap at stale ``peer.height``: that turned a
+        same-chain probe into a historical lag reply, and ConsistencyMachine
+        skipped ``peer_h < local_height`` as no_same_height_match (consist=False
+        while /status heights already matched). Ahead requests are answered
+        with a lag tip (handlers), not a silent refuse.
+        """
+        if height is None:
+            local = int(self.blockchain.get_height() or 0)
+        else:
+            local = int(height)
+        if local < 0:
+            local = 0
+        return local
+
     def note_local_forge(self, hold_sec: float = 1.0, height: int = 0) -> None:
         """Defer state_root solicit until NEW_BLOCK is on the wire.
 
@@ -7099,7 +7120,7 @@ class P2PNode:
         stashed = self._consume_late_state_root(peer)
         if stashed:
             return stashed
-        h = height if height is not None else self.blockchain.get_height()
+        h = self._state_root_solicit_height(peer, height)
         wait_s = max(0.4, float(timeout))
         msg = await self._wait_peer_response(
             peer,

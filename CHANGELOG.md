@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — state_root solicit height + EVM API honesty
+
+- p2p_node._state_root_solicit_height: always ask local tip (never stale peer.height cap).
+- /evm/validate-bytecode: probe/import failure → 503 unavailable (not valid=false).
+- /evm/supported-opcodes: merge_compat_summary honesty envelope.
+- Units + industrial_gate needles. **Non-LR.** Mesh Quick after docker rebuild. **Soak deferred.**
+
 ### Exp→pin merge wave — ceremony status cache / mempool_store / libp2p metrics / pyo3 link
 
 - `GET /status`: cached `_genesis_ceremony_status` (mtime/size key); expose `mempool_store` demote/min_fee honesty.

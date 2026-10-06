@@ -376,6 +376,19 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append("evm_opcode_supported must be pub(crate) for native test visibility")
     if not (ROOT / "tests" / "unit" / "test_genesis_ceremony_status_cache.py").is_file():
         errors.append("test_genesis_ceremony_status_cache.py missing")
+    # Exp→pin state_root solicit + EVM API honesty.
+    p2p_src = (ROOT / "network" / "p2p_node.py").read_text(encoding="utf-8")
+    if "def _state_root_solicit_height" not in p2p_src:
+        errors.append("p2p_node must define _state_root_solicit_height (no stale peer.height cap)")
+    if "_state_root_solicit_height(peer, height)" not in p2p_src:
+        errors.append("request_peer_state_root must call _state_root_solicit_height")
+    http_src2 = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+    if "bytecode validation unavailable" not in http_src2:
+        errors.append("/evm/validate-bytecode must 503 on probe/import failure (not valid=false)")
+    if "merge_compat_summary(supported_opcodes_summary())" not in http_src2:
+        errors.append("/evm/supported-opcodes must merge_compat_summary honesty")
+    if not (ROOT / "tests" / "unit" / "test_state_root_solicit_evm_honesty.py").is_file():
+        errors.append("test_state_root_solicit_evm_honesty.py missing")
     # Load real prod mesh JSON (bare Config() is always deployment_mode=dev).
     prod_tls_enabled = False
     prod_json_files = (
