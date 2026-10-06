@@ -690,6 +690,111 @@ def _mesh_tips_aligned(
     return True
 
 
+def _force_prod_mesh_catchup(
+    urls: list[str],
+    *,
+    budget_sec: float = 120.0,
+    expected_peers: int = 2,
+    label: str = "catchup",
+) -> bool:
+    """Aggressively heal tip+1 / BehindOpen stalls (equal head+root).
+
+    Industrial trap: leader forges tip+1 while followers sit at tip → ConsistencyService
+    BehindOpen and natural gossip never closes the gap. Peers may look healthy while
+    heights stay [N+1, N, N]. Force fast-sync + reconcile + consistency repair from
+    attempt 0 (do not wait ~45s like passive align loops).
+    """
+    if len(urls) < 2:
+        return True
+    deadline = time.time() + max(15.0, float(budget_sec))
+    attempt = 0
+    last_heights: list[int] = []
+    while time.time() < deadline:
+        try:
+            heights, heads, roots = _mesh_tip_snapshot(urls)
+            last_heights = heights
+            if _mesh_tips_aligned(heights, heads, roots, max_spread=0):
+                print(
+                    f"OK: {label} mesh tip aligned heights={heights} "
+                    f"head={(heads[0] or '')[:16]}",
+                    flush=True,
+                )
+                return True
+            tip_h = max(heights)
+            # Peer restore is slow (multi-sleep). Do it once up front + sparsely.
+            if attempt == 0 or attempt % 6 == 0:
+                try:
+                    _restore_p2p_mesh(urls, expected_peers=expected_peers)
+                except Exception as exc:
+                    print(f"WARN: {label} restore peers: {exc}", flush=True)
+            if attempt == 0 or attempt % 2 == 0:
+                for url, h in zip(urls, heights):
+                    try:
+                        _admin_token(url)
+                    except Exception:
+                        pass
+                    # Tip holder: re-probe consistency; laggers: pull tip.
+                    try:
+                        repair = _post_json(
+                            url, "/chain/consistency/repair", {}, timeout=45
+                        )
+                        if attempt == 0 or not bool(repair.get("success", True)):
+                            print(
+                                f"  {label} repair {url}: "
+                                f"ok={repair.get('success')} "
+                                f"skipped={repair.get('skipped')}",
+                                flush=True,
+                            )
+                    except Exception as exc:
+                        if attempt == 0:
+                            print(f"  {label} repair {url}: {exc}", flush=True)
+                    if tip_h - h <= 0:
+                        continue
+                    try:
+                        sync_resp = _post_json(
+                            url,
+                            "/sync/fast-sync",
+                            {"timeout": 90, "target_block": tip_h},
+                            timeout=120,
+                        )
+                        print(
+                            f"  {label} fast-sync {url}: {h}->{tip_h} "
+                            f"ok={sync_resp.get('success')} "
+                            f"msg={sync_resp.get('message')} "
+                            f"local={sync_resp.get('local_height')}",
+                            flush=True,
+                        )
+                    except Exception as exc:
+                        print(f"  {label} fast-sync {url}: {exc}", flush=True)
+                    try:
+                        rec = _post_json(
+                            url, "/sync/reconcile", {"timeout": 60}, timeout=75
+                        )
+                        print(
+                            f"  {label} reconcile {url}: ok={rec.get('success')}",
+                            flush=True,
+                        )
+                    except Exception as exc:
+                        print(f"  {label} reconcile {url}: {exc}", flush=True)
+            if attempt % 5 == 0:
+                print(
+                    f"  {label} wait heights={heights} "
+                    f"heads={[h[:12] for h in heads]} "
+                    f"roots={[r[:12] for r in roots]} attempt={attempt}",
+                    flush=True,
+                )
+        except Exception as exc:
+            print(f"WARN: {label} snapshot: {exc}", flush=True)
+        attempt += 1
+        time.sleep(3)
+    print(
+        f"WARN: {label} mesh tip not aligned within {int(budget_sec)}s "
+        f"(last_heights={last_heights})",
+        flush=True,
+    )
+    return False
+
+
 def _pull_peer_mempools(peer_urls: list[str]) -> None:
     """Ask followers to reconcile + pull mempool when tips are aligned."""
     for url in peer_urls:
@@ -3386,11 +3491,29 @@ def _run_prod_mesh3_evidence(
         print(f"FAIL: prod-mesh3 evidence signed-tx exit={proc.returncode}")
         return proc.returncode
 
-    # After signed-tx tip can race — freeze once, catch up, thaw for EVM deploy.
-    if not _realign("post-signed-tx", pause_mining=True, resume_mining=True):
+    # After signed-tx: soft realign only. Rocks freeze/thaw before EVM is flaky on
+    # CI and leaves followers in tip+1 / BehindOpen ([7,6,6]) where gossip peers
+    # look healthy but import never closes — see Actions 009c50a EVM exit=1.
+    if not _realign("post-signed-tx", pause_mining=False):
         return 1
+    # Extra aggressive catch-up before deploy so mempool block can replicate.
+    _force_prod_mesh_catchup(
+        urls, budget_sec=90.0, expected_peers=2, label="pre-evm"
+    )
 
-    # --- EVM (post-deploy gate lets parent freeze mining mid-smoke) ---
+    # --- EVM (post-deploy gate: resume + force catch-up; no Rocks freeze) ---
+    # Child arms the gate ONLY after mesh-align + mempool deploy. Align alone can
+    # take ABS_EVM_ALIGN_TIMEOUT_SEC (300s), so parent must wait longer than that
+    # or the resume file is never written and child times out (CI 55m flake).
+    align_timeout_sec = 300
+    try:
+        align_timeout_sec = max(
+            60, int(os.environ.get("ABS_EVM_ALIGN_TIMEOUT_SEC", "300") or "300")
+        )
+    except ValueError:
+        align_timeout_sec = 300
+    # align + deploy + parent catch-up margin
+    gate_wait_sec = align_timeout_sec + 360
     gate_path = Path(tempfile.gettempdir()) / f"abs_evm_gate_{os.getpid()}.json"
     resume_path = Path(str(gate_path) + ".resume")
     for p in (gate_path, resume_path):
@@ -3400,10 +3523,14 @@ def _run_prod_mesh3_evidence(
             pass
     evm_env = {
         **smoke_env,
-        "ABS_EVM_ALIGN_TIMEOUT_SEC": "300",
+        "ABS_EVM_ALIGN_TIMEOUT_SEC": str(align_timeout_sec),
         "ABS_EVM_POST_DEPLOY_GATE": str(gate_path),
     }
-    print("Prod-mesh3 evidence: evm ...")
+    print(
+        "Prod-mesh3 evidence: evm ... "
+        f"(post-deploy gate wait≤{gate_wait_sec}s align={align_timeout_sec}s)",
+        flush=True,
+    )
     evm_proc = subprocess.Popen(
         [
             sys.executable,
@@ -3426,81 +3553,76 @@ def _run_prod_mesh3_evidence(
         cwd=ROOT,
         env=evm_env,
     )
-    gate_deadline = time.time() + 420
+
+    def _release_post_deploy_gate() -> bool:
+        """Unblock child via .resume, then force tip catch-up (no Rocks freeze).
+
+        Prior failure modes:
+        1) freeze_mining starved .resume (300s×3 health) → child timeout + 70m job kill
+        2) no-freeze resume alone left BehindOpen [7,6,6] → mesh align FAIL exit=1
+
+        Always write .resume first. Then `_force_prod_mesh_catchup` from attempt 0
+        so followers pull the deploy block before storage checks.
+        """
+        print(
+            "EVIDENCE: EVM post-deploy gate — release .resume + force catch-up",
+            flush=True,
+        )
+        resume_path.write_text("ok-nofreeze", encoding="utf-8")
+        print("EVIDENCE: post-deploy gate released (mining_frozen=False)", flush=True)
+        aligned = _force_prod_mesh_catchup(
+            urls,
+            budget_sec=120.0,
+            expected_peers=2,
+            label="post-deploy",
+        )
+        if not aligned:
+            print(
+                "WARN: post-deploy catch-up incomplete — child align may still heal",
+                flush=True,
+            )
+        return False
+
+    gate_deadline = time.time() + gate_wait_sec
     gated = False
     while time.time() < gate_deadline:
         if evm_proc.poll() is not None:
             break
         if gate_path.is_file() and not gated:
             gated = True
-            print("EVIDENCE: EVM post-deploy gate — freeze mining + realign")
-            freeze_ok = True
-            if freeze_mining is not None:
-                try:
-                    freeze_mining()
-                except Exception as exc:
-                    freeze_ok = False
-                    print(f"WARN: post-deploy freeze: {exc} — align without freeze")
-            # Catch-up while tip is frozen (no empty-block race).
-            for attempt in range(40):
-                try:
-                    statuses = [_api(f"{u}/status") for u in urls]
-                    heights = [int(s.get("height", 0) or 0) for s in statuses]
-                    heads = [(s.get("head_hash") or "").lower() for s in statuses]
-                    if (
-                        min(heights) >= 1
-                        and max(heights) - min(heights) <= 1
-                        and heads[0]
-                        and len(set(heads)) == 1
-                    ):
-                        break
-                    tip_h = max(heights)
-                    if attempt % 2 == 0:
-                        _restore_p2p_mesh(urls, expected_peers=2)
-                        for url, h in zip(urls, heights):
-                            if tip_h - h <= 0:
-                                continue
-                            try:
-                                _admin_token(url)
-                                _post_json(
-                                    url,
-                                    "/sync/fast-sync",
-                                    {"timeout": 90, "target_block": tip_h},
-                                    timeout=120,
-                                )
-                                _post_json(
-                                    url, "/sync/reconcile", {"timeout": 45}, timeout=60
-                                )
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
-                time.sleep(3)
-            # Keep mining frozen through storage verify when freeze succeeded.
-            resume_path.write_text(
-                "ok" if freeze_ok else "ok-nofreeze", encoding="utf-8"
-            )
-            print(
-                "EVIDENCE: post-deploy gate released "
-                f"(mining_frozen={freeze_ok})"
-            )
+            _release_post_deploy_gate()
+            break
         time.sleep(1)
-    try:
-        if evm_proc.poll() is None:
-            evm_rc = evm_proc.wait(timeout=600)
-        else:
-            # returncode 0 must not become 1 via `or` — classic Python footgun.
-            evm_rc = 1 if evm_proc.returncode is None else int(evm_proc.returncode)
-    except subprocess.TimeoutExpired:
-        print("FAIL: prod-mesh3 evidence evm timed out")
+    # Late arm: deploy finished after the wait budget — still release if marker exists.
+    if (
+        not gated
+        and evm_proc.poll() is None
+        and gate_path.is_file()
+    ):
+        gated = True
+        print("WARN: post-deploy gate armed after wait budget — releasing late", flush=True)
+        _release_post_deploy_gate()
+    if not gated and evm_proc.poll() is None:
+        print(
+            "FAIL: prod-mesh3 evidence evm post-deploy gate never armed "
+            f"within {gate_wait_sec}s (child still running) — terminating",
+            flush=True,
+        )
         _safe_terminate(evm_proc, wait_sec=15)
         evm_rc = 1
-    if thaw_mining is not None:
+    else:
         try:
-            thaw_mining()
-        except Exception as exc:
-            print(f"WARN: post-evm thaw mining: {exc}")
-        _restore_p2p_mesh(urls, expected_peers=2)
+            if evm_proc.poll() is None:
+                # After resume: storage wait ≤ align/2 + margin; keep parent ceiling honest.
+                evm_rc = evm_proc.wait(timeout=max(300, align_timeout_sec + 120))
+            else:
+                # returncode 0 must not become 1 via `or` — classic Python footgun.
+                evm_rc = 1 if evm_proc.returncode is None else int(evm_proc.returncode)
+        except subprocess.TimeoutExpired:
+            print("FAIL: prod-mesh3 evidence evm timed out after gate", flush=True)
+            _safe_terminate(evm_proc, wait_sec=15)
+            evm_rc = 1
+    # No thaw here: post-deploy path no longer freezes (Rocks restart starved .resume).
     for p in (gate_path, resume_path):
         try:
             p.unlink()

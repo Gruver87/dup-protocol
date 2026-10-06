@@ -97,6 +97,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Item | Evidence |
 |------|----------|
+| **Exp→pin merge wave (force mesh catchup / EVM evidence no-freeze)** | **CODE+GATE** 2026-10-06 — `_force_prod_mesh_catchup`; post-deploy `ok-nofreeze` + force catch-up (no Rocks freeze). industrial_gate needles. **Soak deferred.** No Long-Range. |
 | **Exp→pin merge wave (honesty units + bridgeoff sealed + wire gas bind)** | **CLOSED** 2026-10-06 — soak/gas/UI/mempool/tip-align units; sealed `bridgeoff1`; `bridge_off_audit_gate` sealed accept; `p2p_wire` always bind gas_limit incl. 21000. industrial_gate OK; 42 focused units PASS. **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** after docker rebuild; pack `MESH_PROBE_POST_MERGE_HONESTY_UNITS_WIRE_GAS.txt`. **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (industrial verify/check surface)** | **CODE+GATE** 2026-10-06 — `verify_full_blockchain`/`verify_hard_all`/`run_all_tests`, `check_blockchain`/`check_harness_probe`/`check_soak`, HIGH honesty + libp2p smoke, persist/evm/f64/firm handoff scripts. Units + industrial_gate needles. **Soak deferred.** No Long-Range. |
 | **Exp→pin merge wave (Strict health_watch worker + cargo/soak ops tooling)** | **CODE+GATE** 2026-10-06 — `health_watch_node.ps1` (Strict parallel), cargo_test abs_native/rust_bridge smoke, `summarize_soak_fail`/`soak_guard`, ops console + ADR0021 wrapper + critical-path scan. industrial_gate needles + cargo unit. **Soak deferred.** No Long-Range. |

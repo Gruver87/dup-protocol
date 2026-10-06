@@ -304,6 +304,14 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append(
             "verify_p2p_ci must define _mesh_tips_aligned (tip+1 / BehindOpen unit surface)"
         )
+    if "def _force_prod_mesh_catchup" not in vci:
+        errors.append(
+            "verify_p2p_ci must define _force_prod_mesh_catchup (tip+1 heal for EVM evidence)"
+        )
+    if "ok-nofreeze" not in vci or "release .resume + force catch-up" not in vci:
+        errors.append(
+            "prod-mesh3 EVM evidence must release .resume without Rocks freeze + force catch-up"
+        )
     wire = (ROOT / "native" / "abs_native" / "src" / "p2p_wire.rs").read_text(encoding="utf-8")
     if "always bind gas when present" not in wire:
         errors.append(

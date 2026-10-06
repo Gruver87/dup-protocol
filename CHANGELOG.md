@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — force mesh catchup (EVM evidence no-freeze)
+
+- `verify_p2p_ci._force_prod_mesh_catchup`: tip+1 / BehindOpen heal from attempt 0.
+- Prod-mesh3 EVM evidence: post-signed-tx soft realign (no Rocks freeze) + pre-evm catchup;
+  post-deploy gate writes `ok-nofreeze` then force catch-up (CI flake fix).
+- industrial_gate needles. **Non-LR.** **Soak deferred.**
+
 ### Exp→pin merge wave — honesty unit surface + bridgeoff sealed + wire gas bind
 
 - Units: soak_guard / soak ready-only rescore / status probe / native f64 hygiene / mempool get_for_block / mesh tip align / Transaction.from_dict / web console static / wallet gas required.
