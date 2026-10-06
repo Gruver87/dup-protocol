@@ -1,161 +1,343 @@
 {
   "title": "Absolute Blockchain Node",
   "uid": "abs-node-industrial",
-  "tags": ["absolute", "blockchain", "production-hardening"],
+  "tags": [
+    "absolute",
+    "blockchain",
+    "production-hardening"
+  ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "panels": [
     {
       "id": 1,
       "title": "Uptime (seconds)",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
-      "targets": [{"expr": "abs_uptime_seconds", "legendFormat": "{{node_id}}"}]
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "abs_uptime_seconds",
+          "legendFormat": "{{node_id}}"
+        }
+      ]
     },
     {
       "id": 2,
       "title": "Chain Height",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
-      "targets": [{"expr": "abs_chain_height", "legendFormat": "{{node_id}}"}]
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "abs_chain_height",
+          "legendFormat": "{{node_id}}"
+        }
+      ]
     },
     {
       "id": 3,
       "title": "P2P Peers",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
-      "targets": [{"expr": "abs_peers_connected"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "abs_peers_connected"
+        }
+      ]
     },
     {
       "id": 4,
       "title": "Mempool Size",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
-      "targets": [{"expr": "abs_mempool_size"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "abs_mempool_size"
+        }
+      ]
     },
     {
       "id": 5,
       "title": "Active Validators",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
-      "targets": [{"expr": "abs_validators_active"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "abs_validators_active"
+        }
+      ]
     },
     {
       "id": 6,
       "title": "HTTP Requests (total)",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
-      "targets": [{"expr": "abs_http_requests_total", "legendFormat": "{{node_id}}"}]
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "abs_http_requests_total",
+          "legendFormat": "{{node_id}}"
+        }
+      ]
     },
     {
       "id": 7,
       "title": "API Errors (total)",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
-      "targets": [{"expr": "abs_errors_total", "legendFormat": "{{node_id}}"}]
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "abs_errors_total",
+          "legendFormat": "{{node_id}}"
+        }
+      ]
     },
     {
       "id": 8,
       "title": "Native Crypto Self-Test",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 20},
-      "targets": [{"expr": "abs_native_crypto_self_test"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "abs_native_crypto_self_test"
+        }
+      ]
     },
     {
       "id": 9,
       "title": "Rust Bridge OK",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 20},
-      "targets": [{"expr": "abs_rust_bridge_ok"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "abs_rust_bridge_ok"
+        }
+      ]
     },
     {
       "id": 10,
       "title": "L1 RPC OK",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 20},
-      "targets": [{"expr": "abs_l1_rpc_ok"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "abs_l1_rpc_ok"
+        }
+      ]
     },
     {
       "id": 11,
       "title": "Bridge / L1 Required Flags",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
       "targets": [
-        {"expr": "abs_rust_bridge_required", "legendFormat": "bridge_required"},
-        {"expr": "abs_l1_rpc_required", "legendFormat": "l1_required"}
+        {
+          "expr": "abs_rust_bridge_required",
+          "legendFormat": "bridge_required"
+        },
+        {
+          "expr": "abs_l1_rpc_required",
+          "legendFormat": "l1_required"
+        }
       ]
     },
     {
       "id": 12,
       "title": "P2P Shape Rejects (total)",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
       "targets": [
-        {"expr": "abs_p2p_shape_rejects_total", "legendFormat": "{{node_id}}"}
+        {
+          "expr": "abs_p2p_shape_rejects_total",
+          "legendFormat": "{{node_id}}"
+        }
       ]
     },
     {
       "id": 13,
       "title": "P2P Active Bans",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 32},
-      "targets": [{"expr": "abs_p2p_active_bans"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 32
+      },
+      "targets": [
+        {
+          "expr": "abs_p2p_active_bans"
+        }
+      ]
     },
     {
       "id": 14,
       "title": "P2P Handshake Rejects",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 32},
-      "targets": [{"expr": "abs_p2p_handshake_rejects_total"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 32
+      },
+      "targets": [
+        {
+          "expr": "abs_p2p_handshake_rejects_total"
+        }
+      ]
     },
     {
       "id": 15,
       "title": "RocksDB Column Families",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 32},
-      "targets": [{"expr": "abs_rocksdb_column_families"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 32
+      },
+      "targets": [
+        {
+          "expr": "abs_rocksdb_column_families"
+        }
+      ]
     },
     {
       "id": 16,
       "title": "RocksDB Block Cache (MB)",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 32},
-      "targets": [{"expr": "abs_rocksdb_block_cache_mb"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 32
+      },
+      "targets": [
+        {
+          "expr": "abs_rocksdb_block_cache_mb"
+        }
+      ]
     },
     {
       "id": 17,
       "title": "P2P Rate-Limit Drops",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 36},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
       "targets": [
-        {"expr": "abs_p2p_rate_limit_drops_total", "legendFormat": "{{node_id}}"}
+        {
+          "expr": "abs_p2p_rate_limit_drops_total",
+          "legendFormat": "{{node_id}}"
+        }
       ]
     },
     {
       "id": 18,
       "title": "P2P Peer Send Failures",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
       "targets": [
-        {"expr": "abs_p2p_peer_send_fail_total", "legendFormat": "{{node_id}}"}
+        {
+          "expr": "abs_p2p_peer_send_fail_total",
+          "legendFormat": "{{node_id}}"
+        }
       ]
     },
     {
       "id": 19,
       "title": "P2P Ops Errors by Kind",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 44},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 44
+      },
       "targets": [
-        {"expr": "abs_p2p_ops_errors", "legendFormat": "{{kind}}"}
+        {
+          "expr": "abs_p2p_ops_errors",
+          "legendFormat": "{{kind}}"
+        }
       ]
     },
     {
       "id": 20,
       "title": "Mid-Session Handshake Rejects",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 44},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 44
+      },
       "targets": [
         {
           "expr": "abs_p2p_shape_rejects{reason=\"mid_session_handshake\"}",
@@ -167,45 +349,279 @@
       "id": 21,
       "title": "Attestation Local Sign Failures",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 52},
-      "targets": [{"expr": "abs_p2p_attestation_local_fail_total"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 52
+      },
+      "targets": [
+        {
+          "expr": "abs_p2p_attestation_local_fail_total"
+        }
+      ]
     },
     {
       "id": 22,
       "title": "Peer Tx Rejects",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 6, "y": 52},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 6,
+        "y": 52
+      },
       "targets": [
-        {"expr": "abs_p2p_peer_tx_reject_total", "legendFormat": "{{node_id}}"}
+        {
+          "expr": "abs_p2p_peer_tx_reject_total",
+          "legendFormat": "{{node_id}}"
+        }
       ]
     },
     {
       "id": 23,
       "title": "State Consistent",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 60},
-      "targets": [{"expr": "abs_state_consistent"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 60
+      },
+      "targets": [
+        {
+          "expr": "abs_state_consistent"
+        }
+      ]
     },
     {
       "id": 24,
       "title": "Sync Wire Probe OK",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 60},
-      "targets": [{"expr": "abs_sync_wire_probe_ok"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 60
+      },
+      "targets": [
+        {
+          "expr": "abs_sync_wire_probe_ok"
+        }
+      ]
     },
     {
       "id": 25,
       "title": "Wire Probe Probed",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 60},
-      "targets": [{"expr": "abs_sync_wire_probe_probed"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 60
+      },
+      "targets": [
+        {
+          "expr": "abs_sync_wire_probe_probed"
+        }
+      ]
     },
     {
       "id": 26,
       "title": "DB Engine (sqlite=1 alert)",
       "type": "stat",
-      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 60},
-      "targets": [{"expr": "abs_db_engine"}]
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 60
+      },
+      "targets": [
+        {
+          "expr": "abs_db_engine"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "RocksDB Running Compactions",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 64
+      },
+      "targets": [
+        {
+          "expr": "abs_rocksdb_running_compactions"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "RocksDB Running Flushes",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 64
+      },
+      "targets": [
+        {
+          "expr": "abs_rocksdb_running_flushes"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "title": "RocksDB Estimate Keys",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 64
+      },
+      "targets": [
+        {
+          "expr": "abs_rocksdb_estimate_num_keys"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "title": "P2P Under Mesh",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 64
+      },
+      "targets": [
+        {
+          "expr": "abs_p2p_under_mesh"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "title": "P2P Sync Status (one-hot)",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 68
+      },
+      "targets": [
+        {
+          "expr": "abs_p2p_sync_status",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "title": "Peer Sync Gap",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 6,
+        "y": 68
+      },
+      "targets": [
+        {
+          "expr": "abs_p2p_peer_sync_gap",
+          "legendFormat": "{{node_id}}"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "title": "Mesh Min Peers",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 68
+      },
+      "targets": [
+        {
+          "expr": "abs_p2p_mesh_min_peers"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "title": "RocksDB Native Pack Fallbacks",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 76
+      },
+      "targets": [
+        {
+          "expr": "abs_rocksdb_native_pack_fallbacks",
+          "legendFormat": "{{node_id}}"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "title": "Mempool Store Demoted",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 76
+      },
+      "targets": [
+        {
+          "expr": "abs_mempool_store_demoted"
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "title": "Mempool Demote Count",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 84
+      },
+      "targets": [
+        {
+          "expr": "abs_mempool_store_demote_count",
+          "legendFormat": "{{node_id}}"
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "title": "Mempool Store Backend (one-hot)",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 76
+      },
+      "targets": [
+        {
+          "expr": "abs_mempool_store_backend",
+          "legendFormat": "{{backend}}"
+        }
+      ]
     }
   ]
 }

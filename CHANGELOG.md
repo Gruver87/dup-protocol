@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — grafana ops panels + proposer_audit hasattr
+
+- deploy/grafana: panels 27–37 (RocksDB live gauges, P2P under-mesh/sync gap, mempool demote/backend).
+- api/http: proposers stats/history hasattr-guard count_proposer_audit (no AttributeError on stubs).
+- /transactions/recent already on pin via _collect_recent_activity (Exp dedicated elif not needed).
+- Units + industrial_gate needles. **Non-LR.** Mesh Quick optional (ops/grafana). **Soak deferred.**
+
 ### Exp→pin merge wave — state_root solicit height + EVM API honesty
 
 - p2p_node._state_root_solicit_height: always ask local tip (never stale peer.height cap).

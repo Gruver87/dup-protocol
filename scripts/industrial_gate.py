@@ -160,9 +160,23 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         "abs_p2p_peer_tx_reject_total",
         "abs_state_consistent",
         "abs_sync_wire_probe_ok",
+        # Exp→pin ops: RocksDB live gauges + under-mesh + mempool demote panels
+        "abs_rocksdb_running_compactions",
+        "abs_rocksdb_running_flushes",
+        "abs_rocksdb_estimate_num_keys",
+        "abs_p2p_under_mesh",
+        "abs_rocksdb_native_pack_fallbacks",
+        "abs_mempool_store_demoted",
+        "abs_mempool_store_demote_count",
+        "abs_mempool_store_backend",
     ):
         if needle not in dash_src:
             errors.append(f"grafana dashboard.json missing panel surface: {needle}")
+    http_proposer = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+    if "hasattr(db, \"count_proposer_audit\")" not in http_proposer:
+        errors.append(
+            "proposers stats/history must hasattr-guard count_proposer_audit"
+        )
     try:
         from network import p2p_tls  # noqa: F401
     except ImportError as exc:
