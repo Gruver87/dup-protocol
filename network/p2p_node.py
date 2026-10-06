@@ -203,8 +203,10 @@ def _clamp_native_batch(n: Any, default: int = 8) -> int:
     if hasattr(native, "p2p_native_clamp_batch"):
         try:
             return int(native.p2p_native_clamp_batch(max(0, raw)))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "[P2P] native p2p_native_clamp_batch failed; Python clamp: %s", exc
+            )
     return max(1, min(64, raw if raw > 0 else default))
 
 
@@ -217,8 +219,10 @@ def _clamp_native_chunk(n: Any, default: int = 65536) -> int:
     if hasattr(native, "p2p_native_clamp_chunk"):
         try:
             return int(native.p2p_native_clamp_chunk(max(0, raw)))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "[P2P] native p2p_native_clamp_chunk failed; Python clamp: %s", exc
+            )
     return max(1024, min(1024 * 1024, raw if raw > 0 else default))
 
 
@@ -231,8 +235,11 @@ def _clamp_native_timeout_ms(n: Any, default: int = 30000) -> int:
     if hasattr(native, "p2p_native_clamp_timeout_ms"):
         try:
             return int(native.p2p_native_clamp_timeout_ms(max(0, raw)))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "[P2P] native p2p_native_clamp_timeout_ms failed; Python clamp: %s",
+                exc,
+            )
     return max(1000, min(600_000, raw if raw > 0 else default))
 
 
@@ -468,8 +475,8 @@ class PeerConnection:
         if conn is not None and hasattr(conn, "set_peer_wire_codec"):
             try:
                 self._native_io_call(conn.set_peer_wire_codec, raw)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("[P2P] set_peer_wire_codec failed: %s", exc)
 
     def touch(self):
         self.last_seen = time.time()
@@ -5391,8 +5398,12 @@ class P2PNode:
         blk = None
         try:
             blk = self.get_block(head)
-        except Exception:
-            blk = None
+        except Exception as exc:
+            logger.warning(
+                "[P2P] get_block failed during head-height bind; treating as mismatch: %s",
+                exc,
+            )
+            return True
         if not isinstance(blk, dict):
             return False
         try:

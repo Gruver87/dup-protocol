@@ -92,8 +92,12 @@ class CatchUpPathAService:
         if callable(ng):
             try:
                 needs_genesis = bool(ng())
-            except Exception:
-                needs_genesis = False
+            except Exception as exc:
+                logger.warning("[PathA] needs_genesis check failed: %s", exc)
+                try:
+                    needs_genesis = int(local_h or 0) <= 0
+                except (TypeError, ValueError):
+                    needs_genesis = True
         # Empty follower tip is height 0; leader genesis is also height 0.
         # Still ahead of "no block" — do not skip as not_ahead.
         if peer_h < local_h or (peer_h == local_h and not needs_genesis):

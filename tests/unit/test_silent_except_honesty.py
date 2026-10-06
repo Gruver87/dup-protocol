@@ -366,3 +366,121 @@ def test_format_tx_uses_satoshi_not_ieee_float():
     assert row["value"] == hex(to_satoshi(1.5) * WEI_PER_SATOSHI)
     junk = format_tx({"hash": "0xcd", "value": True})
     assert junk["value"] is None
+
+
+def test_p2p_head_height_get_block_fail_is_mismatch(caplog):
+    import logging
+
+    from network.p2p_node import P2PNode
+
+    node = P2PNode.__new__(P2PNode)
+
+    def _boom(_h):
+        raise RuntimeError("get_block boom")
+
+    node.get_block = _boom  # type: ignore[method-assign]
+    with caplog.at_level(logging.WARNING, logger="P2P"):
+        assert node._local_known_head_height_mismatch("aa" * 32, 7) is True
+    assert "get_block failed during head-height bind" in caplog.text
+
+
+def test_path_a_needs_genesis_failure_fail_closed():
+    """Empty tip must not silently skip catchup when needs_genesis raises."""
+    from pathlib import Path
+
+    src = Path("sync/catchup/path_a.py").read_text(encoding="utf-8")
+    assert "[PathA] needs_genesis check failed" in src
+    assert "needs_genesis = int(local_h or 0) <= 0" in src
+
+
+def test_bridge_http_result_normalize_failure_not_bool_object(monkeypatch):
+    import api.http as http
+    import bridge.adapter as adapter
+
+    class _TruthyFail:
+        success = False
+        error = "locked"
+
+        def __bool__(self):
+            return True
+
+    monkeypatch.setattr(
+        adapter,
+        "normalize_bridge_http_result",
+        lambda _r: (_ for _ in ()).throw(RuntimeError("normalize down")),
+    )
+    out = http._bridge_http_result(_TruthyFail())
+    assert out["success"] is False
+    assert "locked" in str(out.get("error") or "")
+
+    class _NoSuccess:
+        def __bool__(self):
+            return True
+
+    out2 = http._bridge_http_result(_NoSuccess())
+    assert out2["success"] is False
+    assert out2.get("error") == "bridge_result_normalize_failed"
+
+
+def test_catchup_head_failure_is_logged(caplog):
+    import logging
+
+    from network.catchup_adapters import CatchUpP2PChainAdapter
+
+    class _P2P:
+        def head(self):
+            raise RuntimeError("head boom")
+
+    with caplog.at_level(logging.WARNING, logger="P2P.CatchUpAdapter"):
+        assert CatchUpP2PChainAdapter(_P2P()).head() == ""
+    assert "head failed" in caplog.text
+    assert "head boom" in caplog.text
+
+
+def test_blockchain_db_del_logs_close_failure(caplog):
+    import logging
+
+    from storage.database import BlockchainDB
+
+    db = BlockchainDB.__new__(BlockchainDB)
+
+    def _boom() -> None:
+        raise OSError("close boom")
+
+    db.close = _boom  # type: ignore[method-assign]
+    with caplog.at_level(logging.WARNING, logger="Database"):
+        BlockchainDB.__del__(db)
+    assert "BlockchainDB.__del__ close failed" in caplog.text
+    assert "close boom" in caplog.text
+
+
+def test_persistent_storage_del_logs_close_failure(caplog):
+    import logging
+
+    from storage.persistent_storage import PersistentStorage
+
+    store = PersistentStorage.__new__(PersistentStorage)
+
+    def _boom() -> None:
+        raise OSError("persist close boom")
+
+    store.close = _boom  # type: ignore[method-assign]
+    with caplog.at_level(logging.WARNING, logger="PersistentStorage"):
+        PersistentStorage.__del__(store)
+    assert "PersistentStorage.__del__ close failed" in caplog.text
+    assert "persist close boom" in caplog.text
+
+
+def test_silent_except_wave_needles_p2p_catchup():
+    from pathlib import Path
+
+    p2p = Path("network/p2p_node.py").read_text(encoding="utf-8")
+    assert "get_block failed during head-height bind" in p2p
+    assert "native p2p_native_clamp_batch failed" in p2p
+    assert "set_peer_wire_codec failed" in p2p
+    path_a = Path("sync/catchup/path_a.py").read_text(encoding="utf-8")
+    assert "[PathA] needs_genesis check failed" in path_a
+    catchup = Path("network/catchup_adapters.py").read_text(encoding="utf-8")
+    assert "[CatchUpChain] head failed" in catchup
+    http = Path("api/http.py").read_text(encoding="utf-8")
+    assert "bridge_result_normalize_failed" in http

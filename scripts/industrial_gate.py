@@ -272,6 +272,24 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append(
             "pin DILIGENCE_BRIEF must not cite Experimental soak packs as pin evidence"
         )
+    p2p_honest = (ROOT / "network" / "p2p_node.py").read_text(encoding="utf-8")
+    if "get_block failed during head-height bind" not in p2p_honest:
+        errors.append(
+            "p2p_node head-height bind must treat get_block failure as mismatch"
+        )
+    if "native p2p_native_clamp_batch failed" not in p2p_honest:
+        errors.append("p2p_node clamp helpers must log native clamp failures")
+    path_a_py = (ROOT / "sync" / "catchup" / "path_a.py").read_text(encoding="utf-8")
+    if "[PathA] needs_genesis check failed" not in path_a_py:
+        errors.append("PathA must log and fail-closed on needs_genesis errors")
+    catchup_ad = (ROOT / "network" / "catchup_adapters.py").read_text(encoding="utf-8")
+    if "[CatchUpChain] head failed" not in catchup_ad:
+        errors.append("catchup_adapters must log head() failures")
+    http_bridge = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+    if "bridge_result_normalize_failed" not in http_bridge:
+        errors.append(
+            "_bridge_http_result must refuse truthy non-bool on normalize failure"
+        )
     soak_pf = (ROOT / "scripts" / "soak_preflight.py").read_text(encoding="utf-8")
     if "require_wire_probe" not in soak_pf or "--require-wire-probe" not in soak_pf:
         errors.append("soak_preflight must accept --require-wire-probe")

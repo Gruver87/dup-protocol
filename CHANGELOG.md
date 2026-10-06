@@ -10,6 +10,15 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — silent-except fail-closed (P2P/PathA/catchup/bridge/storage)
+
+- p2p_node: head-height get_block fail → mismatch; clamp/codec warn logs (no silent pass).
+- path_a: needs_genesis raise → log + tip0 fail-closed (not silent skip).
+- catchup_adapters: head/expected_parent/get_block/ancestor/side-effect warn logs.
+- api/http _bridge_http_result: normalize fail → bridge_result_normalize_failed (no bool paint).
+- storage BlockchainDB/PersistentStorage __del__ close-fail logs.
+- Units + industrial_gate. **Non-LR.** Mesh Quick required (P2P/sync). **Soak deferred.**
+
 ### Exp→pin merge wave — silent-except honesty test deepen
 
 - test_silent_except_honesty: sticky-empty green expire, registry adapter bus/lockdown logs, fork async fallback, http engine truthy refuse, format_tx satoshi.

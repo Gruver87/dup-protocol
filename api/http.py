@@ -786,10 +786,22 @@ def _bridge_http_result(result):
         from bridge.adapter import normalize_bridge_http_result
 
         return normalize_bridge_http_result(result)
-    except Exception:
+    except Exception as exc:
+        logger.warning("normalize_bridge_http_result failed: %s", exc)
         if isinstance(result, dict):
             return result
-        return {"success": bool(result)}
+        success = getattr(result, "success", None)
+        if success is None:
+            return {
+                "success": False,
+                "error": "bridge_result_normalize_failed",
+            }
+        return {
+            "success": bool(success),
+            "error": str(
+                getattr(result, "error", "") or "bridge_result_normalize_failed"
+            ),
+        }
 
 
 def _inbound_envelope_from_body(body: dict, cfg: Any = None):

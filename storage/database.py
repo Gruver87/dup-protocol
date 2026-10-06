@@ -3695,8 +3695,8 @@ class BlockchainDB(Database):
     def __del__(self):
         try:
             self.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("BlockchainDB.__del__ close failed: %s", exc)
 
     def get_latest_block_number(self) -> int:
         return self.get_chain_tip()
