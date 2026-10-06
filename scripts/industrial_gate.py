@@ -321,6 +321,26 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append(
             "p2p_wire must not skip gas_limit bind when gas==21000 (signature parity)"
         )
+    # Exp→pin EVM nested honesty (RETURNDATACOPY live buffer + STATICCALL no writeback).
+    for rel, msg in (
+        ("tests/unit/test_evm_empty_account_call.py", "test_evm_empty_account_call.py missing"),
+        ("tests/unit/test_evm_nested_returndata.py", "test_evm_nested_returndata.py missing"),
+        ("tests/unit/test_evm_nested_staticcall.py", "test_evm_nested_staticcall.py missing"),
+        ("tests/unit/test_nft_marketplace_harden.py", "test_nft_marketplace_harden.py missing"),
+    ):
+        if not (ROOT / rel).is_file():
+            errors.append(msg)
+    pure = (ROOT / "native" / "abs_native" / "src" / "evm_pure_runner.rs").read_text(
+        encoding="utf-8"
+    )
+    if "Live buffer: CALL/CREATE update" not in pure:
+        errors.append(
+            "evm_pure_runner RETURNDATACOPY must use live return_data (not inbound snapshot)"
+        )
+    if "if success && !frame.static_call" not in pure:
+        errors.append(
+            "evm_pure_runner must not commit inline storage after successful STATICCALL"
+        )
     # Load real prod mesh JSON (bare Config() is always deployment_mode=dev).
     prod_tls_enabled = False
     prod_json_files = (

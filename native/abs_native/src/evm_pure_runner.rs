@@ -1419,7 +1419,7 @@ fn try_inline_leaf_value0_call(
         .unwrap_or(false)
         || reason == "out_of_gas";
     let success = !reverted && matches!(reason.as_str(), "halt" | "return");
-    if success {
+    if success && !frame.static_call {
         store_inline_storage(host_context, frame.to_word, &child_storage)?;
         // v1.3.83: plan satoshi journal op only after child success (matches balance keep).
         if !frame.value.is_zero() {
@@ -2265,8 +2265,8 @@ fn run_pure_segment_inner(
                     pc,
                     gas_used,
                     running,
-                    reverted,
-                    return_data,
+                    true,
+                    Vec::new(),
                     reason,
                     None,
                     Some(reason.to_string()),
@@ -2480,7 +2480,9 @@ fn run_pure_segment_inner(
                     let dest = stack_pop(&mut stack)?.as_usize();
                     let offset = stack_pop(&mut stack)?.as_usize();
                     let size = stack_pop(&mut stack)?.as_usize();
-                    memory_copy(&mut memory, dest, return_data_in, offset, size);
+                    // Live buffer: CALL/CREATE update `return_data`. The inbound
+                    // snapshot `return_data_in` is only the value at segment start.
+                    memory_copy(&mut memory, dest, &return_data, offset, size);
                     Ok(Some(false))
                 }
                 0x30 => {

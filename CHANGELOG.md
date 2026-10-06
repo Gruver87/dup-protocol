@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — EVM nested returndata/STATICCALL + NFT satoshi harden
+
+- Native `evm_pure_runner`: RETURNDATACOPY uses live `return_data`; STATICCALL success does not
+  commit child storage; opcode-gas abort returns reverted+empty returndata.
+- Units: empty-account CALL, nested returndata, STATICCALL write-refuse, NFT marketplace satoshi harden
+  (no Exp `sdk` on pin).
+- industrial_gate needles. **Non-LR.** Mesh Quick after native docker rebuild. **Soak deferred.**
+
 ### Exp→pin merge wave — force mesh catchup (EVM evidence no-freeze)
 
 - `verify_p2p_ci._force_prod_mesh_catchup`: tip+1 / BehindOpen heal from attempt 0.

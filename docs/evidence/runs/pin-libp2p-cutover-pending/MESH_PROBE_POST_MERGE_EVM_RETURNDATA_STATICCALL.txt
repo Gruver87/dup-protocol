@@ -1,0 +1,51 @@
+﻿MESH_PROBE_POST_MERGE_EVM_RETURNDATA_STATICCALL
+date: 2026-10-06 21:15:21 +02:00
+probe: RESULT from probe_prod_mesh.ps1 -Quick (see below)
+docker: docker_prod_3node.ps1 -KeepVolumes (full rebuild for evm_pure_runner)
+units: 22 PASS (empty-account/nested returndata/STATICCALL/NFT harden)
+industrial_gate: OK
+soak: deferred / not run / not started
+long_range: not included
+---
+{
+  "ok": true,
+  "errors": [],
+  "warnings": [],
+  "timestamp": "2026-10-06T19:15:21.721501+00:00",
+  "chain_id": 778888,
+  "nodes": [
+    {
+      "url": "http://127.0.0.1:18180",
+      "role": "node1",
+      "reachable": true,
+      "height": 1716,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "85ad7a1550c1e7babed14ab90b360739ffc69e76b67fd94ee389d6af3d6fc812"
+    },
+    {
+      "url": "http://127.0.0.1:18181",
+      "role": "node2",
+      "reachable": true,
+      "height": 1716,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "85ad7a1550c1e7babed14ab90b360739ffc69e76b67fd94ee389d6af3d6fc812"
+    },
+    {
+      "url": "http://127.0.0.1:18182",
+      "role": "node3",
+      "reachable": true,
+      "height": 1716,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "85ad7a1550c1e7babed14ab90b360739ffc69e76b67fd94ee389d6af3d6fc812"
+    }
+  ],
+  "reachable": 3,
+  "expected": 3,
+  "ready": true
+}
