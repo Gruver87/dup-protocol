@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — Strict health_watch worker + cargo/soak ops tooling
+
+- `health_watch_node.ps1`: parallel Strict worker required by `health_watch_core` (was missing on pin).
+- `cargo_test_abs_native.py` + unit; `cargo_test_rust_bridge_smoke.py` (0-test honesty).
+- `summarize_soak_fail.py` (always `passed=False`); `soak_guard.py` (refuse mesh hammer mid-soak).
+- `open_ops_console.ps1`, `verify_adr0021_phase1.ps1`, `audit_critical_paths.py`.
+- industrial_gate needles. **Non-LR.** **Soak deferred.**
+
 ### Exp→pin merge wave — ops market snapshot / CSP UI / soak baked needle
 
 - `api/market_feed.py` + GET `/market/snapshot` `/market/fx` (TLS allowlist; not consensus).

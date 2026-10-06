@@ -210,6 +210,46 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append(
             "prepare_48h_soak must docker-cp check_baked_state_root.py into the running image"
         )
+    # Exp→pin ops tooling: Strict parallel worker + cargo honesty + soak FAIL pack.
+    if not (ROOT / "scripts" / "health_watch_node.ps1").is_file():
+        errors.append(
+            "scripts/health_watch_node.ps1 missing (Strict parallel health_watch worker)"
+        )
+    hw_core_ops = (ROOT / "scripts" / "health_watch_core.ps1").read_text(encoding="utf-8")
+    if "health_watch_node.ps1" not in hw_core_ops:
+        errors.append("health_watch_core must invoke health_watch_node.ps1 worker")
+    if not (ROOT / "scripts" / "cargo_test_abs_native.py").is_file():
+        errors.append("scripts/cargo_test_abs_native.py missing (CPython-linked cargo test)")
+    else:
+        cta = (ROOT / "scripts" / "cargo_test_abs_native.py").read_text(encoding="utf-8")
+        if "no-default-features" not in cta or "extension-module" not in cta:
+            errors.append(
+                "cargo_test_abs_native must disable extension-module for cargo test link"
+            )
+    if not (ROOT / "scripts" / "cargo_test_rust_bridge_smoke.py").is_file():
+        errors.append("scripts/cargo_test_rust_bridge_smoke.py missing (0-test honesty)")
+    else:
+        cts = (ROOT / "scripts" / "cargo_test_rust_bridge_smoke.py").read_text(
+            encoding="utf-8"
+        )
+        if "running 0 tests" not in cts:
+            errors.append(
+                "cargo_test_rust_bridge_smoke must label 0-test compile smoke (not verification)"
+            )
+    if not (ROOT / "scripts" / "summarize_soak_fail.py").is_file():
+        errors.append("scripts/summarize_soak_fail.py missing (honest FAIL pack)")
+    else:
+        sum_py = (ROOT / "scripts" / "summarize_soak_fail.py").read_text(encoding="utf-8")
+        if '"passed": False' not in sum_py:
+            errors.append("summarize_soak_fail must hardcode passed=False")
+    if not (ROOT / "scripts" / "soak_guard.py").is_file():
+        errors.append("scripts/soak_guard.py missing (refuse mesh hammer during soak)")
+    if not (ROOT / "scripts" / "open_ops_console.ps1").is_file():
+        errors.append("scripts/open_ops_console.ps1 missing (ops console launcher)")
+    if not (ROOT / "scripts" / "verify_adr0021_phase1.ps1").is_file():
+        errors.append("scripts/verify_adr0021_phase1.ps1 missing (operator self-check wrapper)")
+    if not (ROOT / "scripts" / "audit_critical_paths.py").is_file():
+        errors.append("scripts/audit_critical_paths.py missing (honesty pattern scan)")
     # Load real prod mesh JSON (bare Config() is always deployment_mode=dev).
     prod_tls_enabled = False
     prod_json_files = (
