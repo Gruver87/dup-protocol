@@ -249,31 +249,66 @@ def sync_automated_items(
 def evaluate(
     checklist: List[str] | None = None,
     status_path: Path | None = None,
+    root: Path | None = None,
+    *,
+    live_automated: bool = True,
 ) -> Tuple[List[str], List[str], Dict[str, Any]]:
-    """Return (pending_warnings, completed, summary_dict)."""
+    """Return (pending_warnings, completed, summary_dict).
+
+    When ``live_automated`` is True (default), automated checklist items that
+    pass ``evaluate_automated`` count as done even if ``data/external_audit_status.json``
+    is missing (gitignored). Human firm-audit items still require stored evidence.
+    """
     items_checklist = checklist or list(DEFAULT_CHECKLIST)
     path = status_path or default_status_path()
     status = load_status(path)
     stored = status.get("items") or {}
+    base = root or Path(__file__).resolve().parents[1]
+    auto_live: Dict[str, tuple[bool, str]] = {}
+    if live_automated:
+        try:
+            auto_live = evaluate_automated(base)
+        except Exception as exc:
+            auto_live = {
+                label: (False, f"auto_eval_error:{exc}")
+                for label in AUTOMATED_ITEMS
+            }
 
     pending: List[str] = []
     completed: List[str] = []
     rows: List[Dict[str, Any]] = []
 
     for label in items_checklist:
-        row = stored.get(label) or {}
+        row = dict(stored.get(label) or {})
         done = bool(row.get("done"))
         note = str(row.get("note") or "")
+        if (
+            not done
+            and live_automated
+            and label in AUTOMATED_ITEMS
+            and label in auto_live
+        ):
+            ok, auto_note = auto_live[label]
+            if ok:
+                done = True
+                note = note or f"auto-live: {auto_note}"
+                row = {
+                    **row,
+                    "done": True,
+                    "note": note,
+                    "source": "auto-live",
+                }
         if done and label in HUMAN_REQUIRED_AUDIT_ITEMS:
             if not human_audit_evidence_accepted(row):
                 done = False
         rows.append({
             "label": label,
             "done": done,
-            "note": row.get("note", ""),
+            "note": note,
             "evidence_url": row.get("evidence_url", ""),
             "evidence_note": row.get("evidence_note", ""),
             "completed_at": row.get("completed_at"),
+            "source": row.get("source", "status_file" if row.get("done") else ""),
         })
         if done:
             completed.append(label)
@@ -286,6 +321,7 @@ def evaluate(
         "completed": len(completed),
         "pending": len(pending),
         "all_complete": len(pending) == 0,
+        "live_automated": bool(live_automated),
         "items": rows,
     }
     warnings = [f"external_audit_pending:{label}" for label in pending]

@@ -410,7 +410,10 @@ class RpcService:
 
         if method in ("eth_getUncleCountByBlockNumber", "eth_getUncleCountByBlockHash"):
             if method == "eth_getUncleCountByBlockHash":
-                blk = q.get_block(BlockQuery(block_hash=str(params[0]))) if params else None
+                err = validate_block_hash_param(tuple(params))
+                if err:
+                    raise ValueError(err)
+                blk = q.get_block(BlockQuery(block_hash=str(params[0])))
             else:
                 tag = params[0] if params else "latest"
                 blk = q.get_block(BlockQuery(tag=str(tag)))
@@ -418,7 +421,10 @@ class RpcService:
 
         if method in ("eth_getUncleByBlockNumberAndIndex", "eth_getUncleByBlockHashAndIndex"):
             if method == "eth_getUncleByBlockHashAndIndex":
-                blk = q.get_block(BlockQuery(block_hash=str(params[0]))) if params else None
+                err = validate_block_hash_param(tuple(params))
+                if err:
+                    raise ValueError(err)
+                blk = q.get_block(BlockQuery(block_hash=str(params[0])))
                 index = params[1] if len(params) > 1 else 0
             else:
                 tag = params[0] if params else "latest"

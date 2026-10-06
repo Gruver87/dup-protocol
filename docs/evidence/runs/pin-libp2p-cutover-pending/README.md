@@ -64,6 +64,9 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `MESH_PROBE_POST_MERGE_STRICT_OPS.txt` | Strict health_watch + soak starters + FC leftovers Quick probe (h1380) |
 | `probe_prod_mesh_quick_merge_strict_ops.json` | Probe JSON for Strict ops wave |
 | `industrial_gate_merge_strict_ops.json` | Gate snapshot for that wave |
+| `MESH_PROBE_POST_MERGE_UNCLE_AUDIT_FB.txt` | Uncle RPC validate + audit live_automated + bridge money + `_native_fb` Quick probe (h1490) |
+| `probe_prod_mesh_quick_merge_uncle_audit_fb.json` | Probe JSON for uncle/audit/fb wave |
+| `industrial_gate_merge_uncle_audit_fb.json` | Gate snapshot for that wave |
 | `hw_strict_smoke_1m.log` | 1m `health_watch -Strict` smoke (EXIT=0) |
 | `README.md` | This honesty stamp |
 

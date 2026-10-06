@@ -4575,6 +4575,54 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         rpc_src = (ROOT / "api" / "rpc_service.py").read_text(encoding="utf-8")
         if 'gas_limit=getattr(cfg, "evm_gas_limit", None)' not in rpc_src:
             errors.append("RPC eth_getBlock* must pass cfg.evm_gas_limit into format_block")
+        # Exp→pin polish: uncle-by-hash hash validate + audit live_automated +
+        # bridge money_abs / prod raise honesty + consensus _native_fb logs.
+        uncle_hash_idx = rpc_src.find("eth_getUncleByBlockHashAndIndex")
+        if uncle_hash_idx < 0 or "validate_block_hash_param" not in rpc_src[uncle_hash_idx:]:
+            errors.append(
+                "RPC eth_getUncleByBlockHash* must validate_block_hash_param"
+            )
+        uncle_count_idx = rpc_src.find("eth_getUncleCountByBlockHash")
+        if uncle_count_idx < 0 or "validate_block_hash_param" not in rpc_src[uncle_count_idx:]:
+            errors.append(
+                "RPC eth_getUncleCountByBlockHash must validate_block_hash_param"
+            )
+        audit_py = (ROOT / "runtime" / "external_audit.py").read_text(encoding="utf-8")
+        if "live_automated: bool = True" not in audit_py:
+            errors.append("external_audit.evaluate must support live_automated")
+        if '"live_automated": bool(live_automated)' not in audit_py:
+            errors.append("external_audit summary must expose live_automated")
+        if not (ROOT / "tests" / "unit" / "test_external_audit_live_automated.py").is_file():
+            errors.append("tests/unit/test_external_audit_live_automated.py missing")
+        relayer_mod = (ROOT / "bridge" / "relayer.py").read_text(encoding="utf-8")
+        if 'money_abs(item.get("amount", 0), field="amount")' not in relayer_mod:
+            errors.append("bridge relayer must parse amount via money_abs (no float)")
+        abs_bridge_py = (ROOT / "bridge" / "abs_bridge.py").read_text(encoding="utf-8")
+        if (
+            'self._is_prod and bool(getattr(config, "bridge_enabled", False))'
+            not in abs_bridge_py
+        ):
+            errors.append(
+                "abs_bridge missing Rust bin must raise only when prod+bridge_enabled"
+            )
+        casper_py = (ROOT / "consensus" / "finality_casper.py").read_text(
+            encoding="utf-8"
+        )
+        if "native %s failed; Python path: %s" not in casper_py:
+            errors.append("Casper FFG must log native kernel fallbacks")
+        if '_native_fb("ffg_accumulate_vote"' not in casper_py:
+            errors.append("Casper FFG must log native ffg_accumulate_vote fallback")
+        ghost_fb = (ROOT / "consensus" / "ghost.py").read_text(encoding="utf-8")
+        if '_native_fb("ghost_select_head"' not in ghost_fb:
+            errors.append("GHOST must log native ghost_select_head fallback")
+        lmd_fb = (ROOT / "consensus" / "lmd.py").read_text(encoding="utf-8")
+        if '_native_fb("lmd_compute_weights"' not in lmd_fb:
+            errors.append("LMD must log native lmd_compute_weights fallback")
+        beacon_fb = (ROOT / "consensus" / "finality_beacon.py").read_text(
+            encoding="utf-8"
+        )
+        if '_native_fb("ffg_evaluate_epoch"' not in beacon_fb:
+            errors.append("Beacon FFG must log native ffg_evaluate_epoch fallback")
         # v1.3.183 — mempool max-calldata refuse before validate
         if "calldata_too_large" not in p2p_py:
             errors.append(

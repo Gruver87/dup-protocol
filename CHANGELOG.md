@@ -10,6 +10,15 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — uncle RPC validate / audit live_automated / bridge money + `_native_fb`
+
+- `rpc_service`: `eth_getUncle*ByBlockHash*` validate `validate_block_hash_param` before lookup.
+- `external_audit.evaluate(live_automated=True)`: automated checklist items pass without gitignored status file; unit `test_external_audit_live_automated.py`.
+- `bridge/relayer.py`: L1 queue amounts via `money_abs` (invalid → skip/requeue, no float).
+- `abs_bridge`: missing Rust bin raises only when `prod and bridge_enabled` (OFF mesh stays up).
+- Consensus `ghost` / `lmd` / `finality_beacon` / `finality_casper`: `_native_fb` warning + fail-closed when native required.
+- industrial_gate needles. **Non-LR.** **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** after docker rebuild (h1490 peers=2); pack `MESH_PROBE_POST_MERGE_UNCLE_AUDIT_FB.txt`. **Soak deferred / not started.**
+
 ### Exp→pin merge wave — Strict health_watch + soak starters + fail-closed leftovers
 
 - `health_watch.ps1` / `health_watch_core.ps1`: full `-Strict` stack (parallel probes, mesh align/resnapshot).

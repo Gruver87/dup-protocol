@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "errors": [],
+  "warnings": [],
+  "timestamp": "2026-10-06T18:05:01.180269+00:00",
+  "chain_id": 778888,
+  "nodes": [
+    {
+      "url": "http://127.0.0.1:18180",
+      "role": "node1",
+      "reachable": true,
+      "height": 1490,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "a404f4efd7740f5e73014dd8f47f13474fe49ccf3d00cd2d918ff08d556e7506"
+    },
+    {
+      "url": "http://127.0.0.1:18181",
+      "role": "node2",
+      "reachable": true,
+      "height": 1490,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "a404f4efd7740f5e73014dd8f47f13474fe49ccf3d00cd2d918ff08d556e7506"
+    },
+    {
+      "url": "http://127.0.0.1:18182",
+      "role": "node3",
+      "reachable": true,
+      "height": 1490,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "a404f4efd7740f5e73014dd8f47f13474fe49ccf3d00cd2d918ff08d556e7506"
+    }
+  ],
+  "reachable": 3,
+  "expected": 3,
+  "ready": true
+}
