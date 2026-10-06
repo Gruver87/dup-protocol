@@ -341,6 +341,25 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append(
             "evm_pure_runner must not commit inline storage after successful STATICCALL"
         )
+    # Exp→pin ops metrics + catchup honesty.
+    if "def observe_status_ms" not in (
+        ROOT / "observability" / "metrics.py"
+    ).read_text(encoding="utf-8"):
+        errors.append("metrics must expose observe_status_ms (GET /status histogram)")
+    met = (ROOT / "observability" / "metrics.py").read_text(encoding="utf-8")
+    if "abs_rocksdb_estimate_num_keys" not in met:
+        errors.append("metrics must export abs_rocksdb_estimate_num_keys")
+    http_py = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+    if "rocksdb.estimate-num-keys" not in http_py:
+        errors.append("/metrics must scrape rocksdb.estimate-num-keys into rocksdb_tuning")
+    se = (ROOT / "sync" / "sync_engine.py").read_text(encoding="utf-8")
+    if "_wire_sticky_empty_max" not in se:
+        errors.append("sync_engine must keep sticky-green empty/timeout streak before lockdown")
+    eio = (ROOT / "sync" / "catchup" / "engine_io.py").read_text(encoding="utf-8")
+    if "needs_genesis checker failed" not in eio:
+        errors.append("engine_io needs_genesis must log + fall back (not silent False)")
+    if not (ROOT / "tests" / "unit" / "test_status_metrics_histogram.py").is_file():
+        errors.append("test_status_metrics_histogram.py missing")
     # Load real prod mesh JSON (bare Config() is always deployment_mode=dev).
     prod_tls_enabled = False
     prod_json_files = (

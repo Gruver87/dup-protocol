@@ -37,6 +37,9 @@ class SyncEngine:
         # timeout/empty/exception probe, do not re-solicit for backoff_sec.
         self._wire_probe_fail_ts = 0.0
         self._wire_probe_backoff_sec = 8.0
+        # Empty/timeout wire: keep sticky green this many times before lockdown.
+        self._wire_sticky_empty_streak = 0
+        self._wire_sticky_empty_max = 5
         self._last_wire_probe_ok = None
         self._sync_fail = 0
         self._last_sync_error = ""
@@ -571,6 +574,15 @@ class SyncEngine:
             if raw is None:
                 print("   [Sync] peer state_root wire probe failed: timeout/empty")
                 self._wire_probe_fail_ts = time.time()
+                if self.consistency.snapshot().consistent:
+                    self._wire_sticky_empty_streak = int(
+                        getattr(self, "_wire_sticky_empty_streak", 0) or 0
+                    ) + 1
+                    max_sticky = int(getattr(self, "_wire_sticky_empty_max", 3) or 3)
+                    if self._wire_sticky_empty_streak < max_sticky:
+                        print("   [Sync] wire probe backoff after timeout/empty")
+                        return True
+                    print("   [Sync] sticky green expired after empty/timeout wire")
                 probe = WireProbeResult.failed("probe_timeout_empty")
             elif len(raw) == 0:
                 print(
@@ -578,10 +590,20 @@ class SyncEngine:
                     f"with {len(peers)} peer(s)"
                 )
                 self._wire_probe_fail_ts = time.time()
+                if self.consistency.snapshot().consistent:
+                    self._wire_sticky_empty_streak = int(
+                        getattr(self, "_wire_sticky_empty_streak", 0) or 0
+                    ) + 1
+                    max_sticky = int(getattr(self, "_wire_sticky_empty_max", 3) or 3)
+                    if self._wire_sticky_empty_streak < max_sticky:
+                        print("   [Sync] wire probe backoff after timeout/empty")
+                        return True
+                    print("   [Sync] sticky green expired after empty/timeout wire")
                 probe = WireProbeResult.failed("probe_empty")
             else:
                 wire_roots = list(raw)
                 self._wire_probe_fail_ts = 0.0
+                self._wire_sticky_empty_streak = 0
                 probe = WireProbeResult.succeeded(wire_roots=tuple(wire_roots))
         except Exception as exc:
             print(f"   [Sync] peer state_root wire probe failed: {exc}")

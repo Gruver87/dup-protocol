@@ -1,0 +1,51 @@
+﻿MESH_PROBE_POST_MERGE_STATUS_METRICS_WIRE_STICKY
+date: 2026-10-06 21:26:18 +02:00
+probe: probe_prod_mesh.ps1 -Quick
+docker: docker_prod_3node.ps1 -KeepVolumes
+units: test_status_metrics_histogram 3 PASS
+industrial_gate: OK
+soak: deferred / not run / not started
+long_range: not included
+---
+{
+  "ok": true,
+  "errors": [],
+  "warnings": [],
+  "timestamp": "2026-10-06T19:26:18.352827+00:00",
+  "chain_id": 778888,
+  "nodes": [
+    {
+      "url": "http://127.0.0.1:18180",
+      "role": "node1",
+      "reachable": true,
+      "height": 1750,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "4ca7ee8277de2ec0af6fe5f6b0186cac3a9242a310688d725536a114195406b7"
+    },
+    {
+      "url": "http://127.0.0.1:18181",
+      "role": "node2",
+      "reachable": true,
+      "height": 1750,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "4ca7ee8277de2ec0af6fe5f6b0186cac3a9242a310688d725536a114195406b7"
+    },
+    {
+      "url": "http://127.0.0.1:18182",
+      "role": "node3",
+      "reachable": true,
+      "height": 1750,
+      "peers": 2,
+      "chain_id": 778888,
+      "deployment_mode": "prod",
+      "head_hash": "4ca7ee8277de2ec0af6fe5f6b0186cac3a9242a310688d725536a114195406b7"
+    }
+  ],
+  "reachable": 3,
+  "expected": 3,
+  "ready": true
+}

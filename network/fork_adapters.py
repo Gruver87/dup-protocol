@@ -32,19 +32,22 @@ class ForkReconcileP2PChainAdapter:
     def head(self) -> str:
         try:
             return str(self._p2p.head() or "")
-        except Exception:
+        except Exception as exc:
+            logger.warning("[ForkChain] head failed: %s", exc)
             return ""
 
     def expected_parent(self, height: int) -> str:
         try:
             return str(self._p2p._expected_parent_for_height(int(height)) or "")
-        except Exception:
+        except Exception as exc:
+            logger.warning("[ForkChain] expected_parent failed: %s", exc)
             return "0" * 64
 
     def get_block(self, height_or_hash: Any) -> Any:
         try:
             return self._p2p.get_block(height_or_hash)
-        except Exception:
+        except Exception as exc:
+            logger.warning("[ForkChain] get_block failed: %s", exc)
             return None
 
     def find_ancestor_height(self, parent_hash: str) -> Optional[int]:
@@ -52,7 +55,8 @@ class ForkReconcileP2PChainAdapter:
         if hasattr(bc, "find_ancestor_height"):
             try:
                 return bc.find_ancestor_height(str(parent_hash or ""))
-            except Exception:
+            except Exception as exc:
+                logger.warning("[ForkChain] find_ancestor_height failed: %s", exc)
                 return None
         return None
 
@@ -71,7 +75,8 @@ class ForkReconcileP2PChainAdapter:
             except RuntimeError:
                 try:
                     loop = asyncio.get_event_loop()
-                except Exception:
+                except Exception as exc:
+                    logger.debug("[ForkChain] get_event_loop failed: %s", exc)
                     loop = None
         try:
             if loop is not None and loop.is_running():
@@ -86,8 +91,11 @@ class ForkReconcileP2PChainAdapter:
                         p2p._reorg_and_import_async(int(rollback_to), dict(block))
                     )
                 )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "[ForkChain] async reorg_and_import failed; using sync fallback: %s",
+                exc,
+            )
         # Fallback: sync worker path (still tip-safety via import_block).
         try:
             return bool(p2p._reorg_and_import(int(rollback_to), dict(block)))
@@ -215,8 +223,8 @@ class ForkReconcileP2PSideEffectAdapter:
                 self._p2p.bump_counter("dispatch_tip_evidence_refuse_total")
             if hasattr(self._p2p, "bump_counter"):
                 self._p2p.bump_counter(f"fork_refuse_{r}_total")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("[ForkSide] bump_refuse failed: %s", exc)
 
     def set_peer_tip(self, peer_id: str, height: int, head_hash: str) -> None:
         peer = None
@@ -231,13 +239,14 @@ class ForkReconcileP2PSideEffectAdapter:
         try:
             peer.height = int(height)
             peer.head = str(head_hash or "")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("[ForkSide] set_peer_tip failed: %s", exc)
 
     def ghost_canonical_head(self) -> str:
         try:
             return str(self._p2p._ghost_canonical_head() or "")
-        except Exception:
+        except Exception as exc:
+            logger.warning("[ForkSide] ghost_canonical_head failed: %s", exc)
             return ""
 
     def peer_ids_for_head(self, head_hash: str) -> Sequence[str]:

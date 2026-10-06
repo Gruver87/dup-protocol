@@ -2441,6 +2441,33 @@ class RESTHandler(BaseHTTPRequestHandler):
                         or rocksdb_tuning.get("aux_json_decode_failures", 0)
                         or 0
                     )
+                    props = db_stats.get("rocksdb_properties") or {}
+                    if isinstance(props, dict):
+                        for src, dst in (
+                            (
+                                "rocksdb.num-running-compactions",
+                                "running_compactions",
+                            ),
+                            (
+                                "rocksdb.num-running-flushes",
+                                "running_flushes",
+                            ),
+                            (
+                                "rocksdb.estimate-num-keys",
+                                "estimate_num_keys",
+                            ),
+                            (
+                                "rocksdb.estimate-num-keys-all-cf",
+                                "estimate_num_keys",
+                            ),
+                        ):
+                            raw = props.get(src)
+                            if raw is None:
+                                continue
+                            try:
+                                rocksdb_tuning[dst] = int(str(raw).split()[0])
+                            except (TypeError, ValueError):
+                                pass
                 ws_stats = {}
                 ws = self.__class__.ws_server
                 if ws is not None and hasattr(ws, "get_stats"):

@@ -1,7 +1,7 @@
-# Evidence matrix — what is proven vs not (Jul 2026)
+﻿# Evidence matrix вЂ” what is proven vs not (Jul 2026)
 
 **Purpose:** separate **automation that exists** from **operational evidence** collected on a live prod mesh.  
-This doc reflects honest status after local prod mesh runs and monitoring — not marketing claims.
+This doc reflects honest status after local prod mesh runs and monitoring вЂ” not marketing claims.
 
 ---
 
@@ -9,7 +9,7 @@ This doc reflects honest status after local prod mesh runs and monitoring — no
 
 **DUP Protocol** (DUP Labs; formerly Absolute Blockchain Ultimate Hybrid) is a working R&D L1 / devnet stack with a functioning **3-node production-profile mesh** (chain `778888`), state synchronization, RocksDB hybrid persistence, Rust crypto on the hot path, automated CI/gates, and baseline ops tooling (health watch, DR rehearsal scripts, restart recovery).
 
-**Public mainnet-ready readiness is not proven.** Missing confirmed evidence for independent external security audit. **Historical 48h prod mesh soak PASS** on **TCP+TLS** (Jul float tip 19–21 2026; **tip-v2 `b_satoshi` Aug 5–7 2026**, pack `375d14f` / freeze tag `v1.3.1339-tip-v2-industrial`). **ADR 0020** moved working-tip prod 3-node mesh JSON to **rust-libp2p** — **post-cutover Quick probe PASS** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/` (`probe_prod_mesh.ps1 -Quick` → RESULT: OK); **pin libp2p 48h soak deferred** until operator declares full Exp→pin merge complete (premature restart stopped — not PASS). **Cross-node EVM (mempool path) is proven** on local prod mesh (Jul 12 evening; pre–libp2p-cutover transport).
+**Public mainnet-ready readiness is not proven.** Missing confirmed evidence for independent external security audit. **Historical 48h prod mesh soak PASS** on **TCP+TLS** (Jul float tip 19вЂ“21 2026; **tip-v2 `b_satoshi` Aug 5вЂ“7 2026**, pack `375d14f` / freeze tag `v1.3.1339-tip-v2-industrial`). **ADR 0020** moved working-tip prod 3-node mesh JSON to **rust-libp2p** вЂ” **post-cutover Quick probe PASS** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/` (`probe_prod_mesh.ps1 -Quick` в†’ RESULT: OK); **pin libp2p 48h soak deferred** until operator declares full Expв†’pin merge complete (premature restart stopped вЂ” not PASS). **Cross-node EVM (mempool path) is proven** on local prod mesh (Jul 12 evening; preвЂ“libp2p-cutover transport).
 
 Compared to documentation-only claims, **evidence level increased** in Jul 2026: real prod mesh bring-up logs, harness alignment, **7h soak passed**, **failover drill**, **signed tx propagation**, and **cross-node EVM (mempool deploy + 3 RPC storage)**.
 
@@ -24,8 +24,8 @@ Compared to documentation-only claims, **evidence level increased** in Jul 2026:
 | `prod_signed_tx_smoke.py` | **PASS** | `logs/evidence_signed_tx.log` (n2/n3 propagation) |
 | `prod_evm_smoke.py` (mempool, 3 RPC) | **PASS** | docker mesh Jul 12 evening + **re-PASS block #7** Jul 12 post-v1.2.29 |
 | `soak_monitor.ps1 -ProdMesh -Hours 7` | **PASS** | `logs/soak_report.json` (159 cycles, 0 fail) |
-| `soak_monitor.ps1 -ProdMesh -Hours 48` | **PASS** (2026-07-19 → 2026-07-21, v1.2.84) | `logs/soak_48h_v1.2.84_rerun3.log` + `logs/soak_report_48h.json` (`passed=true`, 0 FAIL; 11 transient ±1 height mesh WARNs accepted on rescore) |
-| `bridge_decision_off` | **PASS** (2026-07-21) | Bridge stays OFF until audited L1 contracts — see [BRIDGE_L1_MAINNET](BRIDGE_L1_MAINNET.md) |
+| `soak_monitor.ps1 -ProdMesh -Hours 48` | **PASS** (2026-07-19 в†’ 2026-07-21, v1.2.84) | `logs/soak_48h_v1.2.84_rerun3.log` + `logs/soak_report_48h.json` (`passed=true`, 0 FAIL; 11 transient В±1 height mesh WARNs accepted on rescore) |
+| `bridge_decision_off` | **PASS** (2026-07-21) | Bridge stays OFF until audited L1 contracts вЂ” see [BRIDGE_L1_MAINNET](BRIDGE_L1_MAINNET.md) |
 | `testnet_readiness.ps1 -MinSoakHours 48` | **PASS** | After 48h soak report |
 
 Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) (live runs: `data/evidence_run.json`, gitignored)
@@ -34,36 +34,36 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Topic | Honest status |
 |-------|----------------|
-| Tip `state_root` | **Wave C tip+apply** — ceremony-armed v2 tip leaves use integer `b_satoshi` (`SATOSHI_MULTIPLIER=1e6`); apply/fees/gas/reward satoshi-int; float only at display/wire edges. Local prod mesh JSON + `ABS_STATE_ROOT_*` env armed. **tip-v2 48h soak PASS** Aug 5–7 (`docs/evidence/runs/375d14f/`). Not a public mainnet cutover claim. |
-| Mesh `/health/ready` | **Wave C/D + tip-v2 soak** — soft wire_probe flaps no longer 503 when deep_ready holds (`375d14f`); tip-v2 48h soak ready_only_fail=0. Soft-refuse bake still applies (`3288700f4fc7`). |
-| Rocks live-path O(1) honesty (ops) | **Ported from Exp** — `/metrics` → `get_rocks_runtime_stats`; `get_latest_blocks` tip point-reads; `get_total_burned` `prefix_last`; address/proposer counts from meta (`addr_tx_counts_v1` / `proposer_counts_v1`, batch-safe overlay); `/health/ready` cheap tip probe; `/status` defers `get_topology()` (`topology_deferred`). Units + gate; **Quick probe PASS** (h1051). **Soak deferred.** Legacy volumes without meta flags report count 0 / `blocks_proposed_known=false`. **Page-scan leftovers ported; Quick probe PASS (h1101):** `get_transactions_by_address` via native `prefix_prev` paging, `get_recent_transactions` / `get_bridge_locks` bounded `scan_range` (bridge walk capped at 5000 rows, not a full CF), `get_chain_metrics` cached counts. Still scanning: first-call `_cached_prefix_len` seed on volumes without `stats_*` meta; other `_scan_prefix` call sites (e.g. per-height `get_transactions_in_block`, `_iter_transaction_rows` in migration/root paths) not audited in this step. |
-| External audit | **Not completed** — tracker rejects template notes; requires real evidence URL |
+| Tip `state_root` | **Wave C tip+apply** вЂ” ceremony-armed v2 tip leaves use integer `b_satoshi` (`SATOSHI_MULTIPLIER=1e6`); apply/fees/gas/reward satoshi-int; float only at display/wire edges. Local prod mesh JSON + `ABS_STATE_ROOT_*` env armed. **tip-v2 48h soak PASS** Aug 5вЂ“7 (`docs/evidence/runs/375d14f/`). Not a public mainnet cutover claim. |
+| Mesh `/health/ready` | **Wave C/D + tip-v2 soak** вЂ” soft wire_probe flaps no longer 503 when deep_ready holds (`375d14f`); tip-v2 48h soak ready_only_fail=0. Soft-refuse bake still applies (`3288700f4fc7`). |
+| Rocks live-path O(1) honesty (ops) | **Ported from Exp** вЂ” `/metrics` в†’ `get_rocks_runtime_stats`; `get_latest_blocks` tip point-reads; `get_total_burned` `prefix_last`; address/proposer counts from meta (`addr_tx_counts_v1` / `proposer_counts_v1`, batch-safe overlay); `/health/ready` cheap tip probe; `/status` defers `get_topology()` (`topology_deferred`). Units + gate; **Quick probe PASS** (h1051). **Soak deferred.** Legacy volumes without meta flags report count 0 / `blocks_proposed_known=false`. **Page-scan leftovers ported; Quick probe PASS (h1101):** `get_transactions_by_address` via native `prefix_prev` paging, `get_recent_transactions` / `get_bridge_locks` bounded `scan_range` (bridge walk capped at 5000 rows, not a full CF), `get_chain_metrics` cached counts. Still scanning: first-call `_cached_prefix_len` seed on volumes without `stats_*` meta; other `_scan_prefix` call sites (e.g. per-height `get_transactions_in_block`, `_iter_transaction_rows` in migration/root paths) not audited in this step. |
+| External audit | **Not completed** вЂ” tracker rejects template notes; requires real evidence URL |
 | Public VPS / DNS | Not claimed |
-| Bridge L1 | **OFF by recorded decision** — see [Bridge OFF audit checklist](#bridge-off--pre-enable-audit-checklist) |
-| RocksDB column families | **Opt-in** (`ROCKSDB_COLUMN_FAMILIES`, default false) — not required for soak contract |
+| Bridge L1 | **OFF by recorded decision** вЂ” see [Bridge OFF audit checklist](#bridge-off--pre-enable-audit-checklist) |
+| RocksDB column families | **Opt-in** (`ROCKSDB_COLUMN_FAMILIES`, default false) вЂ” not required for soak contract |
 | Ceremony pin | Automation exists; production hash/manifest still operator-owned |
-| P2P transport (`778888` mesh) | **ADR 0020 cutover:** default prod 3-node mesh JSON is **rust-libp2p** (`feature_libp2p=true`, `p2p_tls_enabled=false`, Noise/Yamux + `/abs/wire`). **TCP+TLS/mTLS** remains the **alternate** profile (`feature_libp2p=false`, e.g. `docker/node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` evidence is **TCP+TLS only** — do not relabel. **Quick probe PASS** (packaged); **48h libp2p soak deferred** (operator: after full merge). Do not cite Experimental libp2p packs as pin proof. |
+| P2P transport (`778888` mesh) | **ADR 0020 cutover:** default prod 3-node mesh JSON is **rust-libp2p** (`feature_libp2p=true`, `p2p_tls_enabled=false`, Noise/Yamux + `/abs/wire`). **TCP+TLS/mTLS** remains the **alternate** profile (`feature_libp2p=false`, e.g. `docker/node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` evidence is **TCP+TLS only** вЂ” do not relabel. **Quick probe PASS** (packaged); **48h libp2p soak deferred** (operator: after full merge). Do not cite Experimental libp2p packs as pin proof. |
 | P2P TLS (alternate profile) | When `feature_libp2p=false`: default ON for prod (+mTLS); handshake `node_id` bound to cert CN/SAN (v1.2.87). Not the default mesh JSON after ADR 0020. |
 | JWT admin | `role=admin` enforced on protected POSTs; mint via `scripts/mint_admin_jwt.py` |
-| Tip-safety domain (`consensus/tip_safety`) | **Unit-proven** (stage 1) — see [ADR 0001](adr/0001-tip-safety.md) |
-| Tip-safety shadow (`TIP_SAFETY_SHADOW`) | **Wired observe-only** (stage 2) — metrics `abs_tip_safety_shadow_*` |
-| Tip-safety enforce (`TIP_SAFETY_ENFORCE`) | **Wired on import path** (stage 3) — refuse on policy reject; **required in prod** via `prod_gate` / `Config.validate()`; lab-proven via unit tests, not yet 48h soak-as-enforce |
-| Tip proof / Long-Range / BFT quorum | **Partial** — bounded `AncestryWindow` (stage-1.5, ADR 0016) allows rollback to recorded ancestors; **not** Long-Range / BFT quorum |
-| P2P transport boundary (`network/transport`, ADR 0002 A–C) | **Wired** on Python ingress admit + egress prepare (`NativeTransportAdapter`); metrics `abs_p2p_transport_*` |
-| P2P application dispatcher (`network/p2p_dispatch`, ADR 0002 D) | **Wired** — `HandlerRegistry` + `P2PDispatcher` routes application types; tip-evidence DI via `TipSafetyEvidenceBridge`; shape gates remain on node; **not** native shell ownership; not libp2p / tip proof |
-| Sync consistency (`sync/consistency`, ADR 0003 A–D) | **Wired** — fail-closed ConsistencyService + machine; incomplete-ahead is BehindOpen (not green); `SyncSolicitHub` + `SyncSolicitPort` own waiters (arm/fulfill/timeout/expire_stale); `_handle_message` only forwards; AbsoluteNode.import_block tip-safety-aware; **not** Long-Range / snap-sync / tip proof |
-| Path A catch-up loop (`sync/catchup/path_a`, ADR 0004 A) | **Unit-proven** — `CatchUpPathAService.run_ahead` over CatchUp* ports; 29 unit tests; **not** tip proof / libp2p |
-| Path A live thin wire (`network/catchup_adapters`, ADR 0004 B) | **Integration-wired** — `_sync_with_peer` ahead branch replaced by `CatchUpPathAService.run_ahead` via P2P port adapters; 9 integration tests (simulated peer, no live TCP); **not** tip proof / libp2p / snap-sync |
-| Path A shared fast_sync (`sync/catchup/engine_io`, ADR 0004 C) | **Wired** — `SyncEngine.fast_sync` delegates ahead import to `CatchUpPathAService` via `SyncEngineCatchUpIO`; private `to_import` loop removed; incremental + Step C tests; **not** tip proof / libp2p |
-| Same-height fork reconcile (`sync/fork`, ADR 0005 A) | **Unit-proven + thin-wired + fail-closed** — `ForkReconcileService`; malicious same-height → `ForkReconcileMaliciousError` + `ForkSecurityEvidence` on `security.fork_refuse` bus + peer strike; spam escalate; **not** tip proof / Long-Range / mesh soak |
-| Storage ports + fake UoW (`storage/ports`, ADR 0006 A–C) | **Unit-proven** — domain Block/State/Meta/UoW/Health ports + `FakeStorage` atomicity / disk_full / corruption / CAS; `RocksDBStorageAdapter` present; **not** live Rocks soak / aux.db evacuated |
-| Storage canonical cutover (`Blockchain` + `open_storage`, ADR 0006 D–E) | **Integration-wired** — `add_block` persist via StoragePort UoW (join open atomic); factory + main DI; cutover tests (CAS/ENOSPC/import/tip agree); **not** live disk-fill |
-| Storage domain purge (`blockchain.py` → `self.storage`, ADR 0006 F) | **Integration-wired** — domain logic uses StoragePort only; compat `@property db`→unwrap for API/P2P; native snapshot/writeback via port; **not** aux.db evacuated / API `.db` removed |
-| Consensus ports + round SM (`consensus/ports`, `consensus/bft`, ADR 0007 A–C) | **Unit-proven + adapter-wired** — `ConsensusPort` / `ValidatorRegistryPort`; fail-closed `RoundStateMachine` (Propose→Finalize/Locked) + Evidence/lockdown; façade keeps `attest`/`get_stats`; **`finality_quorum_live` remains False**; **not** mesh BFT quorum / tip proof / slash gossip |
+| Tip-safety domain (`consensus/tip_safety`) | **Unit-proven** (stage 1) вЂ” see [ADR 0001](adr/0001-tip-safety.md) |
+| Tip-safety shadow (`TIP_SAFETY_SHADOW`) | **Wired observe-only** (stage 2) вЂ” metrics `abs_tip_safety_shadow_*` |
+| Tip-safety enforce (`TIP_SAFETY_ENFORCE`) | **Wired on import path** (stage 3) вЂ” refuse on policy reject; **required in prod** via `prod_gate` / `Config.validate()`; lab-proven via unit tests, not yet 48h soak-as-enforce |
+| Tip proof / Long-Range / BFT quorum | **Partial** вЂ” bounded `AncestryWindow` (stage-1.5, ADR 0016) allows rollback to recorded ancestors; **not** Long-Range / BFT quorum |
+| P2P transport boundary (`network/transport`, ADR 0002 AвЂ“C) | **Wired** on Python ingress admit + egress prepare (`NativeTransportAdapter`); metrics `abs_p2p_transport_*` |
+| P2P application dispatcher (`network/p2p_dispatch`, ADR 0002 D) | **Wired** вЂ” `HandlerRegistry` + `P2PDispatcher` routes application types; tip-evidence DI via `TipSafetyEvidenceBridge`; shape gates remain on node; **not** native shell ownership; not libp2p / tip proof |
+| Sync consistency (`sync/consistency`, ADR 0003 AвЂ“D) | **Wired** вЂ” fail-closed ConsistencyService + machine; incomplete-ahead is BehindOpen (not green); `SyncSolicitHub` + `SyncSolicitPort` own waiters (arm/fulfill/timeout/expire_stale); `_handle_message` only forwards; AbsoluteNode.import_block tip-safety-aware; **not** Long-Range / snap-sync / tip proof |
+| Path A catch-up loop (`sync/catchup/path_a`, ADR 0004 A) | **Unit-proven** вЂ” `CatchUpPathAService.run_ahead` over CatchUp* ports; 29 unit tests; **not** tip proof / libp2p |
+| Path A live thin wire (`network/catchup_adapters`, ADR 0004 B) | **Integration-wired** вЂ” `_sync_with_peer` ahead branch replaced by `CatchUpPathAService.run_ahead` via P2P port adapters; 9 integration tests (simulated peer, no live TCP); **not** tip proof / libp2p / snap-sync |
+| Path A shared fast_sync (`sync/catchup/engine_io`, ADR 0004 C) | **Wired** вЂ” `SyncEngine.fast_sync` delegates ahead import to `CatchUpPathAService` via `SyncEngineCatchUpIO`; private `to_import` loop removed; incremental + Step C tests; **not** tip proof / libp2p |
+| Same-height fork reconcile (`sync/fork`, ADR 0005 A) | **Unit-proven + thin-wired + fail-closed** вЂ” `ForkReconcileService`; malicious same-height в†’ `ForkReconcileMaliciousError` + `ForkSecurityEvidence` on `security.fork_refuse` bus + peer strike; spam escalate; **not** tip proof / Long-Range / mesh soak |
+| Storage ports + fake UoW (`storage/ports`, ADR 0006 AвЂ“C) | **Unit-proven** вЂ” domain Block/State/Meta/UoW/Health ports + `FakeStorage` atomicity / disk_full / corruption / CAS; `RocksDBStorageAdapter` present; **not** live Rocks soak / aux.db evacuated |
+| Storage canonical cutover (`Blockchain` + `open_storage`, ADR 0006 DвЂ“E) | **Integration-wired** вЂ” `add_block` persist via StoragePort UoW (join open atomic); factory + main DI; cutover tests (CAS/ENOSPC/import/tip agree); **not** live disk-fill |
+| Storage domain purge (`blockchain.py` в†’ `self.storage`, ADR 0006 F) | **Integration-wired** вЂ” domain logic uses StoragePort only; compat `@property db`в†’unwrap for API/P2P; native snapshot/writeback via port; **not** aux.db evacuated / API `.db` removed |
+| Consensus ports + round SM (`consensus/ports`, `consensus/bft`, ADR 0007 AвЂ“C) | **Unit-proven + adapter-wired** вЂ” `ConsensusPort` / `ValidatorRegistryPort`; fail-closed `RoundStateMachine` (Proposeв†’Finalize/Locked) + Evidence/lockdown; faГ§ade keeps `attest`/`get_stats`; **`finality_quorum_live` remains False**; **not** mesh BFT quorum / tip proof / slash gossip |
 
 **Industrial fixes applied (Jul 12 evening):** mesh mining gate no longer latches on stale P2P wire roots; hub uses live STATUS heights; P2P broadcast non-blocking; `add_block` runs in worker thread so EVM apply cannot freeze the event loop; parallel peer state-root RPC.
 
-**Lesson:** never use `/contract/deploy` direct on prod mesh for cross-node evidence — mempool signed deploy only. If split-brain occurs, rebuild without `-KeepVolumes`.
+**Lesson:** never use `/contract/deploy` direct on prod mesh for cross-node evidence вЂ” mempool signed deploy only. If split-brain occurs, rebuild without `-KeepVolumes`.
 
 ---
 
@@ -71,25 +71,25 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Claim | Evidence | How to reproduce |
 |-------|----------|------------------|
-| Prod 3-node mesh boots on RocksDB | `docker_prod_3node.ps1` → healthy containers, unified heights | `.\scripts\docker_prod_3node.ps1 -SkipBuild -KeepVolumes` |
+| Prod 3-node mesh boots on RocksDB | `docker_prod_3node.ps1` в†’ healthy containers, unified heights | `.\scripts\docker_prod_3node.ps1 -SkipBuild -KeepVolumes` |
 | **Public testnet seed (77777)** | Docker seed on :19080, live gate PASS | `.\scripts\testnet_evidence_suite.ps1` |
-| Cross-node state / tip alignment | `GET /chain/consistency/harness` OK on :18180–:18182 | `.\scripts\probe_prod_mesh.ps1` |
-| **Prod mesh probe (post v1.2.77)** | Jul 13 — 3/3 reachable, height 182 aligned, harness OK | `logs/prod_mesh_probe.json` |
+| Cross-node state / tip alignment | `GET /chain/consistency/harness` OK on :18180вЂ“:18182 | `.\scripts\probe_prod_mesh.ps1` |
+| **Prod mesh probe (post v1.2.77)** | Jul 13 вЂ” 3/3 reachable, height 182 aligned, harness OK | `logs/prod_mesh_probe.json` |
 | P2P topology on prod ports | `peer_count=2`, `topology_healthy=True` in post-checks | `verify_prod_mesh_probe.py` |
-| **Failover / resilience** | node2 stop → mesh alive → node2 rejoin, heights aligned | `.\scripts\prod_mesh_resilience_suite.ps1` |
-| **Signed tx propagation (prod)** | `prod_signed_tx_smoke.py` → n2/n3 see tx | `python scripts/prod_signed_tx_smoke.py` |
+| **Failover / resilience** | node2 stop в†’ mesh alive в†’ node2 rejoin, heights aligned | `.\scripts\prod_mesh_resilience_suite.ps1` |
+| **Signed tx propagation (prod)** | `prod_signed_tx_smoke.py` в†’ n2/n3 see tx | `python scripts/prod_signed_tx_smoke.py` |
 | **7h industrial soak** | `soak_report.json` passed, 159 cycles, 0 fail | `.\scripts\soak_monitor.ps1 -ProdMesh -Hours 7` |
 | RocksDB DR path | DR rehearsal script + backup | `.\scripts\dr_restore_rehearsal.ps1 -DockerMesh1` |
-| **Wave D image bake + ready** | **PASS** 2026-08-01 — soft-refuse attestation/rate/`tip_unknown_parent`; sticky consistency during wire re-probe; priority send bypass; canonical bootstrap; `ready-check` ×3 + probe Quick on baked image | `docs/evidence/runs/3288700f4fc7/` |
-| **Wave D short soak (2h)** | 2026-08-01 — mesh height-aligned (`mesh_warn=0`); soak_report `passed=false` (8 ready hard-fails; not 48h) | `docs/evidence/runs/3288700f4fc7/soak_report.json` |
-| **Wave C tip+apply satoshi** | **PASS** 2026-08-02 — fresh mesh wipe then tip-v2 arm; `b_satoshi` active on :18180–:18182; matching tip roots; `state_consistent=true`; `ready-check` ×3 + probe Quick PASS; apply path unit-proven satoshi. Durability: tip-v2 **48h PASS** Aug 5–7 (`375d14f`). Not public mainnet. | `docs/evidence/runs/79472a111cd5/` + `docs/STATE_ROOT_ENCODING_MIGRATION.md` + `docs/evidence/runs/375d14f/` |
-| **Industrial tip-v2 re-smoke** | **PASS** short proofs 2026-08-02; prior **48h FAIL** Aug 2–4 (ready flaps); **48h PASS** Aug 5–7 (`passed=true`, fail=0, mesh_warn=0, hard_fail=0) | `docs/evidence/runs/8c92a51f0144/` (kickoff) + `docs/evidence/runs/375d14f/` + `logs/soak_report_tipv2_48h_rerun.json` + [INDUSTRIAL_HARDEN_RUNBOOK.md](INDUSTRIAL_HARDEN_RUNBOOK.md) |
-| **Phase 3 ops cutover dry-run** | **PASS** 2026-08-07 — bridge OFF gate; ceremony suite; pin MATCH; secrets dry-run (no `-Force`); DR DockerMesh1 tip=4643 | `docs/evidence/runs/phase3-da25c34/` |
-| **Phase 4 audit binder** | **READY** 2026-08-07 — industrial_gate 48h PASS; audit pack zip; tracker 6/8; firm engagement pending | `docs/evidence/runs/phase4-691329c/` + `logs/audit_pack_20260807.zip` |
-| Short health monitoring | `health_watch` 1–2 min cycles, harness quick/full | `.\scripts\health_watch.ps1 -ProdMesh -DurationMin 2` |
+| **Wave D image bake + ready** | **PASS** 2026-08-01 вЂ” soft-refuse attestation/rate/`tip_unknown_parent`; sticky consistency during wire re-probe; priority send bypass; canonical bootstrap; `ready-check` Г—3 + probe Quick on baked image | `docs/evidence/runs/3288700f4fc7/` |
+| **Wave D short soak (2h)** | 2026-08-01 вЂ” mesh height-aligned (`mesh_warn=0`); soak_report `passed=false` (8 ready hard-fails; not 48h) | `docs/evidence/runs/3288700f4fc7/soak_report.json` |
+| **Wave C tip+apply satoshi** | **PASS** 2026-08-02 вЂ” fresh mesh wipe then tip-v2 arm; `b_satoshi` active on :18180вЂ“:18182; matching tip roots; `state_consistent=true`; `ready-check` Г—3 + probe Quick PASS; apply path unit-proven satoshi. Durability: tip-v2 **48h PASS** Aug 5вЂ“7 (`375d14f`). Not public mainnet. | `docs/evidence/runs/79472a111cd5/` + `docs/STATE_ROOT_ENCODING_MIGRATION.md` + `docs/evidence/runs/375d14f/` |
+| **Industrial tip-v2 re-smoke** | **PASS** short proofs 2026-08-02; prior **48h FAIL** Aug 2вЂ“4 (ready flaps); **48h PASS** Aug 5вЂ“7 (`passed=true`, fail=0, mesh_warn=0, hard_fail=0) | `docs/evidence/runs/8c92a51f0144/` (kickoff) + `docs/evidence/runs/375d14f/` + `logs/soak_report_tipv2_48h_rerun.json` + [INDUSTRIAL_HARDEN_RUNBOOK.md](INDUSTRIAL_HARDEN_RUNBOOK.md) |
+| **Phase 3 ops cutover dry-run** | **PASS** 2026-08-07 вЂ” bridge OFF gate; ceremony suite; pin MATCH; secrets dry-run (no `-Force`); DR DockerMesh1 tip=4643 | `docs/evidence/runs/phase3-da25c34/` |
+| **Phase 4 audit binder** | **READY** 2026-08-07 вЂ” industrial_gate 48h PASS; audit pack zip; tracker 6/8; firm engagement pending | `docs/evidence/runs/phase4-691329c/` + `logs/audit_pack_20260807.zip` |
+| Short health monitoring | `health_watch` 1вЂ“2 min cycles, harness quick/full | `.\scripts\health_watch.ps1 -ProdMesh -DurationMin 2` |
 | CI / static industrial gates | `industrial_gate.py`, prod_gate, pytest | GitHub Actions + local gate scripts |
 | Native crypto required in prod profile | `ABS_REQUIRE_NATIVE_CRYPTO`, prod_gate | prod mesh configs |
-| **EVM deploy + storage on all prod RPC peers** | Mempool deploy mined in block; `eth_getStorageAt` slot0=1 on all 3 RPC | `docker exec … prod_evm_smoke.py` (see evidence run) |
+| **EVM deploy + storage on all prod RPC peers** | Mempool deploy mined in block; `eth_getStorageAt` slot0=1 on all 3 RPC | `docker exec вЂ¦ prod_evm_smoke.py` (see evidence run) |
 
 ---
 
@@ -97,22 +97,23 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Item | Evidence |
 |------|----------|
-| **Exp→pin merge wave (EVM nested returndata/STATICCALL + NFT satoshi harden)** | **CLOSED** 2026-10-06 — `evm_pure_runner` live RETURNDATACOPY + STATICCALL no storage commit; empty-account/nested/STATICCALL/NFT harden units (22 PASS). industrial_gate OK. **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** after docker rebuild; pack `MESH_PROBE_POST_MERGE_EVM_RETURNDATA_STATICCALL.txt`. **Soak deferred / not run / not started.** No Long-Range. |
-| **Exp→pin merge wave (force mesh catchup / EVM evidence no-freeze)** | **CODE+GATE** 2026-10-06 — `_force_prod_mesh_catchup`; post-deploy `ok-nofreeze` + force catch-up (no Rocks freeze). industrial_gate needles. **Soak deferred.** No Long-Range. |
-| **Exp→pin merge wave (honesty units + bridgeoff sealed + wire gas bind)** | **CLOSED** 2026-10-06 — soak/gas/UI/mempool/tip-align units; sealed `bridgeoff1`; `bridge_off_audit_gate` sealed accept; `p2p_wire` always bind gas_limit incl. 21000. industrial_gate OK; 42 focused units PASS. **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** after docker rebuild; pack `MESH_PROBE_POST_MERGE_HONESTY_UNITS_WIRE_GAS.txt`. **Soak deferred / not run / not started.** No Long-Range. |
-| **Exp→pin merge wave (industrial verify/check surface)** | **CODE+GATE** 2026-10-06 — `verify_full_blockchain`/`verify_hard_all`/`run_all_tests`, `check_blockchain`/`check_harness_probe`/`check_soak`, HIGH honesty + libp2p smoke, persist/evm/f64/firm handoff scripts. Units + industrial_gate needles. **Soak deferred.** No Long-Range. |
-| **Exp→pin merge wave (Strict health_watch worker + cargo/soak ops tooling)** | **CODE+GATE** 2026-10-06 — `health_watch_node.ps1` (Strict parallel), cargo_test abs_native/rust_bridge smoke, `summarize_soak_fail`/`soak_guard`, ops console + ADR0021 wrapper + critical-path scan. industrial_gate needles + cargo unit. **Soak deferred.** No Long-Range. |
-| **Exp→pin merge wave (ops market / CSP UI / soak baked needle)** | **CODE+GATE** 2026-10-06 — `market_feed` + `/market/*`, CSP static console, `check_baked_state_root` / `check_mesh_catchup`, prepare soak docker-cp needle. industrial_gate needles. **Mesh Quick optional this tip** (API/ops). **Soak deferred.** No Long-Range. |
-| **Exp→pin merge wave (uncle RPC validate / audit live_automated / bridge money / `_native_fb`)** | **CLOSED** 2026-10-06 — uncle hash validate, `live_automated` audit, relayer `money_abs`, abs_bridge prod+`bridge_enabled` raise, consensus `_native_fb`. industrial_gate needles + unit. **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** after docker rebuild (h1490 peers=2); pack `MESH_PROBE_POST_MERGE_UNCLE_AUDIT_FB.txt`. **Soak deferred / not run / not started.** No Long-Range. |
-| **Exp→pin merge wave (Strict health_watch / soak starters / fail-closed leftovers)** | **CLOSED** 2026-10-05 — code + industrial_gate needles (`health_watch -Strict`, soak starters, rocks `persist_failed`, bridge normalize, genesis artifact meta, `_safe_close`). **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** (h1380 peers=2); `health_watch -Strict` 1m smoke EXIT=0; pack `MESH_PROBE_POST_MERGE_STRICT_OPS.txt`. **Soak deferred / not run / not started.** No Long-Range. |
-| **Exp→pin merge wave (Rocks burn money_abs / RPC eth_getBlock gas_limit)** | **CLOSED** 2026-10-05 tip `985d447` — code + industrial_gate needles (`rocks_adapter` money_abs burn, `rpc_service` evm_gas_limit). **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** after docker rebuild (h1336 peers=2); pack `MESH_PROBE_POST_MERGE_BURN_RPC.txt`. **Soak deferred / not run.** No Long-Range. |
-| **Exp→pin merge wave (nested CALL OOG / tip-encoding FC / DAO BPS)** | **CLOSED** 2026-10-05 tip `54286af` — code + units + industrial_gate needles (`charge_nested_call_gas`, prod `bind_tip_encoding` re-raise, `DAO_VOTE_BPS`). **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** after full docker rebuild (h1322 peers=2); pack `MESH_PROBE_POST_MERGE_OOG_DAO.txt`. **Soak deferred / not run.** No Long-Range. |
-| **Exp→pin merge wave (outbound state_root lag / soak FullHarnessEvery / status native-crypto cache)** | **CLOSED** 2026-10-05 tip `930b5a1` — code + units + industrial_gate needles (`handlers.py` lag reply, `soak_monitor.ps1` FullHarnessEvery=6, `api/http.py` `_status_native_crypto_cached`). **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** (h1289 peers=2); pack `MESH_PROBE_POST_MERGE_SR_CACHE_SOAK.txt`. **Soak deferred / not run.** No Long-Range. |
-| **Exp→pin merge wave (non-LR: tip rebind / solicit lag / get_blocks offload / disconnect redial)** | **CLOSED** 2026-10-05 tip `690c608` — code + units + industrial_gate needles (`consensus/tip_safety/shadow.py`, `sync/solicit.py`, `network/p2p_node.py`). **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** (h1244 peers=2); pack `MESH_PROBE_POST_MERGE_TIP_SOLICIT_BLOCKS.txt`. **Soak deferred / not run.** No Long-Range / ws_checkpoint content. |
-| **Exp→pin honesty merge (code)** | **CLOSED** 2026-10-05 tip `adc8547` — layered fail-closed ports (ZK range refuse, committed state_root, height-bounded eth_getLogs, tip_skew/ready honesty, harness cache, tip-head/tip-root refuse, genesis fail-closed, MEV/AI/oracle/Lightning finite refuse, Rocks obs counts, bridge debit+burn). Proof: unit tests + `python scripts/industrial_gate.py` OK. **Not** a new 48h soak / **not** mesh probe re-run on this tip. |
-| **48h soak (float tip)** | **PASS** 2026-07-19→21 — `logs/soak_48h_v1.2.84_rerun3.log`, `soak_report_48h.json` |
-| **48h soak (tip-v2)** | **PASS** 2026-08-05→07 — `logs/industrial_tipv2_soak_48h_rerun.log`, `soak_report_tipv2_48h_rerun.json` (`passed=true`, 0 FAIL, 0 mesh_warn); package `docs/evidence/runs/375d14f/` |
-| **Public testnet seed (local Docker)** | **PASS** Jul 12 — chain 77777 on :19080, `public_testnet_gate --live` |
+| **Expв†’pin merge wave (status histogram / RocksDB gauges / wire sticky / catchup honesty)** | **CODE+GATE** 2026-10-06 вЂ” status ms histogram, RocksDB live gauges, wire sticky-empty streak, engine_io/fork log fallbacks. Units + industrial_gate. **Soak deferred.** No Long-Range. |
+| **Expв†’pin merge wave (EVM nested returndata/STATICCALL + NFT satoshi harden)** | **CLOSED** 2026-10-06 вЂ” `evm_pure_runner` live RETURNDATACOPY + STATICCALL no storage commit; empty-account/nested/STATICCALL/NFT harden units (22 PASS). industrial_gate OK. **`probe_prod_mesh.ps1 -Quick` в†’ RESULT: OK** after docker rebuild; pack `MESH_PROBE_POST_MERGE_EVM_RETURNDATA_STATICCALL.txt`. **Soak deferred / not run / not started.** No Long-Range. |
+| **Expв†’pin merge wave (force mesh catchup / EVM evidence no-freeze)** | **CODE+GATE** 2026-10-06 вЂ” `_force_prod_mesh_catchup`; post-deploy `ok-nofreeze` + force catch-up (no Rocks freeze). industrial_gate needles. **Soak deferred.** No Long-Range. |
+| **Expв†’pin merge wave (honesty units + bridgeoff sealed + wire gas bind)** | **CLOSED** 2026-10-06 вЂ” soak/gas/UI/mempool/tip-align units; sealed `bridgeoff1`; `bridge_off_audit_gate` sealed accept; `p2p_wire` always bind gas_limit incl. 21000. industrial_gate OK; 42 focused units PASS. **`probe_prod_mesh.ps1 -Quick` в†’ RESULT: OK** after docker rebuild; pack `MESH_PROBE_POST_MERGE_HONESTY_UNITS_WIRE_GAS.txt`. **Soak deferred / not run / not started.** No Long-Range. |
+| **Expв†’pin merge wave (industrial verify/check surface)** | **CODE+GATE** 2026-10-06 вЂ” `verify_full_blockchain`/`verify_hard_all`/`run_all_tests`, `check_blockchain`/`check_harness_probe`/`check_soak`, HIGH honesty + libp2p smoke, persist/evm/f64/firm handoff scripts. Units + industrial_gate needles. **Soak deferred.** No Long-Range. |
+| **Expв†’pin merge wave (Strict health_watch worker + cargo/soak ops tooling)** | **CODE+GATE** 2026-10-06 вЂ” `health_watch_node.ps1` (Strict parallel), cargo_test abs_native/rust_bridge smoke, `summarize_soak_fail`/`soak_guard`, ops console + ADR0021 wrapper + critical-path scan. industrial_gate needles + cargo unit. **Soak deferred.** No Long-Range. |
+| **Expв†’pin merge wave (ops market / CSP UI / soak baked needle)** | **CODE+GATE** 2026-10-06 вЂ” `market_feed` + `/market/*`, CSP static console, `check_baked_state_root` / `check_mesh_catchup`, prepare soak docker-cp needle. industrial_gate needles. **Mesh Quick optional this tip** (API/ops). **Soak deferred.** No Long-Range. |
+| **Expв†’pin merge wave (uncle RPC validate / audit live_automated / bridge money / `_native_fb`)** | **CLOSED** 2026-10-06 вЂ” uncle hash validate, `live_automated` audit, relayer `money_abs`, abs_bridge prod+`bridge_enabled` raise, consensus `_native_fb`. industrial_gate needles + unit. **`probe_prod_mesh.ps1 -Quick` в†’ RESULT: OK** after docker rebuild (h1490 peers=2); pack `MESH_PROBE_POST_MERGE_UNCLE_AUDIT_FB.txt`. **Soak deferred / not run / not started.** No Long-Range. |
+| **Expв†’pin merge wave (Strict health_watch / soak starters / fail-closed leftovers)** | **CLOSED** 2026-10-05 вЂ” code + industrial_gate needles (`health_watch -Strict`, soak starters, rocks `persist_failed`, bridge normalize, genesis artifact meta, `_safe_close`). **`probe_prod_mesh.ps1 -Quick` в†’ RESULT: OK** (h1380 peers=2); `health_watch -Strict` 1m smoke EXIT=0; pack `MESH_PROBE_POST_MERGE_STRICT_OPS.txt`. **Soak deferred / not run / not started.** No Long-Range. |
+| **Expв†’pin merge wave (Rocks burn money_abs / RPC eth_getBlock gas_limit)** | **CLOSED** 2026-10-05 tip `985d447` вЂ” code + industrial_gate needles (`rocks_adapter` money_abs burn, `rpc_service` evm_gas_limit). **`probe_prod_mesh.ps1 -Quick` в†’ RESULT: OK** after docker rebuild (h1336 peers=2); pack `MESH_PROBE_POST_MERGE_BURN_RPC.txt`. **Soak deferred / not run.** No Long-Range. |
+| **Expв†’pin merge wave (nested CALL OOG / tip-encoding FC / DAO BPS)** | **CLOSED** 2026-10-05 tip `54286af` вЂ” code + units + industrial_gate needles (`charge_nested_call_gas`, prod `bind_tip_encoding` re-raise, `DAO_VOTE_BPS`). **`probe_prod_mesh.ps1 -Quick` в†’ RESULT: OK** after full docker rebuild (h1322 peers=2); pack `MESH_PROBE_POST_MERGE_OOG_DAO.txt`. **Soak deferred / not run.** No Long-Range. |
+| **Expв†’pin merge wave (outbound state_root lag / soak FullHarnessEvery / status native-crypto cache)** | **CLOSED** 2026-10-05 tip `930b5a1` вЂ” code + units + industrial_gate needles (`handlers.py` lag reply, `soak_monitor.ps1` FullHarnessEvery=6, `api/http.py` `_status_native_crypto_cached`). **`probe_prod_mesh.ps1 -Quick` в†’ RESULT: OK** (h1289 peers=2); pack `MESH_PROBE_POST_MERGE_SR_CACHE_SOAK.txt`. **Soak deferred / not run.** No Long-Range. |
+| **Expв†’pin merge wave (non-LR: tip rebind / solicit lag / get_blocks offload / disconnect redial)** | **CLOSED** 2026-10-05 tip `690c608` вЂ” code + units + industrial_gate needles (`consensus/tip_safety/shadow.py`, `sync/solicit.py`, `network/p2p_node.py`). **`probe_prod_mesh.ps1 -Quick` в†’ RESULT: OK** (h1244 peers=2); pack `MESH_PROBE_POST_MERGE_TIP_SOLICIT_BLOCKS.txt`. **Soak deferred / not run.** No Long-Range / ws_checkpoint content. |
+| **Expв†’pin honesty merge (code)** | **CLOSED** 2026-10-05 tip `adc8547` вЂ” layered fail-closed ports (ZK range refuse, committed state_root, height-bounded eth_getLogs, tip_skew/ready honesty, harness cache, tip-head/tip-root refuse, genesis fail-closed, MEV/AI/oracle/Lightning finite refuse, Rocks obs counts, bridge debit+burn). Proof: unit tests + `python scripts/industrial_gate.py` OK. **Not** a new 48h soak / **not** mesh probe re-run on this tip. |
+| **48h soak (float tip)** | **PASS** 2026-07-19в†’21 вЂ” `logs/soak_48h_v1.2.84_rerun3.log`, `soak_report_48h.json` |
+| **48h soak (tip-v2)** | **PASS** 2026-08-05в†’07 вЂ” `logs/industrial_tipv2_soak_48h_rerun.log`, `soak_report_tipv2_48h_rerun.json` (`passed=true`, 0 FAIL, 0 mesh_warn); package `docs/evidence/runs/375d14f/` |
+| **Public testnet seed (local Docker)** | **PASS** Jul 12 вЂ” chain 77777 on :19080, `public_testnet_gate --live` |
 | Failover / signed tx / EVM mempool | Jul 12 evidence logs (see table above) |
 
 ## Not yet proven (automation may exist)
@@ -120,7 +121,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 | Gap | Why it is **not** proven yet | What would prove it |
 |-----|------------------------------|---------------------|
 | **Fresh 48h soak on honesty tip** | Historical tip-v2 pack is Aug 2026 **TCP+TLS**; honesty merge `adc8547` has units+gate only | Operator re-run soak with `hard_fails=0` pack on current HEAD |
-| **Pin libp2p mesh (ADR 0020)** | Code + mesh JSON cutover; **Quick probe PASS** packaged; **48h soak deferred** by operator until full Exp→pin merge declared complete (premature restart 2026-10-05 21:11 **stopped** — not PASS) | `docs/evidence/runs/pin-libp2p-cutover-pending/`; suggested tag `v1.3.1340-libp2p-industrial-mesh` only after soak PASS |
+| **Pin libp2p mesh (ADR 0020)** | Code + mesh JSON cutover; **Quick probe PASS** packaged; **48h soak deferred** by operator until full Expв†’pin merge declared complete (premature restart 2026-10-05 21:11 **stopped** вЂ” not PASS) | `docs/evidence/runs/pin-libp2p-cutover-pending/`; suggested tag `v1.3.1340-libp2p-industrial-mesh` only after soak PASS |
 | **STRICT P2P hardenings (post-0020)** | late_state_root + wire_probe_gate + coalesced roots + write bound + under-mesh soft-refuse + **outbound queue split** + **class rate limits**; units + industrial_gate needles; **Quick probe PASS** post-rebuild (h~854) | Soak still deferred |
 | **Own-forge + solicit + PathA (post-0020)** | `own_forge_echo` / tip_safety `note_local_forge`; SyncSolicitHub `_kind_waiters`; PathA duplicate-canonical + parent==tip no-reorg; units + gate needles; **Quick probe PASS** (h908) | Soak still deferred |
 | **Attest echo + SyncEngine probes + parent FC** | attestation own-echo/fingerprint dedup; SyncEngine tip/peer-head probes + EngineIO refuses; `_try_expected_parent` fail-closed; units + gate needles; **Quick probe PASS** (h989) | Soak still deferred |
@@ -129,12 +130,12 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 | **EVM depth labs (pin host)** | `verify_evm_depth_lab.ps1` **PASS** (`--skip-mesh`); COMPAT matrix on disk | Not EVM-only 48h; mesh optional `-WithMesh` |
 | **External audit** | README and `external_audit_tracker.py` checklist incomplete | Third-party audit report + tracker items closed |
 | **Bridge mainnet cutover** | Prod mesh runs with `bridge_enabled: false` by design | Audited L1 contracts + relayer SLOs per `docs/BRIDGE_L1_MAINNET.md`; decision recorded via `bridge_decision_off` step |
-| **Ceremony + secret rotation (operator cutover)** | Scripts proven; production hash/manifest pin is operator-owned | Operator runs pin + `-Force` rotation before cutover — see `docs/MAINNET_CUTOVER.md` |
+| **Ceremony + secret rotation (operator cutover)** | Scripts proven; production hash/manifest pin is operator-owned | Operator runs pin + `-Force` rotation before cutover вЂ” see `docs/MAINNET_CUTOVER.md` |
 | **Public testnet / VPS + DNS** | Local seed proven; no public URL/TLS yet | VPS + `vps_testnet_bootstrap.sh` + nginx TLS |
 
 ---
 
-## Bridge OFF — pre-enable audit checklist
+## Bridge OFF вЂ” pre-enable audit checklist
 
 Bridge remains **disabled** on prod mesh until audited L1 contracts ship. Use this checklist before any `bridge_enabled=true` cutover.
 
@@ -143,7 +144,7 @@ Bridge remains **disabled** on prod mesh until audited L1 contracts ship. Use th
 | 1 | Prod mesh config | `bridge_enabled: false` | `scripts/prod_gate.py`, `node.prod.*.json` |
 | 2 | Docker compose prod | `BRIDGE_ENABLED=false` | `docker-compose.prod.3node.yml` |
 | 3 | K8s configmap | `BRIDGE_ENABLED: "false"` | `deploy/k8s/configmap.yaml` |
-| 4 | API honesty | `/status` → `bridge_relayer_live=false` when off | `tests/unit/test_status_honesty.py` |
+| 4 | API honesty | `/status` в†’ `bridge_relayer_live=false` when off | `tests/unit/test_status_honesty.py` |
 | 5 | L1 RPC keys | Not dev placeholders in prod secrets | `external_audit_tracker`, env at deploy |
 | 6 | Rust bridge path | Present but idle; no live lock/mint | `GET /bridge/health`, `BRIDGE_L1_MAINNET.md` |
 | 7 | Oracle secret | Not required while bridge off | prod mesh without `BRIDGE_ORACLE_SECRET` OK |
@@ -159,28 +160,28 @@ Bridge remains **disabled** on prod mesh until audited L1 contracts ship. Use th
 
 | Log | Meaning |
 |-----|---------|
-| `SKIP: tx propagation (auto_sign disabled in prod)` | **Expected** on default prod mesh smoke — not a failure, but **not** proof of signed tx propagation |
-| `SKIP: multi-node proof (testnet endpoints blocked in prod)` | Prod profile blocks dev testnet RPC helpers — use prod-signed smoke instead |
-| `OK: soak passed` in &lt;1 second | **Bug / false positive** (fixed v1.2.21) — soak must run for `Hours × 3600` seconds |
-| Heights stuck, mempool not clearing | Mining gate blocked by lagging peer heights — run `mesh_recover.ps1 -HealFork` (not restart-only) |
-| `heights=N / N-1 / N-1`, node1 diverged HINT | Hub solo-fork — `.\scripts\mesh_heal_fork.ps1 -Force` then rebuild evidence |
-| `[P2P] rate limit exceeded for docker-prod-mesh-1 (500/s)` | **Fixed v1.2.77** — sync gossip types now exempt; rebuild mesh. Before fix: dropped blocks during catch-up |
-| `External audit: not completed` | Honest organizational gate — see `scripts/external_audit_tracker.ps1` |
+| `SKIP: tx propagation (auto_sign disabled in prod)` | **Expected** on default prod mesh smoke вЂ” not a failure, but **not** proof of signed tx propagation |
+| `SKIP: multi-node proof (testnet endpoints blocked in prod)` | Prod profile blocks dev testnet RPC helpers вЂ” use prod-signed smoke instead |
+| `OK: soak passed` in &lt;1 second | **Bug / false positive** (fixed v1.2.21) вЂ” soak must run for `Hours Г— 3600` seconds |
+| Heights stuck, mempool not clearing | Mining gate blocked by lagging peer heights вЂ” run `mesh_recover.ps1 -HealFork` (not restart-only) |
+| `heights=N / N-1 / N-1`, node1 diverged HINT | Hub solo-fork вЂ” `.\scripts\mesh_heal_fork.ps1 -Force` then rebuild evidence |
+| `[P2P] rate limit exceeded for docker-prod-mesh-1 (500/s)` | **Fixed v1.2.77** вЂ” sync gossip types now exempt; rebuild mesh. Before fix: dropped blocks during catch-up |
+| `External audit: not completed` | Honest organizational gate вЂ” see `scripts/external_audit_tracker.ps1` |
 
 ---
 
-## Recommended proof sequence (before “mainnet-ready” language)
+## Recommended proof sequence (before вЂњmainnet-readyвЂќ language)
 
 1. `.\scripts\docker_prod_3node.ps1 -SkipBuild -KeepVolumes`
-2. `.\scripts\prod_mesh_failover.ps1` — record block heights during node2 outage
+2. `.\scripts\prod_mesh_failover.ps1` вЂ” record block heights during node2 outage
 3. `python scripts/prod_signed_tx_smoke.py`
-4. `python scripts/prod_evm_smoke.py` — deploy + `eth_getStorageAt` on all prod RPC ports
-5. `.\scripts\prod_evidence_suite.ps1` — health + failover + signed tx + EVM (optional one-shot)
+4. `python scripts/prod_evm_smoke.py` вЂ” deploy + `eth_getStorageAt` on all prod RPC ports
+5. `.\scripts\prod_evidence_suite.ps1` вЂ” health + failover + signed tx + EVM (optional one-shot)
 6. `.\scripts\soak_monitor.ps1 -ProdMesh -Hours 48 -IntervalSec 300`
 7. `.\scripts\testnet_readiness.ps1 -ProdMesh -MinSoakHours 48`
-8. External audit tracker → third-party review
-9. `python scripts/bridge_off_audit_gate.py` — Bridge OFF checklist (10 controls)
-10. `python scripts/stamp_release_evidence.py --git-tag v1.2.96` — evidence stamp (optional soak ref)
+8. External audit tracker в†’ third-party review
+9. `python scripts/bridge_off_audit_gate.py` вЂ” Bridge OFF checklist (10 controls)
+10. `python scripts/stamp_release_evidence.py --git-tag v1.2.96` вЂ” evidence stamp (optional soak ref)
 
 ---
 

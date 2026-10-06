@@ -93,15 +93,23 @@ class SyncEngineCatchUpIO:
         if callable(checker):
             try:
                 return bool(checker())
-            except Exception:
-                return False
+            except Exception as exc:
+                logger.warning("[EngineIO] needs_genesis checker failed: %s", exc)
+                try:
+                    return int(self._engine._local_height() or 0) <= 0
+                except Exception:
+                    return True
         bc = getattr(self._engine.node, "blockchain", None)
         if bc is None or not hasattr(bc, "get_last_block"):
             return False
         try:
             return bc.get_last_block() is None
-        except Exception:
-            return False
+        except Exception as exc:
+            logger.warning("[EngineIO] get_last_block failed: %s", exc)
+            try:
+                return int(self.height() or 0) <= 0
+            except Exception:
+                return True
 
     def head(self) -> str:
         tip_h = self.height()
@@ -140,7 +148,8 @@ class SyncEngineCatchUpIO:
             if bc is not None and hasattr(bc, "get_block"):
                 try:
                     return bc.get_block(h)
-                except Exception:
+                except Exception as exc:
+                    logger.warning("[EngineIO] get_block(%s) failed: %s", h, exc)
                     return None
             return None
         key = str(height_or_hash or "").strip()
@@ -154,7 +163,8 @@ class SyncEngineCatchUpIO:
         if bc is not None and hasattr(bc, "get_block_by_hash"):
             try:
                 return bc.get_block_by_hash(key)
-            except Exception:
+            except Exception as exc:
+                logger.warning("[EngineIO] get_block_by_hash failed: %s", exc)
                 return None
         return None
 
@@ -189,7 +199,8 @@ class SyncEngineCatchUpIO:
         if bc is not None and hasattr(bc, "find_ancestor_height"):
             try:
                 return bc.find_ancestor_height(key)
-            except Exception:
+            except Exception as exc:
+                logger.warning("[EngineIO] find_ancestor_height failed: %s", exc)
                 return None
         blk = self.get_block(key)
         if isinstance(blk, Mapping):

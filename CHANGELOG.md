@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — status histogram / RocksDB gauges / wire sticky / catchup honesty
+
+- `observability/metrics`: `observe_status_ms` Prometheus histogram + live RocksDB compaction/flush/key gauges.
+- `api/http` `/metrics`: scrape `rocksdb_properties` into tuning snapshot.
+- `sync_engine`: sticky-green empty/timeout wire streak (max 5) before lockdown.
+- `engine_io` / `fork_adapters`: log + fail-closed fallbacks (no silent `except: return False`).
+- Unit `test_status_metrics_histogram` + industrial_gate needles. **Non-LR.** **Soak deferred.**
+
 ### Exp→pin merge wave — EVM nested returndata/STATICCALL + NFT satoshi harden
 
 - Native `evm_pure_runner`: RETURNDATACOPY uses live `return_data`; STATICCALL success does not
