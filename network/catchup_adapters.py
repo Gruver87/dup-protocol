@@ -122,7 +122,8 @@ class CatchUpP2PChainAdapter:
                 except RuntimeError:
                     try:
                         loop = asyncio.get_event_loop()
-                    except Exception:
+                    except Exception as exc:
+                        logger.debug("[CatchUpChain] get_event_loop failed: %s", exc)
                         loop = None
             if loop is None or not loop.is_running():
                 logger.warning("[CatchUpChain] reorg via queue: no running loop")
@@ -196,7 +197,8 @@ class CatchUpP2PFetchAdapter:
         fut = asyncio.run_coroutine_threadsafe(_coro(), self._loop)
         try:
             msg = fut.result(timeout=float(timeout) + 5)
-        except Exception:
+        except Exception as exc:
+            logger.debug("[CatchUpFetch] wait failed: %s", exc)
             return None
         if msg is None or not isinstance(msg, dict):
             return None

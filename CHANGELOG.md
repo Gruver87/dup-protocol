@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — peer/fork/catchup/rocks silent-except honesty
+
+- peer_manager: strike_count / set _inbound / eclipse subnet probe debug logs (no silent pass).
+- fork_adapters: ForkFetch wait debug; ForkSide reorg_risk / bump_counter / persist evidence warn.
+- catchup_adapters: get_event_loop + CatchUpFetch wait debug logs.
+- rocks_store get_chain_tip: prefix_last chain tip warn (no silent pass).
+- Units + industrial_gate. **Non-LR.** Mesh Quick after docker rebuild. **Soak deferred.**
+
 ### Exp→pin merge wave — readiness/RPC/consensus/UoW/storage honesty logs
 
 - api/http: set_accepting_requests debug logs; peer-height scrape warn (no silent empty).

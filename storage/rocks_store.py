@@ -584,8 +584,8 @@ class RocksChainStore:
                 if last:
                     key, _val = last
                     return int(kc.unpack_u64(key[1:9]))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("[RocksStore] prefix_last chain tip failed: %s", exc)
         rows = self._scan_prefix(kc.prefix_block_heights())
         if not rows:
             return 0

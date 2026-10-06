@@ -285,6 +285,21 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
     catchup_ad = (ROOT / "network" / "catchup_adapters.py").read_text(encoding="utf-8")
     if "[CatchUpChain] head failed" not in catchup_ad:
         errors.append("catchup_adapters must log head() failures")
+    if "[CatchUpFetch] wait failed" not in catchup_ad:
+        errors.append("catchup_adapters must log fetch wait failures")
+    peer_mgr_py = (ROOT / "network" / "peer_manager.py").read_text(encoding="utf-8")
+    if "[PeerManager] strike_count native failed" not in peer_mgr_py:
+        errors.append("peer_manager must log native strike_count failures")
+    if "[PeerManager] eclipse subnet probe failed" not in peer_mgr_py:
+        errors.append("peer_manager must log eclipse subnet probe failures")
+    fork_ad = (ROOT / "network" / "fork_adapters.py").read_text(encoding="utf-8")
+    if "[ForkSide] note_reorg_risk failed" not in fork_ad:
+        errors.append("fork_adapters must log note_reorg_risk failures")
+    if "[ForkSide] bump_counter failed" not in fork_ad:
+        errors.append("fork_adapters must log bump_counter failures")
+    rocks_store_py = (ROOT / "storage" / "rocks_store.py").read_text(encoding="utf-8")
+    if "[RocksStore] prefix_last chain tip failed" not in rocks_store_py:
+        errors.append("rocks_store get_chain_tip must log prefix_last failures")
     http_bridge = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
     if "bridge_result_normalize_failed" not in http_bridge:
         errors.append(

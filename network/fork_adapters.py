@@ -139,7 +139,8 @@ class ForkReconcileP2PFetchAdapter:
         fut = asyncio.run_coroutine_threadsafe(_coro(), self._loop)
         try:
             blk = fut.result(timeout=float(timeout) + 5)
-        except Exception:
+        except Exception as exc:
+            logger.debug("[ForkFetch] wait failed: %s", exc)
             return None
         if isinstance(blk, Mapping):
             return blk
@@ -280,8 +281,8 @@ class ForkReconcileP2PSideEffectAdapter:
                     f"[P2P] High reorg risk ({risk.get('risk'):.2f}) — "
                     f"proceeding with finality guard"
                 )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("[ForkSide] note_reorg_risk failed: %s", exc)
 
     def is_running(self) -> bool:
         return bool(getattr(self._p2p, "_running", True))
@@ -334,13 +335,13 @@ class ForkReconcileP2PSideEffectAdapter:
         )
         try:
             self._p2p.bump_counter("fork_security_evidence_total")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("[ForkSide] bump_counter failed: %s", exc)
         # Persist last evidence on the node for status / ops.
         try:
             self._p2p._last_fork_security_evidence = dict(payload)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("[ForkSide] persist last evidence failed: %s", exc)
         bus = getattr(self._p2p, "bus", None)
         if bus is not None and hasattr(bus, "emit"):
             try:

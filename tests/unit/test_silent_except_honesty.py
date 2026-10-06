@@ -482,5 +482,23 @@ def test_silent_except_wave_needles_p2p_catchup():
     assert "[PathA] needs_genesis check failed" in path_a
     catchup = Path("network/catchup_adapters.py").read_text(encoding="utf-8")
     assert "[CatchUpChain] head failed" in catchup
+    assert "[CatchUpFetch] wait failed" in catchup
+    assert "[CatchUpChain] get_event_loop failed" in catchup
     http = Path("api/http.py").read_text(encoding="utf-8")
     assert "bridge_result_normalize_failed" in http
+
+
+def test_silent_except_wave_needles_peer_fork_rocks():
+    from pathlib import Path
+
+    peer_mgr = Path("network/peer_manager.py").read_text(encoding="utf-8")
+    assert "[PeerManager] strike_count native failed" in peer_mgr
+    assert "[PeerManager] set _inbound failed" in peer_mgr
+    assert "[PeerManager] eclipse subnet probe failed" in peer_mgr
+    fork = Path("network/fork_adapters.py").read_text(encoding="utf-8")
+    assert "[ForkFetch] wait failed" in fork
+    assert "[ForkSide] note_reorg_risk failed" in fork
+    assert "[ForkSide] bump_counter failed" in fork
+    assert "[ForkSide] persist last evidence failed" in fork
+    rocks = Path("storage/rocks_store.py").read_text(encoding="utf-8")
+    assert "[RocksStore] prefix_last chain tip failed" in rocks

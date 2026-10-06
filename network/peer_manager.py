@@ -314,8 +314,8 @@ class PeerManager:
                     return int(self._rl_table.strike_count(str(key)))
 
                 strikes = max(strikes, int(self._rl_call(_count)))
-            except Exception:
-                pass
+            except Exception as exc:
+                _logger.debug("[PeerManager] strike_count native failed: %s", exc)
         return strikes
 
     def note_import_fail(self, peer: Optional[Any]) -> None:
@@ -447,8 +447,8 @@ class PeerManager:
             self._peers[peer_id] = peer
         try:
             peer._inbound = bool(inbound)  # type: ignore[attr-defined]
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.debug("[PeerManager] set _inbound failed: %s", exc)
         if inbound:
             if self._conn_governor is not None:
                 try:
@@ -599,7 +599,8 @@ class PeerManager:
                     continue
                 if native.p2p_subnet_key(host) != densest:
                     continue
-            except Exception:
+            except Exception as exc:
+                _logger.debug("[PeerManager] eclipse subnet probe failed: %s", exc)
                 continue
             score = self.score(
                 peer, local_height=local_height, health_timeout=timeout, now=now

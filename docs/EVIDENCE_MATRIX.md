@@ -97,6 +97,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Item | Evidence |
 |------|----------|
+| **Exp→pin merge wave (peer/fork/catchup/rocks silent-except honesty)** | **CLOSED** 2026-10-06 — PeerManager strike/inbound/eclipse logs; ForkFetch/ForkSide warn; CatchUpFetch wait; rocks prefix_last chain tip. Units + industrial_gate OK. **probe_prod_mesh.ps1 -Quick → RESULT: OK**; pack MESH_PROBE_POST_MERGE_PEER_FORK_CATCHUP_ROCKS.txt. **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (readiness/RPC/consensus/UoW honesty)** | **CLOSED** 2026-10-06 — peer-height/accept logs; RpcService.enabled honesty; consensus arm/add/finality logs; UoW abort; rocks ping; P2PLineFramer. Units + industrial_gate OK. **probe_prod_mesh.ps1 -Quick → RESULT: OK**; pack MESH_PROBE_POST_MERGE_READINESS_RPC_UOW.txt. **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (silent-except P2P/PathA/catchup/bridge)** | **CLOSED** 2026-10-06 — head-height mismatch on get_block fail; PathA needs_genesis FC; catchup/bridge/storage warn logs. Units + industrial_gate OK. **probe_prod_mesh.ps1 -Quick → RESULT: OK** after docker rebuild; pack MESH_PROBE_POST_MERGE_SILENT_EXCEPT_FC.txt. **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (silent-except honesty tests)** | **CODE+UNITS** 2026-10-06 — sticky-empty expire + registry/fork/http/format_tx honesty tests. **Mesh Quick optional.** **Soak deferred / not run.** No Long-Range. |
