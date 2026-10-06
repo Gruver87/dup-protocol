@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — silent-except honesty test deepen
+
+- test_silent_except_honesty: sticky-empty green expire, registry adapter bus/lockdown logs, fork async fallback, http engine truthy refuse, format_tx satoshi.
+- Pin-compatible only (print/capsys sync_engine; skip Exp legacy_test_p2p / mismatched needles).
+- Units. **Non-LR.** Mesh Quick optional. **Soak deferred.**
+
 ### Exp→pin merge wave — shard_devnet env pin + audit engagement surface
 
 - start_shard_devnet: DEPLOYMENT_MODE=dev lab env pin + restore (no poison industrial_gate); ready 2/2 fail-closed.

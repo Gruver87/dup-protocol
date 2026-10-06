@@ -97,6 +97,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Item | Evidence |
 |------|----------|
+| **Exp→pin merge wave (silent-except honesty tests)** | **CODE+UNITS** 2026-10-06 — sticky-empty expire + registry/fork/http/format_tx honesty tests. **Mesh Quick optional.** **Soak deferred / not run.** No Long-Range. |
 | **Exp→pin merge wave (shard_devnet + audit engagement surface)** | **CODE+GATE** 2026-10-06 — shard_devnet lab env pin; pin-honest DILIGENCE_BRIEF + engagement docs; verify_audit_phase/90d/engagement_prep; pre48h maxload starter. Units + industrial_gate. **Mesh Quick optional.** **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (full prepare_48h + stop/status/secrets)** | **CODE+GATE** 2026-10-06 — full prepare_48h_soak (disk/healthy/catchup/harness/prep.json); stop_soak_monitors PID-safe; soak_status ALIVE; check_secrets angle-bracket. Units + industrial_gate. **Mesh Quick optional this tip** (ops). **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin non-LR merge (ops polish closed)** | **SUPERSEDED→continued** tip 89e7a6d then full-prepare wave — mesh-critical + high-value ops residuals ported (grafana/proposer hasattr, soak_preflight wire/libp2p, isolate_keys, pre_mainnet live_automated, verify_p2p_ci flake, mempool sidecar). Residual Exp-only = LR/ws-lab (skipped). **48h libp2p soak still deferred / not run** — operator may start via prepare_48h_soak.ps1 then start_soak_prod_mesh_48h.ps1. No Long-Range. |

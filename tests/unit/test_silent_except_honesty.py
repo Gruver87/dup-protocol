@@ -226,3 +226,143 @@ def test_shared_sync_engine_and_unsolicited_state_root_honesty():
     alerts = Path("deploy/prometheus/alerts.yml").read_text(encoding="utf-8")
     assert "AbsoluteSyncWireProbeNeverProbed" in alerts
     assert "AbsoluteProdSqliteEngine" in alerts
+
+
+def test_empty_probe_does_not_wipe_last_known_green():
+    """Block-gossip empty RTT must not LOCKED_DOWN a just-proven same-height match."""
+    root = "aa" * 32
+    peer = SimpleNamespace(peer_id="p1", height=1, head=root, dial_target="")
+    node = SimpleNamespace(
+        blockchain=SimpleNamespace(
+            get_state_root=lambda: root,
+            get_height=lambda: 1,
+            get_block=lambda _h: None,
+        ),
+        request_peer_state_roots_sync=MagicMock(
+            return_value=[{"peer_id": "p1", "height": 1, "state_root": root}]
+        ),
+        p2p=SimpleNamespace(_state_consistent=False),
+        _state_consistent=False,
+    )
+    eng = SyncEngine(node)
+    eng._collect_p2p_peers = lambda: [peer]  # type: ignore
+    assert eng.sync_state() is True
+    node.request_peer_state_roots_sync = MagicMock(return_value=[])
+    assert eng.sync_state() is True
+    assert eng.consistency.snapshot().consistent is True
+    assert node._state_consistent is True
+
+
+def test_empty_probe_sticky_green_expires(capsys):
+    """Persistent empty wire must not stay green after consecutive empties."""
+    root = "aa" * 32
+    peer = SimpleNamespace(peer_id="p1", height=1, head=root, dial_target="")
+    node = SimpleNamespace(
+        blockchain=SimpleNamespace(
+            get_state_root=lambda: root,
+            get_height=lambda: 1,
+            get_block=lambda _h: None,
+        ),
+        request_peer_state_roots_sync=MagicMock(
+            return_value=[{"peer_id": "p1", "height": 1, "state_root": root}]
+        ),
+        p2p=SimpleNamespace(_state_consistent=False),
+        _state_consistent=False,
+    )
+    eng = SyncEngine(node)
+    eng._collect_p2p_peers = lambda: [peer]  # type: ignore
+    eng._wire_probe_backoff_sec = 0.0
+    eng._wire_sticky_empty_max = 3
+    assert eng.sync_state() is True
+    node.request_peer_state_roots_sync = MagicMock(return_value=[])
+    assert eng.sync_state() is True
+    assert eng.sync_state() is True
+    assert eng.sync_state() is False
+    assert "sticky green expired" in capsys.readouterr().out
+    assert node._state_consistent is False
+
+
+def test_registry_adapter_logs_bus_and_lockdown_failures(caplog):
+    import logging
+
+    from consensus.bft.types import ConsensusSecurityEvidence
+    from consensus.registry_adapter import (
+        AdapterConsensusEvidence,
+        AdapterConsensusLockdown,
+        AdapterConsensusSideEffect,
+    )
+
+    class _Bus:
+        def emit(self, *_a, **_k):
+            raise RuntimeError("bus down")
+
+    adapter = SimpleNamespace(bus=_Bus())
+
+    def _bad_hook(_reason: str) -> None:
+        raise RuntimeError("hook down")
+
+    adapter._lockdown_hook = _bad_hook
+    with caplog.at_level(logging.WARNING, logger="abs.consensus"):
+        AdapterConsensusEvidence(adapter).emit(
+            ConsensusSecurityEvidence(reason_code="double_vote", validator_id="v1")
+        )
+        AdapterConsensusLockdown(adapter).request_lockdown("consensus_double_sign")
+        AdapterConsensusSideEffect(adapter).on_finalized("ab" * 32, 3)
+    text = caplog.text
+    assert "security.consensus_refuse emit failed" in text
+    assert "security.consensus_lockdown emit failed" in text
+    assert "consensus lockdown hook failed" in text
+    assert "consensus.finalized emit failed" in text
+
+
+def test_fork_async_reorg_logs_then_sync_fallback(caplog):
+    import logging
+
+    from network.fork_adapters import ForkReconcileP2PChainAdapter
+
+    class _Loop:
+        def is_running(self):
+            return True
+
+    class _P2P:
+        def _reorg_and_import_async(self, *_a, **_k):
+            raise RuntimeError("async boom")
+
+        def _reorg_and_import(self, *_a, **_k):
+            return True
+
+    with caplog.at_level(logging.WARNING, logger="P2P.ForkAdapter"):
+        ok = ForkReconcileP2PChainAdapter(_P2P(), _Loop()).reorg_and_import(
+            1, {"hash": "aa"}
+        )
+    assert ok is True
+    assert "async reorg_and_import failed" in caplog.text
+
+
+def test_http_engine_result_refuses_truthy_objects():
+    from api.http import _http_engine_result
+
+    class _Truthy:
+        def __bool__(self):
+            return True
+
+    assert _http_engine_result(True) == {"success": True}
+    assert _http_engine_result(False) == {"success": False}
+    assert _http_engine_result(None)["error"] == "engine_returned_none"
+    assert _http_engine_result(_Truthy())["success"] is False
+    assert _http_engine_result(_Truthy())["error"] == "engine_result_not_boolean"
+    assert _http_engine_result({"ok": 1})["ok"] == 1
+    flagged = type("R", (), {"success": False, "error": "locked"})()
+    out = _http_engine_result(flagged)
+    assert out["success"] is False
+    assert out["error"] == "locked"
+
+
+def test_format_tx_uses_satoshi_not_ieee_float():
+    from api.eth_format import format_tx
+    from runtime.amount import WEI_PER_SATOSHI, to_satoshi
+
+    row = format_tx({"hash": "0xab", "value": 1.5, "block_height": 3})
+    assert row["value"] == hex(to_satoshi(1.5) * WEI_PER_SATOSHI)
+    junk = format_tx({"hash": "0xcd", "value": True})
+    assert junk["value"] is None
