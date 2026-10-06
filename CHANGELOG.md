@@ -10,6 +10,11 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin non-LR merge — ops polish CODE-CLOSED (soak still deferred)
+
+- Residual scan after tip 89e7a6d: mesh-critical + high-value ops polish closed; Exp-only leftovers are LR/ws-lab (skipped).
+- **Soak not run.** Operator may start pin libp2p 48h when ready (prepare_48h_soak.ps1 → start_soak_prod_mesh_48h.ps1).
+
 ### Exp→pin merge wave — verify_p2p_ci flake honesty + mempool validation sidecar
 
 - verify_p2p_ci: default validator-1 wallet, longer ready settle (*12), HTTP body surface on _post_json.
