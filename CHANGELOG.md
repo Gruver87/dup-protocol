@@ -10,6 +10,11 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — cargo-audit ADR 0020 libp2p transitive ignores
+
+- `.cargo/audit.toml` + `security-audit.yml`: scoped ignores for libp2p lock edges (`hickory`/`webpki`/`ring`/`h2`) already documented in `DEPENDABOT_TRIAGE.md` (Noise+TCP mesh; mDNS/TLS/UPnP not the live path).
+- Unblocks CI cargo-audit after ADR 0020 cutover. **Does not** clear the advisories — owner/expiry still apply. **Non-LR.** Soak not started.
+
 ### Exp→pin merge wave — uncle RPC validate / audit live_automated / bridge money + `_native_fb`
 
 - `rpc_service`: `eth_getUncle*ByBlockHash*` validate `validate_block_hash_param` before lookup.

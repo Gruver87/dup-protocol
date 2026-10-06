@@ -21,4 +21,27 @@ ignore = [
     # mitigation: rkyv feature not enabled | clear: drop unused lock edges
     # review-by: 2026-12-31
     "RUSTSEC-2026-0235",
+
+    # --- ADR 0020 rust-libp2p industrial mesh (feature_libp2p=true on pin prod JSON) ---
+
+    # RUSTSEC-2026-0119 — hickory-proto via libp2p-mdns
+    # owner: @Gruver87 | reachability: mDNS lock edge; mesh uses dial/bootstrap, not LAN mDNS discovery
+    # mitigation: Noise/Yamux TCP path; clear: libp2p-mdns → hickory>=0.26
+    # review-by: 2026-12-31
+    "RUSTSEC-2026-0119",
+
+    # RUSTSEC-2025-0009 / 2026-0098 / 0099 / 0104 — ring/webpki via stale libp2p-tls
+    # owner: @Gruver87 | reachability: optional tls lock edges; live path is Noise+TCP (p2p_tls_enabled=false)
+    # mitigation: tls/quic/websocket features OFF on mesh | clear: prune libp2p-tls / upstream bump
+    # review-by: 2026-12-31
+    "RUSTSEC-2025-0009",
+    "RUSTSEC-2026-0098",
+    "RUSTSEC-2026-0099",
+    "RUSTSEC-2026-0104",
+
+    # RUSTSEC-2026-0258 — h2 0.3.27 via hyper 0.14 / igd-next (UPnP)
+    # owner: @Gruver87 | reachability: UPnP lock edge only (not required for docker mesh)
+    # mitigation: no UPnP on prod mesh compose | clear: libp2p drops hyper 0.14
+    # review-by: 2026-12-31
+    "RUSTSEC-2026-0258",
 ]

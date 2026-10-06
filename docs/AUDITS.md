@@ -10,7 +10,7 @@ marketing theater.
 |-------|--------|-------|
 | In-repo industrial gates (`industrial_gate`, `verify_industrial_waves`) | Active | Code/evidence checks — **not** an external audit |
 | Native fuzz (`fuzz-native.yml`) | Active | Coverage-guided / API fuzz — **not** formal verification |
-| Security workflow (`security-audit.yml`) | Active | pip-audit + cargo-audit (scoped pyo3 ignores until PR #7) |
+| Security workflow (`security-audit.yml`) | Active | pip-audit + cargo-audit (pyo3 + ADR 0020 libp2p transitive scoped ignores; see `.cargo/audit.toml`) |
 | Threat model + scope letter | Ready for engagement | [THREAT_MODEL.md](THREAT_MODEL.md) · [AUDIT_SCOPE.md](AUDIT_SCOPE.md) · [AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md) · [AUDIT_PACK_CHECKLIST.md](AUDIT_PACK_CHECKLIST.md) · tag `v1.3.1339-tip-v2-industrial` |
 | Independent external audit report | **Pending** | Firm TBD — PDF goes under `audits/<firm>/`; tracker must stay open until then (6/8 automated; 2 firm-owned open) |
 | Bug bounty (Immunefi / etc.) | **Not configured** | Disclose via [SECURITY.md](../SECURITY.md) |
