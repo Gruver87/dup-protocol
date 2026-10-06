@@ -39,10 +39,27 @@ def check_config_validate(config_name: str = "node.prod.example.json") -> list[s
         "CORS_ORIGINS": "https://explorer.example.com",
         "BRIDGE_PROBE_L1_RPC": "false",
     }
+    # Ambient shell from docker_prod / mesh scripts must not poison static JSON
+    # validation (e.g. TIP_SAFETY_ENFORCE=false while prod JSON has true).
+    isolate_keys = (
+        "TIP_SAFETY_ENFORCE",
+        "TIP_SAFETY_SHADOW",
+        "DEPLOYMENT_MODE",
+        "ABS_REQUIRE_NATIVE_CRYPTO",
+        "P2P_NATIVE_TRANSPORT",
+        "FEATURE_LIBP2P",
+        "FEATURE_LONG_RANGE",
+        "EVM_CREATE2_EIP1014",
+        "EVM_REQUIRE_DEPLOY_SALT",
+        "BRIDGE_ENABLED",
+    )
     saved = {key: os.environ.get(key) for key in placeholders}
+    saved_iso = {key: os.environ.get(key) for key in isolate_keys}
     try:
         for key, value in placeholders.items():
             os.environ[key] = value
+        for key in isolate_keys:
+            os.environ.pop(key, None)
         cfg = Config.from_json(str(path))
         cfg.apply_env()
         errors = cfg.validate()
@@ -54,10 +71,19 @@ def check_config_validate(config_name: str = "node.prod.example.json") -> list[s
         # If bridge_enabled=true, missing/invalid abs_bridge_bin must fail the gate.
         bridge_enabled = bool(getattr(cfg, "bridge_enabled", False))
         if (not bridge_enabled) and (not any(p.is_file() for p in bridge_candidates)):
-            errors = [e for e in errors if "rust binary smoke-test" not in e]
+            errors = [
+                e
+                for e in errors
+                if "rust binary smoke-test" not in e and "binary missing" not in e
+            ]
         return errors
     finally:
         for key, old in saved.items():
+            if old is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = old
+        for key, old in saved_iso.items():
             if old is None:
                 os.environ.pop(key, None)
             else:

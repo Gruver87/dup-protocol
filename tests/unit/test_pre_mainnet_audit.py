@@ -33,3 +33,28 @@ def test_pre_mainnet_report_written():
     path = audit.write_report(errors, warnings, checklist)
     assert path.is_file()
     assert path.name == "pre_mainnet_audit.json"
+
+
+def test_pre_mainnet_checklist_uses_live_evaluate():
+    """Diligence honesty: do not paint all rows empty when auto items PASS."""
+    import json
+    from pathlib import Path
+
+    from runtime.external_audit import evaluate
+
+    audit = _load_audit()
+    _warn, completed, summary = evaluate(root=Path(ROOT), live_automated=True)
+    assert summary["total"] >= 5
+    assert summary["completed"] >= 1, summary
+    assert len(completed) == summary["completed"]
+    labels = [str(i["label"]) for i in (summary.get("items") or [])]
+    path = audit.write_report([], [], labels, audit_summary=summary)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert "external_audit" in payload
+    assert int(payload["external_audit"]["completed"]) == int(summary["completed"])
+    assert int(payload["external_audit"]["pending"]) == int(summary["pending"])
+    src = open(
+        os.path.join(ROOT, "scripts", "pre_mainnet_audit.py"), encoding="utf-8"
+    ).read()
+    assert "live_automated=True" in src
+    assert "evaluate_external_audit" in src

@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — verify_prod_stack isolate_keys + pre_mainnet live_automated
+
+- verify_prod_stack.check_config_validate: scrub ambient TIP_SAFETY/FEATURE_*/BRIDGE_ENABLED before JSON validate; suppress binary-missing only when bridge off.
+- pre_mainnet_audit: evaluate_external_audit(live_automated=True) + embed external_audit summary (no empty [ ] paint).
+- Units + industrial_gate needles. **Non-LR.** Mesh Quick optional (ops). **Soak deferred.**
+
 ### Exp→pin merge wave — soak_preflight require_wire_probe / require_libp2p
 
 - soak_preflight: --require-wire-probe (full harness quick=False), --require-libp2p, peer retry, /status?probe=1 SLO, git_sha/dirty.

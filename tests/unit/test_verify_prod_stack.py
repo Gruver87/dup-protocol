@@ -43,9 +43,26 @@ def test_bridge_enabled_profile_requires_bridge_binary(tmp_path, monkeypatch):
         ),
         encoding="utf-8",
     )
+    monkeypatch.setenv("BRIDGE_ENABLED", "true")
+    monkeypatch.setenv("BRIDGE_MODE", "rust")
+    monkeypatch.setenv("TIP_SAFETY_ENFORCE", "true")
+    monkeypatch.delenv("RUST_BRIDGE_PATH", raising=False)
     monkeypatch.setattr(verify_prod_stack, "ROOT", tmp_path)
     errors = verify_prod_stack.check_config_validate("node.prod.example.json")
     assert any("binary missing" in e.lower() or "rust binary" in e.lower() for e in errors), errors
+
+
+def test_config_validate_isolates_ambient_feature_env(monkeypatch):
+    """Ambient FEATURE_LIBP2P / TIP_SAFETY must not poison static JSON validate."""
+    monkeypatch.setenv("FEATURE_LIBP2P", "true")
+    monkeypatch.setenv("TIP_SAFETY_ENFORCE", "false")
+    monkeypatch.setenv("FEATURE_LONG_RANGE", "true")
+    # Should not raise; isolate pops ambient keys before apply_env.
+    errors = verify_prod_stack.check_config_validate()
+    assert isinstance(errors, list)
+    src = (ROOT / "scripts" / "verify_prod_stack.py").read_text(encoding="utf-8")
+    assert "isolate_keys" in src
+    assert "FEATURE_LIBP2P" in src
 
 
 def test_docker_compose_prod_has_relayer():

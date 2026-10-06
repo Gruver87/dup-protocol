@@ -239,6 +239,18 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append(
             "soak_preflight require_wire_probe must use full harness (not quick/3s)"
         )
+    vps = (ROOT / "scripts" / "verify_prod_stack.py").read_text(encoding="utf-8")
+    if "isolate_keys" not in vps or "FEATURE_LIBP2P" not in vps:
+        errors.append(
+            "verify_prod_stack must isolate ambient FEATURE_LIBP2P/TIP_SAFETY from JSON validate"
+        )
+    pma = (ROOT / "scripts" / "pre_mainnet_audit.py").read_text(encoding="utf-8")
+    if "live_automated=True" not in pma or "evaluate_external_audit" not in pma:
+        errors.append(
+            "pre_mainnet_audit must call evaluate_external_audit(live_automated=True)"
+        )
+    if '"external_audit"' not in pma and "'external_audit'" not in pma:
+        errors.append("pre_mainnet_audit report must embed external_audit summary")
     # Exp→pin ops tooling: Strict parallel worker + cargo honesty + soak FAIL pack.
     if not (ROOT / "scripts" / "health_watch_node.ps1").is_file():
         errors.append(
