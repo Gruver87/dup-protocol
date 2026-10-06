@@ -1,6 +1,7 @@
 # Quick status of the active prod mesh soak (no wait).
+# Prefer logs/soak_active.json so 5h STRICT and 48h soaks both show.
 param(
-    [string]$LogGlob = "logs/soak_48h_*.log",
+    [string]$LogGlob = "logs/soak_*h*.log",
     [string]$ReportFile = "logs/soak_report_48h.json"
 )
 
@@ -26,17 +27,25 @@ if (Test-Path $activePath) {
 }
 
 if (-not $log) {
-    $logs = Get-ChildItem -Path (Join-Path $Root $LogGlob) -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime -Descending
-    if (-not $logs) {
-        Write-Host "No soak log matching $LogGlob" -ForegroundColor Yellow
-        exit 1
+    $prefer48 = Join-Path $Root "logs/soak_48h.log"
+    if (-not (Test-Path $prefer48)) {
+        $prefer48 = Join-Path $Root "logs/soak_48h_prod_mesh.log"
     }
-    if ($logs.Count -gt 1) {
-        Write-Host "WARN: multiple soak logs - run .\scripts\stop_soak_monitors.ps1 -Force then restart_soak_prod_mesh.ps1" -ForegroundColor Yellow
-        $logs | ForEach-Object { Write-Host "  - $($_.Name)" -ForegroundColor DarkGray }
+    if (Test-Path $prefer48) {
+        $log = $prefer48
+    } else {
+        $logs = Get-ChildItem -Path (Join-Path $Root $LogGlob) -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending
+        if (-not $logs) {
+            Write-Host "No soak log matching $LogGlob" -ForegroundColor Yellow
+            exit 1
+        }
+        if ($logs.Count -gt 1) {
+            Write-Host "WARN: multiple soak logs - run .\scripts\stop_soak_monitors.ps1 -Force then restart_soak_prod_mesh.ps1" -ForegroundColor Yellow
+            $logs | ForEach-Object { Write-Host "  - $($_.Name)" -ForegroundColor DarkGray }
+        }
+        $log = $logs[0].FullName
     }
-    $log = $logs[0].FullName
 }
 
 $lines = Get-Content $log -Encoding UTF8 -ErrorAction SilentlyContinue
@@ -47,6 +56,9 @@ $lastFail = ($lines | Select-String -Pattern "$ts FAIL" | Select-Object -Last 1)
 $failCount = ($lines | Select-String -Pattern "$ts FAIL").Count
 $meshOk = ($lines | Select-String -Pattern "$ts OK mesh aligned").Count
 $done = ($lines | Select-String -Pattern "$ts health_watch done" | Select-Object -Last 1)
+$monitors = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -and ($_.CommandLine -match 'soak_monitor\.ps1') })
+$alive = $monitors.Count -gt 0
 
 Write-Host "Soak status" -ForegroundColor Cyan
 Write-Host "  log: $([System.IO.Path]::GetFileName($log))" -ForegroundColor DarkGray
@@ -54,11 +66,14 @@ if ($startLine) { Write-Host "  started: $($startLine.Line)" -ForegroundColor Da
 if ($lastMesh) { Write-Host "  latest:  $($lastMesh.Line)" -ForegroundColor Green }
 if ($lastFail -and $failCount -gt 0) { Write-Host "  last_fail: $($lastFail.Line)" -ForegroundColor Yellow }
 Write-Host "  mesh_ok_cycles=$meshOk fail_lines=$failCount" -ForegroundColor DarkGray
+Write-Host "  monitor: $(if ($alive) { 'ALIVE pid=' + (($monitors | ForEach-Object { $_.ProcessId }) -join ',') } else { 'none' })" -ForegroundColor $(if ($alive) { 'Green' } else { 'Red' })
 
 if ($done) {
     Write-Host "  state: FINISHED" -ForegroundColor Green
-} else {
+} elseif ($alive) {
     Write-Host "  state: IN_PROGRESS" -ForegroundColor Yellow
+} else {
+    Write-Host "  state: DEAD (monitor gone before health_watch done)" -ForegroundColor Red
 }
 
 $reportPath = Join-Path $Root ($ReportFile -replace '/', '\')

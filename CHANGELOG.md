@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — full prepare_48h_soak + stop/status/secrets polish
+
+- prepare_48h_soak: disk free, docker healthy, image pin, baked needle, soak_preflight wire/libp2p, probe Quick, check_mesh_catchup×3, miner harness, logs/soak_48h_prep.json.
+- stop_soak_monitors: self/parent PID exclude; also health_watch + mempool sidecar.
+- soak_status: soak_*h*.log glob + ALIVE/DEAD monitor honesty.
+- check_secrets: treat <angle-bracket> doc tokens as placeholders.
+- Units + industrial_gate. **Non-LR.** Mesh Quick optional (ops; prepare itself probes when mesh up). **Soak deferred.**
+
 ### Exp→pin non-LR merge — ops polish CODE-CLOSED (soak still deferred)
 
 - Residual scan after tip 89e7a6d: mesh-critical + high-value ops polish closed; Exp-only leftovers are LR/ws-lab (skipped).

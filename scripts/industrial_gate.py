@@ -230,6 +230,27 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append(
             "prepare_48h_soak must pass --require-libp2p for ADR 0020 libp2p mesh"
         )
+    if "check_mesh_catchup" not in prep48 or "soak_48h_prep.json" not in prep48:
+        errors.append(
+            "prepare_48h_soak must run check_mesh_catchup and write logs/soak_48h_prep.json"
+        )
+    if "MinFreeGb" not in prep48 or "stop_soak_monitors" not in prep48:
+        errors.append(
+            "prepare_48h_soak must check disk free and stop leftover soak monitors"
+        )
+    stop_sm = (ROOT / "scripts" / "stop_soak_monitors.ps1").read_text(encoding="utf-8")
+    if "mempool_validation_sidecar" not in stop_sm or "health_watch" not in stop_sm:
+        errors.append(
+            "stop_soak_monitors must also kill health_watch + mempool_validation_sidecar"
+        )
+    if "selfPid" not in stop_sm and "ProcessId=$selfPid" not in stop_sm:
+        errors.append("stop_soak_monitors must exclude self/parent PID (no self-kill)")
+    cs_py = (ROOT / "scripts" / "check_secrets.py").read_text(encoding="utf-8")
+    if 'startswith("<")' not in cs_py or 'endswith(">")' not in cs_py:
+        errors.append("check_secrets must treat <angle-bracket> tokens as placeholders")
+    soak_st = (ROOT / "scripts" / "soak_status.ps1").read_text(encoding="utf-8")
+    if "ALIVE pid=" not in soak_st or "soak_*h*.log" not in soak_st:
+        errors.append("soak_status must report monitor ALIVE and glob soak_*h*.log")
     soak_pf = (ROOT / "scripts" / "soak_preflight.py").read_text(encoding="utf-8")
     if "require_wire_probe" not in soak_pf or "--require-wire-probe" not in soak_pf:
         errors.append("soak_preflight must accept --require-wire-probe")

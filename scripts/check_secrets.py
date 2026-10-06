@@ -46,7 +46,13 @@ PATTERNS = [
 
 def _is_placeholder(value: str) -> bool:
     low = value.lower()
-    return any(m in low for m in PLACEHOLDER_MARKERS)
+    if any(m in low for m in PLACEHOLDER_MARKERS):
+        return True
+    # Doc/ops angle-bracket instructions, e.g. "<from staging .env>"
+    s = value.strip()
+    if s.startswith("<") and s.endswith(">") and len(s) >= 3:
+        return True
+    return False
 
 
 def scan_file(path: str) -> list:

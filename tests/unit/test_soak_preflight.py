@@ -28,6 +28,17 @@ def test_soak_preflight_module_exists():
     ).read()
     assert "--require-wire-probe" in prep
     assert "--require-libp2p" in prep
+    assert "check_mesh_catchup" in prep
+    assert "soak_48h_prep.json" in prep
+    assert "stop_soak_monitors" in prep
+    assert r"\(unhealthy\)" in prep
+    assert "COMMITTED_STATE_ROOT_OK" in prep
+    stop = open(
+        os.path.join(ROOT, "scripts", "stop_soak_monitors.ps1"), encoding="utf-8"
+    ).read()
+    assert "mempool_validation_sidecar" in stop
+    assert "health_watch" in stop
+    assert "selfPid" in stop or "ProcessId=$selfPid" in stop
 
 
 def test_soak_preflight_detects_unreachable_mesh(monkeypatch):

@@ -1,4 +1,6 @@
-# Stop background soak_monitor.ps1 processes (duplicate 48h soaks).
+# Stop background soak_monitor / health_watch / mempool sidecar (duplicate soaks).
+# Does NOT match start_* orchestrators — those call this script and would
+# self-kill if listed (false abort before mesh rebuild).
 param(
     [switch]$Force
 )
@@ -7,18 +9,37 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $Root
 
-$procs = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
-    Where-Object { $_.CommandLine -and ($_.CommandLine -match 'soak_monitor\.ps1') }
+$selfPid = $PID
+$parentPid = $null
+try {
+    $parentPid = (Get-CimInstance Win32_Process -Filter "ProcessId=$selfPid" -ErrorAction SilentlyContinue).ParentProcessId
+} catch { }
+
+$procs = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.CommandLine -and
+        $_.ProcessId -ne $selfPid -and
+        ($null -eq $parentPid -or $_.ProcessId -ne $parentPid) -and
+        (
+            ($_.Name -eq 'powershell.exe' -and (
+                $_.CommandLine -match 'soak_monitor\.ps1' -or
+                $_.CommandLine -match 'health_watch\.ps1'
+            )) -or
+            (($_.Name -eq 'python.exe' -or $_.Name -eq 'python') -and (
+                $_.CommandLine -match 'mempool_validation_sidecar\.py'
+            ))
+        )
+    }
 
 if (-not $procs) {
-    Write-Host "OK: no soak_monitor.ps1 processes found" -ForegroundColor Green
+    Write-Host "OK: no soak_monitor/health_watch/sidecar processes found" -ForegroundColor Green
     if (Test-Path (Join-Path $Root "logs/soak_active.json")) {
         Remove-Item (Join-Path $Root "logs/soak_active.json") -Force
     }
     exit 0
 }
 
-Write-Host "Found $($procs.Count) soak_monitor process(es):" -ForegroundColor Yellow
+Write-Host "Found $($procs.Count) soak process(es):" -ForegroundColor Yellow
 foreach ($p in $procs) {
     $cmd = $p.CommandLine
     if ($cmd.Length -gt 120) { $cmd = $cmd.Substring(0, 120) + "..." }
