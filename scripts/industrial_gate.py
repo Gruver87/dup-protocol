@@ -250,6 +250,30 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append("scripts/verify_adr0021_phase1.ps1 missing (operator self-check wrapper)")
     if not (ROOT / "scripts" / "audit_critical_paths.py").is_file():
         errors.append("scripts/audit_critical_paths.py missing (honesty pattern scan)")
+    # Exp→pin industrial verify/check surface.
+    for rel, msg in (
+        ("scripts/verify_full_blockchain.py", "verify_full_blockchain.py missing"),
+        ("scripts/verify_hard_all.ps1", "verify_hard_all.ps1 missing"),
+        ("scripts/check_blockchain.py", "check_blockchain.py missing"),
+        ("scripts/check_harness_probe.py", "check_harness_probe.py missing"),
+        ("scripts/check_soak.ps1", "check_soak.ps1 missing"),
+        ("scripts/verify_industrial_high_honesty.ps1", "verify_industrial_high_honesty.ps1 missing"),
+        ("scripts/libp2p_lab_smoke.py", "libp2p_lab_smoke.py missing"),
+        ("scripts/run_all_tests.ps1", "run_all_tests.ps1 missing"),
+    ):
+        if not (ROOT / rel).is_file():
+            errors.append(msg)
+    full_py = (ROOT / "scripts" / "verify_full_blockchain.py").read_text(encoding="utf-8")
+    if "PROD_SMOKE_WALLET_PATH" not in full_py:
+        errors.append(
+            "verify_full_blockchain must bind PROD_SMOKE_WALLET_PATH before live p2p_ci"
+        )
+    if "verify_industrial_high_honesty.ps1" not in full_py:
+        errors.append(
+            "verify_full_blockchain --hard must run industrial HIGH honesty (not Exp R&D suite)"
+        )
+    if "start_soak" in full_py.lower():
+        errors.append("verify_full_blockchain must not start soak")
     # Load real prod mesh JSON (bare Config() is always deployment_mode=dev).
     prod_tls_enabled = False
     prod_json_files = (

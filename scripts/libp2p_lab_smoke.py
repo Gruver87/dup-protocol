@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""libp2p transport adapter smoke (ADR 0020 pin / lab opt-in check).
+
+Bare Config() keeps feature_libp2p=false (dataclass default). Prod mesh JSON
+arms libp2p separately. This smoke proves the adapter refuses when the flag
+is off, and fail-closes dial without a listener when enabled.
+
+Usage:
+  python scripts/libp2p_lab_smoke.py
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from network.transport.errors import TransportCapabilityError
+from network.transport.libp2p_adapter import Libp2pTransportAdapter
+from network.transport.types import PeerEndpoint
+from runtime.config import Config
+
+
+def main() -> int:
+    cfg = Config()
+    # Dataclass / env default must keep libp2p off until JSON overlay arms it.
+    assert getattr(cfg, "feature_libp2p", False) is False
+
+    off = Libp2pTransportAdapter.from_config(cfg)
+    st = off.capability_status()
+    assert st["available"] is False
+    assert st["default_mesh"] is False
+    try:
+        off.connect(PeerEndpoint(host="127.0.0.1", port=4001))
+        print("FAIL: dial should refuse when FEATURE_LIBP2P=false")
+        return 1
+    except TransportCapabilityError:
+        pass
+
+    on = Libp2pTransportAdapter(enabled=True)
+    try:
+        if on.rust_backend:
+            try:
+                on.connect(PeerEndpoint(host="127.0.0.1", port=39999, peer_id="lab-peer"))
+                print("FAIL: rust dial without listener should fail closed")
+                return 1
+            except TransportCapabilityError:
+                pass
+            backend = "rust_libp2p_fail_closed"
+        else:
+            try:
+                on.connect(
+                    PeerEndpoint(host="127.0.0.1", port=4001, peer_id="lab-peer")
+                )
+                print("FAIL: dial without rust libp2p must refuse (no stub handle)")
+                return 1
+            except TransportCapabilityError:
+                pass
+            backend = "no_rust_refuse"
+    finally:
+        on.close()
+
+    print("OK: libp2p_lab_smoke PASS")
+    print("  Config() default: feature_libp2p=false (prod mesh JSON arms ADR 0020)")
+    print(f"  backend: {backend}")
+    print("  honesty: this smoke != live mesh probe / != 48h soak")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — industrial verify/check surface
+
+- `verify_full_blockchain` / `verify_hard_all` / `run_all_tests` (pin branding; HIGH honesty instead of Exp R&D suite).
+- `check_blockchain` / `check_harness_probe` / `check_soak` (pin soak report paths; deferred honesty).
+- `verify_industrial_high_honesty` + `libp2p_lab_smoke` (Config default off; prod JSON arms ADR 0020).
+- `verify_persist_fail_closed` / `verify_evm_rpc_honesty` / `verify_native_f64_hygiene` / `print_firm_handoff` / `prepare_head_soak_evm_strict`.
+- Units `test_check_blockchain` + industrial_gate needles. **Non-LR.** **Soak deferred.**
+
 ### Exp→pin merge wave — Strict health_watch worker + cargo/soak ops tooling
 
 - `health_watch_node.ps1`: parallel Strict worker required by `health_watch_core` (was missing on pin).
