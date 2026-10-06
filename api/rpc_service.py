@@ -80,7 +80,7 @@ class RpcService:
 
     def get_stats(self) -> Dict[str, Any]:
         return {
-            "enabled": True,
+            "enabled": self.query is not None,
             "backend": "rpc_service",
             "port": "RpcPort",
             "tip": self.query.tip_height() if self.query else 0,

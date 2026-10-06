@@ -377,8 +377,8 @@ class ConsensusAdapter:
             try:
                 self._round_state.arm_quorum_live(allow_live)
                 view = self._round_state.finality_status()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("arm_quorum_live failed: %s", exc)
         # Honesty: never claim live mesh quorum unless config arms it AND QC reached.
         live = bool(allow_live and getattr(view, "quorum_live", False))
         detail = str(getattr(view, "detail", "") or "local_path_only")
@@ -440,8 +440,8 @@ class ConsensusAdapter:
             )
             if ref.block_hash:
                 self._round_state.add_block(ref, parent_hash=ref.parent_hash)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("round_state add_block failed: %s", exc)
 
     # ── Legacy attestation shim → ConsensusPort.submit_vote ────────────────
 
@@ -577,8 +577,8 @@ class ConsensusAdapter:
                     parent_hash="",
                 )
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("process_block_finality add_block failed: %s", exc)
 
         if finalized:
             # Domain side-effect port only (no direct P2P)
@@ -603,12 +603,14 @@ class ConsensusAdapter:
             if hh and self.casper_engine:
                 try:
                     return bool(self.casper_engine.is_finalized(hh))
-                except Exception:
+                except Exception as exc:
+                    logger.warning("casper is_finalized failed: %s", exc)
                     return False
             if hh and self.beacon_engine:
                 try:
                     return bool(self.beacon_engine.is_finalized(hh))
-                except Exception:
+                except Exception as exc:
+                    logger.warning("beacon is_finalized failed: %s", exc)
                     return False
             return False
 

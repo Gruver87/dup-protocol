@@ -810,14 +810,15 @@ class Blockchain:
         except StorageError:
             try:
                 uow.abort()
-            except Exception:
-                pass
+            except Exception as abort_exc:
+                print(f"[Blockchain] UoW abort failed after StorageError: {abort_exc}")
             raise
-        except Exception:
+        except Exception as persist_exc:
+            print(f"[Blockchain] canonical persist failed: {persist_exc}")
             try:
                 uow.abort()
-            except Exception:
-                pass
+            except Exception as abort_exc:
+                print(f"[Blockchain] UoW abort failed after persist error: {abort_exc}")
             raise
 
     # ── Добавление блока ─────────────────────────────────────────────────────

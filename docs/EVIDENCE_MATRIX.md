@@ -97,6 +97,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Item | Evidence |
 |------|----------|
+| **Exp→pin merge wave (readiness/RPC/consensus/UoW honesty)** | **CLOSED** 2026-10-06 — peer-height/accept logs; RpcService.enabled honesty; consensus arm/add/finality logs; UoW abort; rocks ping; P2PLineFramer. Units + industrial_gate OK. **probe_prod_mesh.ps1 -Quick → RESULT: OK**; pack MESH_PROBE_POST_MERGE_READINESS_RPC_UOW.txt. **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (silent-except P2P/PathA/catchup/bridge)** | **CLOSED** 2026-10-06 — head-height mismatch on get_block fail; PathA needs_genesis FC; catchup/bridge/storage warn logs. Units + industrial_gate OK. **probe_prod_mesh.ps1 -Quick → RESULT: OK** after docker rebuild; pack MESH_PROBE_POST_MERGE_SILENT_EXCEPT_FC.txt. **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (silent-except honesty tests)** | **CODE+UNITS** 2026-10-06 — sticky-empty expire + registry/fork/http/format_tx honesty tests. **Mesh Quick optional.** **Soak deferred / not run.** No Long-Range. |
 | **Exp→pin merge wave (shard_devnet + audit engagement surface)** | **CODE+GATE** 2026-10-06 — shard_devnet lab env pin; pin-honest DILIGENCE_BRIEF + engagement docs; verify_audit_phase/90d/engagement_prep; pre48h maxload starter. Units + industrial_gate. **Mesh Quick optional.** **Soak deferred / not run / not started.** No Long-Range. |

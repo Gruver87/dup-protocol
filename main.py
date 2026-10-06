@@ -2665,8 +2665,8 @@ async def _run_node(config: Config):
     # Ensure fresh accept flag after prior test / reload.
     try:
         set_accepting_requests(True)
-    except Exception:
-        pass
+    except Exception as exc:
+        _node_log.warning("set_accepting_requests failed at boot: %s", exc)
     node = NodeOrchestrator(config)
 
     # Graceful shutdown: Unix (asyncio) + Windows (signal) — ADR 0014

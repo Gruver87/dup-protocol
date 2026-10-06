@@ -1186,7 +1186,11 @@ class PeerConnection:
         if self._line_framer is None and hasattr(native, "P2PLineFramer"):
             try:
                 self._line_framer = native.P2PLineFramer(int(limit))
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "[P2P] P2PLineFramer construct failed; Python readline fallback: %s",
+                    exc,
+                )
                 self._line_framer = None
 
         framer = self._line_framer

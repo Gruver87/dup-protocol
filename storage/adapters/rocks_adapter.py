@@ -913,7 +913,8 @@ class RocksDBStorageAdapter:
         try:
             _ = self.tip_height()
             return True
-        except Exception:
+        except Exception as exc:
+            logger.warning("storage ping failed: %s", exc)
             return False
 
     def approximate_size(self) -> int:
@@ -921,7 +922,8 @@ class RocksDBStorageAdapter:
         if hasattr(store, "approximate_size"):
             try:
                 return int(store.approximate_size() or 0)
-            except Exception:
+            except Exception as exc:
+                logger.warning("approximate_size failed: %s", exc)
                 return 0
         return 0
 

@@ -10,6 +10,15 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — readiness/RPC/consensus/UoW/storage honesty logs
+
+- api/http: set_accepting_requests debug logs; peer-height scrape warn (no silent empty).
+- RpcService.get_stats: enabled tracks query port presence.
+- consensus/adapter: arm_quorum_live / round_state add_block / finality is_finalized warn logs.
+- core/blockchain: UoW abort + canonical persist failure prints.
+- rocks_adapter ping/approximate_size warn; main boot set_accepting_requests warn; P2PLineFramer construct warn.
+- Units + industrial_gate. **Non-LR.** Mesh Quick after docker rebuild. **Soak deferred.**
+
 ### Exp→pin merge wave — silent-except fail-closed (P2P/PathA/catchup/bridge/storage)
 
 - p2p_node: head-height get_block fail → mismatch; clamp/codec warn logs (no silent pass).

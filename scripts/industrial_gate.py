@@ -290,6 +290,24 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append(
             "_bridge_http_result must refuse truthy non-bool on normalize failure"
         )
+    if "peer heights from get_peers_info failed" not in http_bridge:
+        errors.append("http.py must log peer-height scrape failures (readiness honesty)")
+    rpc_py = (ROOT / "api" / "rpc_service.py").read_text(encoding="utf-8")
+    if "self.query is not None" not in rpc_py:
+        errors.append("RpcService.get_stats enabled must track query port presence")
+    adapter_py = (ROOT / "consensus" / "adapter.py").read_text(encoding="utf-8")
+    if "arm_quorum_live failed" not in adapter_py:
+        errors.append("consensus adapter must log arm_quorum_live failures")
+    bc_py = (ROOT / "core" / "blockchain.py").read_text(encoding="utf-8")
+    if "UoW abort failed after StorageError" not in bc_py:
+        errors.append("blockchain must log UoW abort failures after StorageError")
+    rocks_ad = (ROOT / "storage" / "adapters" / "rocks_adapter.py").read_text(
+        encoding="utf-8"
+    )
+    if "storage ping failed" not in rocks_ad:
+        errors.append("rocks_adapter.ping must log failures")
+    if "P2PLineFramer construct failed" not in p2p_honest:
+        errors.append("p2p_node must log P2PLineFramer construct failures")
     soak_pf = (ROOT / "scripts" / "soak_preflight.py").read_text(encoding="utf-8")
     if "require_wire_probe" not in soak_pf or "--require-wire-probe" not in soak_pf:
         errors.append("soak_preflight must accept --require-wire-probe")

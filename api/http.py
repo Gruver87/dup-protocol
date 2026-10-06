@@ -1028,12 +1028,12 @@ def set_accepting_requests(accepting: bool) -> None:
     _ACCEPTING_REQUESTS = bool(accepting)
     try:
         JSONRPCHandler.accepting_requests = _ACCEPTING_REQUESTS
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("JSONRPCHandler accepting_requests not set: %s", exc)
     try:
         RESTHandler.accepting_requests = _ACCEPTING_REQUESTS
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("RESTHandler accepting_requests not set: %s", exc)
 
 
 def is_accepting_requests() -> bool:
@@ -1087,14 +1087,14 @@ def _peer_heights_from_p2p(p2p) -> list[int]:
                 else:
                     heights.append(int(getattr(row, "height", 0) or 0))
             return heights
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("peer heights from get_peers_info failed: %s", exc)
     try:
         peers = getattr(p2p, "peers", None) or {}
         for peer in peers.values():
             heights.append(int(getattr(peer, "height", 0) or 0))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("peer heights from p2p.peers failed: %s", exc)
     return heights
 
 
