@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta name="referrer" content="no-referrer" />
+  <title>DUP Protocol — Ops Console</title>
+  <link rel="stylesheet" href="/console/assets/console.css" />
+  <script src="/console/assets/theme.js"></script>
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <aside class="rail" id="rail">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div>
+        <div class="brand-name">DUP PROTOCOL</div>
+        <div class="brand-sub">ops console · DUP Labs</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button type="button" class="nav-btn active" data-view="overview">Overview</button>
+      <button type="button" class="nav-btn" data-view="mesh">Mesh &amp; Sync</button>
+      <button type="button" class="nav-btn" data-view="metrics">Live Metrics</button>
+      <button type="button" class="nav-btn" data-view="mempool">Mempool</button>
+      <button type="button" class="nav-btn" data-view="chain">Chain</button>
+      <button type="button" class="nav-btn" data-view="evm">EVM</button>
+      <button type="button" class="nav-btn" data-view="features">Features</button>
+      <button type="button" class="nav-btn" data-view="evidence">Evidence</button>
+      <button type="button" class="nav-btn" data-view="wallets">Wallets</button>
+      <button type="button" class="nav-btn" data-view="council">Council</button>
+      <button type="button" class="nav-btn" data-view="markets">Markets</button>
+      <button type="button" class="nav-btn" data-view="security">Security</button>
+    </nav>
+    <div class="rail-foot">
+      <div class="pill" id="live-pill"><span class="pulse"></span> live</div>
+      <button type="button" class="btn ghost theme-btn" id="btn-theme">Theme</button>
+      <a class="rail-link" href="/explorer">Legacy explorer</a>
+      <a class="rail-link" href="/docs">API docs</a>
+      <a class="rail-link" href="/openapi.json" target="_blank" rel="noopener">OpenAPI</a>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <header class="top">
+      <div>
+        <h1 id="view-title">Overview</h1>
+        <p class="lede" id="view-lede">Node honesty · mesh · satoshi-aware ops</p>
+      </div>
+      <div class="top-actions">
+        <label class="endpoint">
+          <span>REST base</span>
+          <input id="rpc-base" type="text" spellcheck="false" autocomplete="off" value="" />
+        </label>
+        <label class="endpoint">
+          <span>JSON-RPC</span>
+          <input id="eth-rpc" type="text" spellcheck="false" autocomplete="off" value="" />
+        </label>
+        <button type="button" class="btn ghost" id="btn-refresh">Refresh</button>
+        <button type="button" class="btn" id="btn-poll" data-on="1" title="Cycle poll interval">Auto 15s</button>
+      </div>
+    </header>
+
+    <section class="strip" id="status-strip" aria-live="polite"></section>
+
+    <section class="view active" id="view-overview"></section>
+    <section class="view" id="view-mesh"></section>
+    <section class="view" id="view-metrics"></section>
+    <section class="view" id="view-mempool"></section>
+    <section class="view" id="view-chain"></section>
+    <section class="view" id="view-evm"></section>
+    <section class="view" id="view-features"></section>
+    <section class="view" id="view-evidence"></section>
+    <section class="view" id="view-wallets"></section>
+    <section class="view" id="view-council"></section>
+    <section class="view" id="view-markets"></section>
+    <section class="view" id="view-security"></section>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="/console/assets/charts.js" defer></script>
+  <script src="/console/assets/api.js" defer></script>
+  <script src="/console/assets/wallets.js" defer></script>
+  <script src="/console/assets/app.js" defer></script>
+</body>
+</html>

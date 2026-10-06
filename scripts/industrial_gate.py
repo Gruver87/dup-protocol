@@ -167,6 +167,49 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         from network import p2p_tls  # noqa: F401
     except ImportError as exc:
         errors.append(f"network.p2p_tls import failed: {exc}")
+    # Exp→pin ops: market snapshot (TLS allowlist) + secure UI static + soak needles.
+    if not (ROOT / "api" / "market_feed.py").is_file():
+        errors.append("api/market_feed.py missing (ops market snapshot)")
+    else:
+        mf = (ROOT / "api" / "market_feed.py").read_text(encoding="utf-8")
+        if "api.coingecko.com" not in mf or "create_default_context" not in mf:
+            errors.append("market_feed must allowlist CoinGecko and verify TLS")
+    http_static = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+    if "/market/snapshot" not in http_static:
+        errors.append("http.py must expose GET /market/snapshot")
+    if "_resolve_web_static" not in http_static:
+        errors.append("http.py must resolve web/console static safely")
+    if "Content-Security-Policy" not in http_static or "_WEB_CSP" not in http_static:
+        errors.append("http.py must emit CSP for UI static")
+    if not (ROOT / "scripts" / "check_mesh_catchup.py").is_file():
+        errors.append("scripts/check_mesh_catchup.py missing (live catch-up honesty)")
+    else:
+        catchup_py = (ROOT / "scripts" / "check_mesh_catchup.py").read_text(
+            encoding="utf-8"
+        )
+        if "/p2p/topology" not in catchup_py or 'p2p.get("topology_healthy")' in catchup_py:
+            errors.append(
+                "check_mesh_catchup must read topology_healthy from GET /p2p/topology, not /status"
+            )
+    if not (ROOT / "scripts" / "check_baked_state_root.py").is_file():
+        errors.append("scripts/check_baked_state_root.py missing")
+    else:
+        baked_py = (ROOT / "scripts" / "check_baked_state_root.py").read_text(
+            encoding="utf-8"
+        )
+        if "Last committed canonical root" not in baked_py:
+            errors.append(
+                "check_baked_state_root.py must inspect get_state_root committed-root docstring"
+            )
+    prep48 = (ROOT / "scripts" / "prepare_48h_soak.ps1").read_text(encoding="utf-8")
+    if "COMMITTED_STATE_ROOT_OK" not in prep48:
+        errors.append(
+            "prepare_48h_soak must exact-match COMMITTED_STATE_ROOT_OK (not substring OK)"
+        )
+    if "docker cp" not in prep48 or "check_baked_state_root.py" not in prep48:
+        errors.append(
+            "prepare_48h_soak must docker-cp check_baked_state_root.py into the running image"
+        )
     # Load real prod mesh JSON (bare Config() is always deployment_mode=dev).
     prod_tls_enabled = False
     prod_json_files = (

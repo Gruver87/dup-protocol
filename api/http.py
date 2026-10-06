@@ -1186,6 +1186,8 @@ _PUBLIC_API_ROUTES = [
     {"method": "POST", "path": "/testnet/fork-exercise", "summary": "P2P fork reconcile recovery drill (dev, Wave 58)"},
     {"method": "GET", "path": "/sync/status", "summary": "Chain sync status"},
     {"method": "GET", "path": "/features", "summary": "Feature flags and module availability"},
+    {"method": "GET", "path": "/market/snapshot", "summary": "Ops market snapshot (FX/crypto/macro; not consensus)"},
+    {"method": "GET", "path": "/market/fx", "summary": "FX convert via Frankfurter (not consensus)"},
     {"method": "GET", "path": "/evm/supported-opcodes", "summary": "EVM opcode support matrix"},
     {"method": "GET", "path": "/evm/status", "summary": "EVM compat honesty snapshot (not full geth)"},
     {"method": "GET", "path": "/consensus/attestations", "summary": "Latest validator attestations (LMD)"},
@@ -1880,6 +1882,68 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
 #  REST API  (порт 8080)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+_WEB_STATIC_EXTS = frozenset({".html", ".css", ".js", ".svg", ".woff2", ".map"})
+_WEB_STATIC_CT = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".woff2": "font/woff2",
+    ".map": "application/json",
+}
+_WEB_CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self'; "
+    "img-src 'self' data:; "
+    "font-src 'self'; "
+    "connect-src 'self' ws: wss:; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'; "
+    "object-src 'none'"
+)
+
+
+def _resolve_web_static(project_root: str, url_path: str) -> Optional[tuple[str, str]]:
+    """Map URL path → (filesystem path, content-type). Refuse path traversal."""
+    raw = (url_path or "/").split("?", 1)[0]
+    path = raw if raw == "/" else raw.rstrip("/")
+    if path in ("", "/", "/index.html", "/console"):
+        rel = os.path.join("web", "console", "index.html")
+    elif path == "/explorer":
+        rel = os.path.join("web", "explorer", "index.html")
+    elif path.startswith("/console/"):
+        rel = os.path.join("web", "console", path[len("/console/") :])
+    elif path.startswith("/explorer/"):
+        leaf = path[len("/explorer/") :]
+        if leaf in ("", "index.html"):
+            rel = os.path.join("web", "explorer", "index.html")
+        else:
+            return None
+    elif path.endswith(".html"):
+        rel = os.path.join("web", "console", "index.html")
+    else:
+        return None
+
+    root = os.path.realpath(project_root)
+    full = os.path.realpath(os.path.join(root, rel))
+    allowed_roots = (
+        os.path.realpath(os.path.join(root, "web", "console")),
+        os.path.realpath(os.path.join(root, "web", "explorer")),
+    )
+    if not any(
+        full == ar or full.startswith(ar + os.sep) for ar in allowed_roots
+    ):
+        return None
+    ext = os.path.splitext(full)[1].lower()
+    if ext not in _WEB_STATIC_EXTS:
+        return None
+    if not os.path.isfile(full):
+        return None
+    return full, _WEB_STATIC_CT.get(ext, "application/octet-stream")
+
+
 class RESTHandler(BaseHTTPRequestHandler):
     """HTTP-обработчик для REST API запросов."""
 
@@ -2536,27 +2600,37 @@ class RESTHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
-            # ── Static HTML serving ──────────────────────────────────────────
-            if path in ("", "/", "/index.html") or path.endswith(".html"):
-                root = self.__class__.project_root
-                html_path = os.path.join(root, "web", "explorer", "index.html")
-                if not os.path.exists(html_path):
-                    # fallback: serve a simple redirect page
-                    body = b"<html><body><h2>Absolute Blockchain</h2><p>index.html not found at: " + html_path.encode() + b"</p></body></html>"
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/html; charset=utf-8")
-                    self.send_header("Content-Length", len(body))
-                    self.end_headers()
-                    self.wfile.write(body)
+            # ── Secure UI static (console + explorer; path-traversal refuse) ─
+            if (
+                path in ("", "/", "/index.html", "/console", "/explorer")
+                or path.startswith("/console/")
+                or path.startswith("/explorer/")
+                or path.endswith(".html")
+            ):
+                resolved = _resolve_web_static(self.__class__.project_root, path)
+                if resolved is None:
+                    self._error(404, "UI asset not found")
                     return
-                with open(html_path, "rb") as f:
-                    body = f.read()
+                html_path, content_type = resolved
+                try:
+                    with open(html_path, "rb") as f:
+                        body = f.read()
+                except OSError as exc:
+                    logger.warning("UI static read failed: %s", exc)
+                    self._error(404, "UI asset unreadable")
+                    return
                 self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Type", content_type)
                 self.send_header("Content-Length", len(body))
                 self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
                 self.send_header("Pragma", "no-cache")
-                _send_acao_header(self, self._cors_origin(self.headers.get("Origin", "")))
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("X-Frame-Options", "DENY")
+                self.send_header("Referrer-Policy", "no-referrer")
+                self.send_header("Content-Security-Policy", _WEB_CSP)
+                _send_acao_header(
+                    self, self._cors_origin(self.headers.get("Origin", ""))
+                )
                 self.end_headers()
                 self.wfile.write(body)
                 return
@@ -3312,6 +3386,41 @@ class RESTHandler(BaseHTTPRequestHandler):
                         "healthy": False,
                         "error": "consensus_adapter_missing",
                     })
+
+            elif path == "/market/snapshot":
+                try:
+                    from api.market_feed import build_market_snapshot
+
+                    self._json(build_market_snapshot())
+                except Exception as exc:
+                    logger.warning("/market/snapshot failed: %s", exc)
+                    self._json({
+                        "ok": False,
+                        "error": str(exc),
+                        "honesty": ["NOT consensus", "market feed unavailable"],
+                    })
+
+            elif path == "/market/fx":
+                try:
+                    from api.market_feed import MarketFeedError, convert_fx
+
+                    amount_raw = (qs.get("amount") or ["1"])[0]
+                    frm = (qs.get("from") or ["USD"])[0]
+                    to = (qs.get("to") or ["EUR"])[0]
+                    try:
+                        amount = float(amount_raw)
+                    except (TypeError, ValueError):
+                        self._error(400, "amount must be a number")
+                        return
+                    if amount < 0:
+                        self._error(400, "amount must be >= 0")
+                        return
+                    self._json(convert_fx(amount, frm, to))
+                except MarketFeedError as exc:
+                    self._error(502, str(exc))
+                except Exception as exc:
+                    logger.warning("/market/fx failed: %s", exc)
+                    self._error(502, "fx convert failed")
 
             elif path == "/features":
                 from features import FeatureFlags, OPTIONAL_MODULE_PROBES, probe_optional_module

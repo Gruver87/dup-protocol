@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — ops market snapshot / CSP UI / soak baked needle
+
+- `api/market_feed.py` + GET `/market/snapshot` `/market/fx` (TLS allowlist; not consensus).
+- Secure UI static: `_resolve_web_static` + CSP headers; port `web/console/` ops UI (explorer at `/explorer`).
+- `check_baked_state_root.py` + `check_mesh_catchup.py/.ps1`; `prepare_48h_soak.ps1` docker-cp baked needle.
+- industrial_gate needles. **Non-LR.** Mesh Quick: optional (API/ops surface). **Soak deferred.**
+
 ### Exp→pin merge wave — cargo-audit ADR 0020 libp2p transitive ignores
 
 - `.cargo/audit.toml` + `security-audit.yml`: scoped ignores for libp2p lock edges (`hickory`/`webpki`/`ring`/`h2`) already documented in `DEPENDABOT_TRIAGE.md` (Noise+TCP mesh; mDNS/TLS/UPnP not the live path).
