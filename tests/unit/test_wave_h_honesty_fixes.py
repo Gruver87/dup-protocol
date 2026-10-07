@@ -53,6 +53,7 @@ def test_bridge_fee_bps_integer():
     src = (root / "bridge" / "abs_bridge.py").read_text(encoding="utf-8")
     assert "BRIDGE_FEE_BPS" in src
     assert "amount * fee_rate" not in src
+    assert '"fee_bps": bps' in src or "'fee_bps': bps" in src
 
 
 def test_canonical_serializer_requires_parent():

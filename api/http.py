@@ -497,7 +497,13 @@ def _build_status_probe_payload(
         deployment_mode=getattr(cfg, "deployment_mode", "dev"),
         mesh_min_peers=mesh_min_peers,
     )
-    p2p_hard = _status_p2p_hardening_snapshot(cfg, p2p)
+    sec_raw: Dict[str, Any] = {}
+    if p2p and hasattr(p2p, "get_p2p_security_status"):
+        try:
+            sec_raw = dict(p2p.get_p2p_security_status() or {})
+        except Exception as exc:
+            logger.warning("/status probe p2p security failed: %s", exc)
+    p2p_hard = _status_p2p_hardening_snapshot(cfg, p2p, sec=sec_raw)
     degraded = (
         (peer_count > 0 and not state_consistent)
         or (peer_count > 0 and not wire_probe_probed)
@@ -1501,6 +1507,9 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
         try:
             result = self._call(method, params)
             return {"jsonrpc": "2.0", "id": rid, "result": result}
+        except ValueError as e:
+            return {"jsonrpc": "2.0", "id": rid,
+                    "error": {"code": -32602, "message": str(e)}}
         except Exception as e:
             return {"jsonrpc": "2.0", "id": rid,
                     "error": {"code": -32603, "message": str(e)}}
@@ -6304,7 +6313,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 ca = self.__class__.consensus_adapter
                 if ca and hasattr(ca, "add_validator"):
                     ok = ca.add_validator(
-                        address, stake, stake_satoshi=stake_sat
+                        address, stake, stake_satoshi=int(stake_sat)
                     )
                     self._json({
                         "registered": bool(ok),
@@ -6314,7 +6323,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     })
                 else:
                     bc.db.save_validator(
-                        address, stake, stake_satoshi=stake_sat
+                        address, stake, stake_satoshi=int(stake_sat)
                     )
                     self._json({
                         "registered": True,

@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — JSON-RPC -32602 + bridge fee_bps + gas TypeError
+
+- api/http: legacy JSON-RPC maps ValueError→-32602; status probe warns on p2p security fail; stake_satoshi int().
+- tx_validator: TypeError/ValueError gas → gas_required.
+- abs_bridge: estimate_fee exposes fee_bps; _on_incoming via money_abs; BPS map docs.
+- Units + industrial_gate. **Non-LR.** Mesh Quick optional (API/bridge/validator). **Soak deferred.**
+
 ### Exp→pin merge wave — consensus stake_satoshi load + CI money_abs
 
 - consensus/adapter: `_load_validators_from_db` prefers DB `stake_satoshi` (mismatch refuse via resolve).

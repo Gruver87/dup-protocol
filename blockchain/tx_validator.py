@@ -40,8 +40,8 @@ class TransactionValidator:
 
         try:
             _require_tx_gas(tx)
-        except ValueError as exc:
-            return False, str(exc)
+        except (TypeError, ValueError):
+            return False, "gas_required"
 
         from_addr = tx.get("from", tx.get("from_addr", ""))
         to_addr = tx.get("to", tx.get("to_addr", ""))

@@ -76,18 +76,19 @@ class RustBridge:
         key = (chain or "").strip().lower()
         return self.CHAIN_ALIASES.get(key, key)
 
-    # Тарифы моста (% от суммы)
-    BRIDGE_FEES = {
-        "ethereum": 0.01,   # 1%
-        "bsc":      0.002,  # 0.2%
-        "solana":   0.001,  # 0.1%
-        "absolute": 0.005,  # 0.5%
-    }
+    # Bridge fees in basis points (10000 = 100%). Integer satoshi math — Wave H.
     BRIDGE_FEE_BPS = {
-        "ethereum": 100,
-        "bsc": 20,
-        "solana": 10,
-        "absolute": 50,
+        "ethereum": 100,   # 1%
+        "bsc": 20,         # 0.2%
+        "solana": 10,      # 0.1%
+        "absolute": 50,    # 0.5%
+    }
+    # Legacy float map for status/docs display only (not used for fee math).
+    BRIDGE_FEES = {
+        "ethereum": 0.01,
+        "bsc": 0.002,
+        "solana": 0.001,
+        "absolute": 0.005,
     }
 
     def __init__(self, config: Config, db: Database, bus: Optional[EventBus] = None):
@@ -576,6 +577,7 @@ class RustBridge:
             "amount_satoshi": amount_sats,
             "fee": float(from_satoshi_float(fee_sats)),
             "fee_satoshi": fee_sats,
+            "fee_bps": bps,
             "fee_pct": bps / 100.0,
             "net_amount": float(from_satoshi_float(net_sats)),
             "net_amount_satoshi": net_sats,
@@ -586,10 +588,12 @@ class RustBridge:
     def _on_incoming(self, event: Dict):
         """EventBus колбэк для входящих бридж-транзакций."""
         if isinstance(event, dict):
+            from runtime.amount import money_abs
+
             self.confirm_incoming(
                 tx_hash=event.get("tx_hash", ""),
                 recipient=event.get("recipient", ""),
-                amount=float(event.get("amount", 0)),
+                amount=money_abs(event.get("amount", 0), field="amount"),
                 from_chain=event.get("from_chain", ""),
                 amount_satoshi=event.get("amount_satoshi"),
             )

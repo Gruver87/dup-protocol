@@ -1,0 +1,8 @@
+﻿MESH_PROBE_POST_MERGE_JSONRPC_FEE_BPS
+date: 2026-10-07
+wave: Exp→pin JSON-RPC -32602 + bridge fee_bps + gas TypeError
+units: test_jsonrpc_valueerror_32602 + bridge fee_bps + tx_validator gas 5 PASS
+industrial_gate: OK
+mesh_quick: optional / not required this tip (API/bridge/validator)
+soak: deferred / not run / not started
+long_range: off

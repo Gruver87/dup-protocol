@@ -5060,6 +5060,21 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append(
                 "abs_bridge missing Rust bin must raise only when prod+bridge_enabled"
             )
+        if "BRIDGE_FEE_BPS" not in abs_bridge_py or '"fee_bps": bps' not in abs_bridge_py:
+            errors.append("abs_bridge estimate_fee must expose fee_bps (integer BPS math)")
+        if 'money_abs(event.get("amount"' not in abs_bridge_py:
+            errors.append("abs_bridge _on_incoming must parse amount via money_abs")
+        http_rpc = (ROOT / "api" / "http.py").read_text(encoding="utf-8", errors="replace")
+        if '"code": -32602' not in http_rpc:
+            errors.append("JSONRPCHandler must map ValueError to JSON-RPC -32602")
+        if "/status probe p2p security failed" not in http_rpc:
+            errors.append("status probe must warn when get_p2p_security_status fails")
+        txv_py = (ROOT / "blockchain" / "tx_validator.py").read_text(encoding="utf-8")
+        if (
+            "except (TypeError, ValueError):" not in txv_py
+            or 'return False, "gas_required"' not in txv_py
+        ):
+            errors.append("tx_validator must map TypeError/ValueError gas to gas_required")
         casper_py = (ROOT / "consensus" / "finality_casper.py").read_text(
             encoding="utf-8"
         )
