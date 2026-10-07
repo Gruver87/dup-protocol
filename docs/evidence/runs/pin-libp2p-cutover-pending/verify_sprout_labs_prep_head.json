@@ -1,0 +1,53 @@
+﻿{
+    "honesty":  [
+                    "NOT soak",
+                    "NOT Long-Range",
+                    "NOT prod feature_* flip",
+                    "NOT bridge ON / NOT L1 cutover",
+                    "aux / ADR 0016 sprout labs only"
+                ],
+    "total":  7,
+    "elapsed_sec":  15,
+    "passed":  7,
+    "started":  "2026-10-07T23:20:14.5961463+02:00",
+    "phase":  "pin-sprout-labs",
+    "ok":  true,
+    "steps":  [
+                  {
+                      "ok":  true,
+                      "name":  "verify_bridge_off_lab",
+                      "exit_code":  0
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "verify_oracle_lab",
+                      "exit_code":  0
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "verify_cross_shard_lab",
+                      "exit_code":  0
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "verify_nft_marketplace",
+                      "exit_code":  0
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "ai_lab.py",
+                      "exit_code":  0
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "ai_ops_anomaly offline",
+                      "exit_code":  0
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "industrial_gate sprout needles",
+                      "exit_code":  0
+                  }
+              ],
+    "fail_count":  0
+}

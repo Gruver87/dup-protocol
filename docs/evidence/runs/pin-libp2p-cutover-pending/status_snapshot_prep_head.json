@@ -1,0 +1,32 @@
+[
+  {
+    "port": 18180,
+    "h": 2908,
+    "peers": 2,
+    "head": "60a0548ee316a0c5",
+    "libp2p_active": true,
+    "bridge": null,
+    "feature_long_range": null,
+    "feature_libp2p": null
+  },
+  {
+    "port": 18181,
+    "h": 2908,
+    "peers": 2,
+    "head": "60a0548ee316a0c5",
+    "libp2p_active": true,
+    "bridge": null,
+    "feature_long_range": null,
+    "feature_libp2p": null
+  },
+  {
+    "port": 18182,
+    "h": 2908,
+    "peers": 2,
+    "head": "60a0548ee316a0c5",
+    "libp2p_active": true,
+    "bridge": null,
+    "feature_long_range": null,
+    "feature_libp2p": null
+  }
+]

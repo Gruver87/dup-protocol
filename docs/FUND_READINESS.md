@@ -71,7 +71,7 @@ ADRs: 0001 tip-safety · 0009 hybrid · 0015 secrets · 0016 profiles · 0017 Lo
 | Bridge OFF defaults + audit gate | Done |
 | Sprout labs verify (oracle/shard/NFT/AI) | Done — `verify_sprout_labs.ps1` |
 | Industrial HIGH honesty / industrial_gate | Done |
-| Fresh 48h soak on current HEAD (libp2p) | **Deferred** — operator |
+| Fresh 48h soak on current HEAD (libp2p) | **Prep READY** — see [`pin-libp2p-cutover-pending/SOAK_PREP_READY_HEAD.md`](evidence/runs/pin-libp2p-cutover-pending/SOAK_PREP_READY_HEAD.md); soak **not started** / **not PASS** |
 | External audit / secrets rotate / validator ceremony live | Org Phase 6 |
 
 ---

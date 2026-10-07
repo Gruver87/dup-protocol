@@ -1,0 +1,11 @@
+﻿{
+    "prepared_at":  "2026-10-07T23:33:24.7899121+02:00",
+    "interval_sec":  60,
+    "start_command":  ".\\scripts\\start_soak_prod_mesh_48h.ps1 -Hours 48 -IntervalSec 60",
+    "git_dirty":  true,
+    "hours":  48,
+    "ok":  true,
+    "note":  "Industrial pin 48h prep (ADR 0020). Not a soak PASS. Do not rebuild Docker until soak ends.",
+    "git_sha":  "61114f36434ee413267eea3e06a57cee44f79102",
+    "image_id":  "sha256:be576392c01f2ba22bebebef1e4e486b7106ae373ebbbd3dedf1be5265bfa908"
+}

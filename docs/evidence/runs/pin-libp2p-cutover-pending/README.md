@@ -1,94 +1,48 @@
-﻿# Pin libp2p industrial mesh вЂ” cutover evidence (`pin-libp2p-cutover-pending`)
+﻿# Pin libp2p industrial mesh — cutover evidence (`pin-libp2p-cutover-pending`)
 
 **Kind:** ADR 0020 cutover  
-**Status:** **Quick probe PASS packaged** В· **48h soak DEFERRED** (operator: after full merge; premature 21:11 restart **stopped** вЂ” not PASS)  
-**Chain:** prod-profile `778888` В· rust-libp2p (`feature_libp2p=true`, `p2p_tls_enabled=false`)
+**Status:** **Quick probe PASS packaged** · **48h soak PREP READY on HEAD** (see [`SOAK_PREP_READY_HEAD.md`](SOAK_PREP_READY_HEAD.md)) · soak **NOT started** · **NOT PASS**  
+**Chain:** prod-profile `778888` · rust-libp2p (`feature_libp2p=true`, `p2p_tls_enabled=false`)
 
 ## Honesty
 
-- Quick mesh probe (`probe_prod_mesh.ps1 -Quick`) в†’ **RESULT: OK** вЂ” see `probe_prod_mesh_quick.json` + `status_snapshot.jsonl` (peers=2, aligned tip, `libp2p.active` + `rust_backend`, honesty `ADR0020_experimental_libp2p_industrial_mesh`)
-- `industrial_gate.py` в†’ **OK** (see `industrial_gate.json`; external-audit warnings expected)
-- Negative refuse notes: `NEGATIVE_REFUSE.txt`
-- **48h soak deferred** until operator declares full Expв†’pin merge complete. Premature restart 2026-10-05 21:11 tip `bd500c1` was **stopped** (see `SOAK_STOPPED_PREMATURE.txt` / `SOAK_IN_PROGRESS.txt`). **Do not claim PASS.**
-- **NOT** public mainnet В· **NOT** external audit
-- Do **not** cite Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`) as pin evidence
-- Freeze tag `v1.3.1339-tip-v2-industrial` and sealed TCP+TLS packs remain **historical** вЂ” unchanged
+- Quick mesh probe (`probe_prod_mesh.ps1 -Quick`) → **RESULT: OK**
+- `industrial_gate.py` → **OK** (external-audit warnings expected)
+- **48h prep READY** on working tip (disk, image pin, libp2p preflight, catchup, miner harness ×5, midsoak honesty, sprout labs, Strict 1m `hard_fails=0`, STRICT preflight-only)
+- Premature restart 2026-10-05 21:11 was **stopped** (`SOAK_STOPPED_PREMATURE.txt`) — not PASS
+- **NOT** public mainnet · **NOT** external audit
+- Do **not** cite Experimental libp2p soaks as pin evidence
+- Freeze tag `v1.3.1339-tip-v2-industrial` / TCP+TLS tip-v2 packs remain **historical**
 
-## Operator: 48h soak still required
+## Operator: start when ready
 
 ```powershell
 cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
-.\scripts\soak_monitor.ps1 -ProdMesh -Hours 48
-# only claim PASS when report has passed=true and hard_fails=0
+# Sleep=Never on AC. Do NOT rebuild Docker until 48h ends.
+.\scripts\start_soak_prod_mesh_48h_strict.ps1 -SkipRebuild
 ```
 
-**Suggested release tag (after soak PASS + commit):** `v1.3.1340-libp2p-industrial-mesh`  
-(Not created on this cutover вЂ” working tree dirty; freeze tag untouched.)
+Only claim PASS when report has `passed=true` and `hard_fails=0` (STRICT: `mesh_warn=0`).
 
-## Packaged now
+**Suggested release tag (after soak PASS + commit):** `v1.3.1340-libp2p-industrial-mesh`
+
+## Prep stamp (this wave)
 
 | File | Purpose |
 |------|---------|
-| `probe_prod_mesh_quick.json` | Quick probe PASS |
-| `status_snapshot.jsonl` | Live `/status` from 18180вЂ“18182 |
-| `industrial_gate.json` | Gate snapshot |
-| `NEGATIVE_REFUSE.txt` | TLS+libp2p / `-P2pTls` / missing-swarm refuse |
-| `MESH_PROBE_POST_STRICT.txt` | Outbound/class-rate Quick probe stamp |
-| `MESH_PROBE_POST_FORGE_SOLICIT_PATHA.txt` | Own-forge + solicit + PathA Quick probe (h908) |
-| `probe_prod_mesh_quick_forge_solicit_patha.json` | Probe JSON for forge/solicit/PathA wave |
-| `industrial_gate_forge_solicit_patha.json` | Gate snapshot for that wave |
-| `MESH_PROBE_POST_ATTEST_SYNC_PARENT.txt` | Attest-echo + SyncEngine probes + parent FC (h989) |
-| `probe_prod_mesh_quick_attest_sync_parent.json` | Probe JSON for attest/sync/parent wave |
-| `industrial_gate_attest_sync_parent.json` | Gate snapshot for that wave |
-| `MESH_PROBE_POST_ROCKS_O1.txt` | Rocks O(1) + topology_deferred Quick probe (h1051) |
-| `probe_prod_mesh_quick_rocks_o1.json` | Probe JSON for Rocks O(1) wave |
-| `industrial_gate_rocks_o1.json` | Gate snapshot for that wave |
-| `MESH_PROBE_POST_ROCKS_PAGES.txt` | Rocks page-scan leftovers Quick probe (h1101) |
-| `probe_prod_mesh_quick_rocks_pages.json` | Probe JSON for Rocks pages wave |
-| `industrial_gate_rocks_pages.json` | Gate snapshot for that wave |
-| `MESH_PROBE_POST_APPLY_QUEUE.txt` | ChainApplyQueue wrap_future Quick probe (h1141) |
-| `probe_prod_mesh_quick_apply_queue.json` | Probe JSON for apply-queue wave |
-| `industrial_gate_apply_queue.json` | Gate snapshot for that wave |
-| `MESH_PROBE_POST_MERGE_TIP_SOLICIT_BLOCKS.txt` | Tip-rebind + solicit lag + get_blocks + redial Quick probe (h1244) |
-| `probe_prod_mesh_quick_merge_tip_solicit_blocks.json` | Probe JSON for tip/solicit/blocks/redial wave |
-| `industrial_gate_merge_tip_solicit_blocks.json` | Gate snapshot for that wave |
-| `MESH_PROBE_POST_MERGE_SR_CACHE_SOAK.txt` | Outbound state_root lag + FullHarnessEvery + crypto cache Quick probe (h1289) |
-| `probe_prod_mesh_quick_merge_sr_cache_soak.json` | Probe JSON for sr-lag/cache/soak-prep wave |
-| `industrial_gate_merge_sr_cache_soak.json` | Gate snapshot for that wave |
-| `MESH_PROBE_POST_MERGE_OOG_DAO.txt` | Nested CALL OOG + tip-encoding FC + DAO BPS Quick probe (h1322, full docker rebuild) |
-| `probe_prod_mesh_quick_merge_oog_dao.json` | Probe JSON for OOG/DAO wave |
-| `industrial_gate_merge_oog_dao.json` | Gate snapshot for that wave |
-| `MESH_PROBE_POST_MERGE_BURN_RPC.txt` | Rocks money_abs burn + RPC gas_limit Quick probe (h1336) |
-| `probe_prod_mesh_quick_merge_burn_rpc.json` | Probe JSON for burn/RPC wave |
-| `industrial_gate_merge_burn_rpc.json` | Gate snapshot for that wave |
-| `MESH_PROBE_POST_MERGE_STRICT_OPS.txt` | Strict health_watch + soak starters + FC leftovers Quick probe (h1380) |
-| `probe_prod_mesh_quick_merge_strict_ops.json` | Probe JSON for Strict ops wave |
-| `industrial_gate_merge_strict_ops.json` | Gate snapshot for that wave |
-| `MESH_PROBE_POST_MERGE_UNCLE_AUDIT_FB.txt` | Uncle RPC validate + audit live_automated + bridge money + `_native_fb` Quick probe (h1490) |
-| `probe_prod_mesh_quick_merge_uncle_audit_fb.json` | Probe JSON for uncle/audit/fb wave |
-| `industrial_gate_merge_uncle_audit_fb.json` | Gate snapshot for that wave |
-| `MESH_PROBE_POST_MERGE_P2P_SATOSHI_FEE_COUNTERS.txt` | verify_p2p_ci satoshi smoke + mempool fee/gas_missing refuse counters Quick probe |
-| `probe_prod_mesh_quick_merge_p2p_satoshi_fee_counters.json` | Probe JSON for satoshi/fee-counter wave |
-| `industrial_gate_merge_p2p_satoshi_fee_counters.json` | Gate snapshot for satoshi/fee-counter wave |
-| `MESH_PROBE_POST_MERGE_MEMPOOL_UNPARSEABLE_FC.txt` | mempool value/nonce/gas unparseable refuse (no silent pass) Quick probe |
-| `probe_prod_mesh_quick_merge_mempool_unparseable_fc.json` | Probe JSON for unparseable-FC wave |
-| `industrial_gate_merge_mempool_unparseable_fc.json` | Gate snapshot for unparseable-FC wave |
-| `MESH_PROBE_POST_MERGE_STAKE_SATOSHI_CI_MONEY.txt` | consensus stake_satoshi load + CI money_abs (Quick optional) |
-| `industrial_gate_merge_stake_satoshi_ci_money.json` | Gate snapshot for stake/CI money wave |
-| `MESH_PROBE_POST_MERGE_JSONRPC_FEE_BPS.txt` | JSON-RPC -32602 + bridge fee_bps + gas TypeError (Quick optional) |
-| `industrial_gate_merge_jsonrpc_fee_bps.json` | Gate snapshot for JSON-RPC/fee_bps wave |
-| `MESH_PROBE_POST_MERGE_PBS_ABS_TO_WEI.txt` | PBS/MEV abs_to_wei + EVM/LN satoshi honesty (Quick optional) |
-| `industrial_gate_merge_pbs_abs_to_wei.json` | Gate snapshot for PBS abs_to_wei wave |
-| `MESH_PROBE_POST_MERGE_LN_HTLC_SATOSHI_ID.txt` | lightning HTLC satoshi id + EVM cover helpers (Quick optional) |
-| `industrial_gate_merge_ln_htlc_satoshi_id.json` | Gate snapshot for LN HTLC satoshi id wave |
-| `hw_strict_smoke_1m.log` | 1m `health_watch -Strict` smoke (EXIT=0) |
-| `README.md` | This honesty stamp |
+| [`SOAK_PREP_READY_HEAD.md`](SOAK_PREP_READY_HEAD.md) | Operator READY checklist |
+| `soak_48h_prep.json` / `soak_preflight.json` | prepare_48h_soak + soak_preflight |
+| `probe_prod_mesh_quick_prep_head.json` | Quick probe |
+| `industrial_gate_prep_head.json` | Gate snapshot |
+| `status_snapshot_prep_head.json` | Live tip/peers/libp2p |
+| `hw_strict_smoke_1m_prep_head.log` | Strict 1m (`hard_fails=0`) |
+| `strict_preflight_only_prep_head.log` | STRICT starter `-PreflightOnly` |
+| `verify_sprout_labs_prep_head.json` | Sprout labs PASS |
 
 ## Still missing for industrial soak claim
 
 | File | Purpose |
 |------|---------|
 | `soak_report*.json` | `passed=true`, `hard_fails=0` |
-| `soak_monitor.log` | 48h run log |
+| `soak_monitor.log` / STRICT log | 48h run log |
 | `manifest.json` | commit + sha256 bindings after soak |
-
