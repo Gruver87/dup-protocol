@@ -941,13 +941,13 @@ class NodeOrchestrator:
         else:
             self.chain_storage = None
 
-        # 20. Post-Quantum Manager (educational / R&D — not NIST production backends)
+        # 20. Post-Quantum Manager (R&D — all backends NotImplemented; not NIST prod)
         if _PQ_MANAGER_AVAILABLE and getattr(config, "feature_pq", False):
             try:
                 self.pq_manager = PostQuantumManager()
                 print(
-                    "[Node] PostQuantumManager: educational suite loaded "
-                    "(Dilithium=hash-demo; Kyber/Falcon=NotImplemented — not prod-ready)"
+                    "[Node] PostQuantumManager: R&D suite loaded "
+                    "(Dilithium/SPHINCS/Kyber/Falcon=NotImplemented — not NIST prod backends)"
                 )
             except Exception as e:
                 self.pq_manager = None

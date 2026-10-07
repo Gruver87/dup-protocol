@@ -2157,6 +2157,26 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
                 errors.append("ai_ops.classify_anomaly must exist and refuse consensus claim")
         if not (ROOT / "scripts" / "ai_ops_anomaly.py").is_file():
             errors.append("scripts/ai_ops_anomaly.py missing")
+        if not (ROOT / "scripts" / "nft_lab.py").is_file():
+            errors.append("scripts/nft_lab.py missing (audit remediation + NFT honesty lab)")
+        else:
+            nft_lab_txt = (ROOT / "scripts" / "nft_lab.py").read_text(encoding="utf-8")
+            if "feature_nft" not in nft_lab_txt or "NOT soak" not in nft_lab_txt:
+                errors.append("nft_lab.py must refuse soak/prod feature_nft claims")
+        if not (ROOT / "scripts" / "ai_lab.py").is_file():
+            errors.append("scripts/ai_lab.py missing (AI sprout honesty lab)")
+        else:
+            ai_lab_txt = (ROOT / "scripts" / "ai_lab.py").read_text(encoding="utf-8")
+            if "model_bound" not in ai_lab_txt or "NOT soak" not in ai_lab_txt:
+                errors.append("ai_lab.py must check model_bound and refuse soak claims")
+        main_pq = (ROOT / "main.py").read_text(encoding="utf-8")
+        if "Dilithium=hash-demo" in main_pq:
+            errors.append(
+                "main.py must not claim Dilithium hash-demo "
+                "(backends are NotImplemented — Wave I)"
+            )
+        if "Dilithium/SPHINCS/Kyber/Falcon=NotImplemented" not in main_pq:
+            errors.append("main.py PQ boot must label all backends NotImplemented")
         # v1.3.38 — native GHOST + simple block apply/replay
         ghost_py = (ROOT / "consensus" / "ghost.py").read_text(encoding="utf-8")
         if "ghost_select_head" not in ghost_py or "ghost_cumulative_weight" not in ghost_py:

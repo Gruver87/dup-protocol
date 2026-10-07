@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — NFT/AI labs + dual-stack + PQ honesty
+
+- scripts: port `nft_lab.py` + `ai_lab.py` (offline sprout honesty; audit remediation expects nft_lab).
+- tests: ADR 0018 `test_dual_stack.py`.
+- main: PQ boot message matches NotImplemented backends (no Dilithium hash-demo claim).
+- industrial_gate needles. **Non-LR.** Mesh Quick optional. **Soak deferred / not run.**
+
 ### Exp→pin merge wave — AI/NFT marketplace honesty + ai_ops
 
 - nft: `get_listings` + `delist`; HTTP POST `/nft/delist` (auth + soft-escrow path unchanged).
