@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — mining pack + /status + state_root stale-peer
+
+- main: forge packs via `mempool.get_for_block` (nonce-contiguous; match PBS path).
+- http: `/status` tip via `_status_tip_hash`; bridge locks only when `bridge_enabled`
+  (limit 50); prod `get_stats` fail → bridge None; console/explorer rate-limit exempt.
+- p2p: `request_peer_state_roots` skip stale peer snapshots.
+- **Non-LR.** Mesh Quick. **Soak deferred / not run.**
+
 ### Exp→pin merge wave — tip-safety light-advance (ADR 0001, no LR)
 
 - tip_safety: `bind_imported_tip` + `_advance_after_import` + ancestry

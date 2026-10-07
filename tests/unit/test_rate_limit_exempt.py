@@ -18,6 +18,11 @@ def test_devnet_probe_paths_exempt():
         assert _is_rate_limit_exempt(path) is True
 
 
+def test_console_explorer_paths_exempt():
+    for path in ("/", "/console", "/console/assets/app.js", "/explorer", "/explorer/"):
+        assert _is_rate_limit_exempt(path) is True
+
+
 def test_write_paths_not_exempt():
     assert _is_rate_limit_exempt("/transactions") is False
     assert _is_rate_limit_exempt("/tx/send") is False

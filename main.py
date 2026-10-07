@@ -2250,8 +2250,11 @@ class NodeOrchestrator:
             except Exception as exc:
                 _node_log.warning("[Mining] PBS auction failed: %s", exc)
 
-            # ── Get mempool transactions (mempool order; PBS does not reorder) ─
-            pending = self.mempool.get(limit=self.config.max_tx_per_block)
+            # ── Get mempool txs (nonce-contiguous pack; PBS does not reorder) ─
+            pending = self.mempool.get_for_block(
+                int(self.config.max_tx_per_block),
+                self.db.get_nonce,
+            )
 
             # ── MEV scan (monitoring only; PBS is fee-bid simulation) ─────────
             if self.mev_simulator and len(pending) >= 2:

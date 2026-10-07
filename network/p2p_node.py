@@ -7220,6 +7220,9 @@ class P2PNode:
             return []
 
         async def _one(peer: PeerConnection) -> Optional[Dict]:
+            # Stale snapshot: peer may have been replaced after list(self.peers.values()).
+            if self.peers.get(peer.peer_id) is not peer:
+                return None
             resp = await self.request_peer_state_root(
                 peer,
                 height,
@@ -7251,6 +7254,8 @@ class P2PNode:
             for peer in peers:
                 pid = str(getattr(peer, "peer_id", "") or "")
                 if not pid or pid in seen:
+                    continue
+                if self.peers.get(pid) is not peer:
                     continue
                 late = self._consume_late_state_root(peer)
                 if late:

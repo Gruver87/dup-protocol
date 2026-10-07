@@ -779,6 +779,8 @@ def _bridge_for_request(handler_cls, cfg):
                     rust_bridge = None
             except Exception as exc:
                 logger.warning("bridge get_stats failed: %s", exc)
+                if _is_production_cfg(cfg):
+                    rust_bridge = None
     if _is_production_cfg(cfg):
         if rust_bridge and getattr(rust_bridge, "_mode", "") == "rust":
             return rust_bridge
@@ -1204,7 +1206,14 @@ _RATE_LIMIT_EXEMPT_PATHS = frozenset({
 
 def _is_rate_limit_exempt(path: str) -> bool:
     p = (path or "").rstrip("/")
-    return p in _RATE_LIMIT_EXEMPT_PATHS or p.startswith("/health/")
+    if p in _RATE_LIMIT_EXEMPT_PATHS or p.startswith("/health/"):
+        return True
+    # Same-origin ops UI assets (low volume; avoid first-paint 429).
+    if p in ("", "/", "/index.html", "/console", "/explorer"):
+        return True
+    if p.startswith("/console/") or p.startswith("/explorer/"):
+        return True
+    return False
 
 
 # Ключевые маршруты для /openapi.json и /docs
@@ -2734,9 +2743,10 @@ class RESTHandler(BaseHTTPRequestHandler):
                 validators = db.get_validators() if db else []
                 total_burned = _status_cached_metric(db, "get_cached_total_burned")
                 total_supply = _status_cached_metric(db, "get_cached_total_supply")
+                bridge_on = bool(getattr(cfg, "bridge_enabled", False))
                 bridge_locks = (
-                    db.get_bridge_locks(limit=1000)
-                    if db and hasattr(db, "get_bridge_locks")
+                    db.get_bridge_locks(limit=50)
+                    if bridge_on and db and hasattr(db, "get_bridge_locks")
                     else []
                 )
                 bridge_pending = sum(1 for l in bridge_locks if l.get("status") == "pending")
@@ -2769,8 +2779,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                     required=bool(getattr(cfg, "require_native_crypto", False))
                 )
                 bridge_health = _rust_bridge_health(cfg)
-                last_blk = bc.get_last_block() if bc else None
-                head_hash = (last_blk or {}).get("hash", "")
+                head_hash = _status_tip_hash(db, bc)
                 consensus_info = {
                     "mode": cfg.resolved_consensus_mode(),
                     "unified_path": cfg.resolved_consensus_mode() == "unified",

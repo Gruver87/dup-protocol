@@ -14,6 +14,8 @@ def test_main_pbs_mev_uses_abs_to_wei_not_float_gwei():
     )[0]
     assert "abs_to_wei" in chunk
     assert "get_for_block" in chunk
+    assert "self.db.get_nonce" in chunk
+    assert "mempool.get(limit=" not in chunk
     assert "* 1e9" not in chunk
     assert "fee * 1e9" not in chunk
 
