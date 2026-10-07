@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — PathA ahead log + main stake satoshi / genesis FC
+
+- path_a: log get_block failures during ahead-refuse head bind (no silent None).
+- main: SlashingEngine/ValidatorRegistry register miner stake via to_satoshi; genesis alloc warn + prod re-raise.
+- Keep pin ADR 0015 SecretManager prod fail-closed. Units + industrial_gate. **Non-LR.** Mesh Quick after docker rebuild. **Soak deferred.**
+
 ### Exp→pin merge wave — legacy_test_p2p quarantine + consensus adapter logger
 
 - network/legacy_test_p2p: Phase D quarantine; network/p2p/* shims with DeprecationWarning.

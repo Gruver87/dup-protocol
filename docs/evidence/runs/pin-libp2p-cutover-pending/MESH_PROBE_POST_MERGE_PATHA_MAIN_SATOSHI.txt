@@ -1,0 +1,14 @@
+﻿MESH_PROBE_POST_MERGE_PATHA_MAIN_SATOSHI
+date: 2026-10-07
+wave: Exp→pin PathA ahead log + main stake satoshi / genesis FC
+units: test_main_patha_satoshi_honesty + path_a/honesty 43 PASS
+industrial_gate: OK
+soak: deferred / not run / not started
+long_range: off
+pin_kept: ADR 0015 SecretManager prod fail-closed
+
+============================================================
+PROD MESH PROBE (chain 778888)
+============================================================
+RESULT: OK
+Report: C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid\logs\prod_mesh_probe.json

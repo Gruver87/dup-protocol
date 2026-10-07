@@ -282,6 +282,15 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
     path_a_py = (ROOT / "sync" / "catchup" / "path_a.py").read_text(encoding="utf-8")
     if "[PathA] needs_genesis check failed" not in path_a_py:
         errors.append("PathA must log and fail-closed on needs_genesis errors")
+    if "[PathA] get_block(%s) for ahead-refuse failed" not in path_a_py:
+        errors.append("PathA must log get_block failures during ahead-refuse bind")
+    main_py = (ROOT / "main.py").read_text(encoding="utf-8")
+    if "to_satoshi as _to_sat_slash" not in main_py or "to_satoshi as _to_sat_reg" not in main_py:
+        errors.append("main must register slash/registry stakes via to_satoshi")
+    if "Genesis allocation failed" not in main_py:
+        errors.append("main must warning-log genesis allocation failures")
+    if "prod SecretManager init failed (fail-closed ADR 0015)" not in main_py:
+        errors.append("main must keep prod SecretManager fail-closed (ADR 0015)")
     catchup_ad = (ROOT / "network" / "catchup_adapters.py").read_text(encoding="utf-8")
     if "[CatchUpChain] head failed" not in catchup_ad:
         errors.append("catchup_adapters must log head() failures")

@@ -115,7 +115,10 @@ class CatchUpPathAService:
         if head:
             try:
                 local_blk = self._chain.get_block(head)
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "[PathA] get_block(%s) for ahead-refuse failed: %s", head, exc
+                )
                 local_blk = None
         # When importing genesis into an empty tip, peer_height may equal local
         # reported height (0). Policy ahead_refuse treats equal heights as

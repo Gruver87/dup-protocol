@@ -1189,7 +1189,12 @@ class NodeOrchestrator:
             from consensus.slashing import SlashingEngine as _SlashingEng
             self.slashing_engine = _SlashingEng()
             if config.miner_address:
-                self.slashing_engine.register_validator(config.miner_address, config.min_stake)
+                from runtime.amount import to_satoshi as _to_sat_slash
+
+                self.slashing_engine.register_validator(
+                    config.miner_address,
+                    int(_to_sat_slash(config.min_stake)),
+                )
             if self.db and hasattr(self.db, "save_slash_event"):
                 self.slashing_engine.register_slash_callback(
                     lambda v, r, e, p: self.db.save_slash_event(v, r, e, p)
@@ -1203,8 +1208,10 @@ class NodeOrchestrator:
             from consensus.validator_registry import ValidatorRegistry as _ValReg
             self.validator_registry = _ValReg()
             if config.miner_address:
+                from runtime.amount import to_satoshi as _to_sat_reg
+
                 self.validator_registry.register_validator(
-                    config.miner_address, int(config.min_stake)
+                    config.miner_address, int(_to_sat_reg(config.min_stake))
                 )
             print("[Node] ValidatorRegistry: ready")
         except Exception as _e:
@@ -1736,6 +1743,12 @@ class NodeOrchestrator:
                 self.db.set_balance(founder, int(expected))
                 print(f"[Node] Founder wallet synced: {expected:,.0f} ABS -> {founder}")
         except Exception as exc:
+            _node_log.warning("Genesis allocation failed: %s", exc)
+            if str(getattr(self.config, "deployment_mode", "")).lower() in (
+                "prod",
+                "production",
+            ):
+                raise
             print(f"[Node] Genesis allocation note: {exc}")
 
     def _pin_chain_founder_address(self) -> None:
