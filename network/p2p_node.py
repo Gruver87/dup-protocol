@@ -2885,7 +2885,7 @@ class P2PNode:
         try:
             native_conn.set_timeout_ms(ms)
         except Exception as exc:
-            logger.debug("[P2P] native set_timeout_ms failed: %s", exc)
+            logger.warning("[P2P] native set_timeout_ms failed: %s", exc)
 
     def _bump_peer_send_fail(self) -> None:
         self._peer_send_fail = int(self._peer_send_fail or 0) + 1

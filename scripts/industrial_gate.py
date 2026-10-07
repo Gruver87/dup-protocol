@@ -4788,6 +4788,19 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         main_py = (ROOT / "main.py").read_text(encoding="utf-8", errors="replace")
         if "gas_required (no invent)" not in main_py:
             errors.append("main mining must skip txs with missing gas (no invent)")
+        if "fee * 1e9" in main_py or "* 1e9" in main_py.split("PBS fee-bid")[1].split(
+            "MempoolTransaction"
+        )[0]:
+            errors.append("main PBS/MEV must not invent wei via fee*1e9 (use abs_to_wei)")
+        if "get_for_block" not in main_py or "abs_to_wei" not in main_py:
+            errors.append("main PBS path must use get_for_block + abs_to_wei")
+        if 'isinstance(amount, bool)' not in main_py:
+            errors.append("main genesis alloc must refuse bool amounts")
+        http_val = (ROOT / "api" / "http.py").read_text(encoding="utf-8", errors="replace")
+        if 'parse_abs_int(body.get("value", 0), field="value")' not in http_val:
+            errors.append("HTTP contract deploy/call must parse value via parse_abs_int")
+        if "amount_satoshi=int(_amount_sat)" not in http_val:
+            errors.append("HTTP lightning route must pass amount_satoshi to find_route")
         if "abs_p2p_native_mempool_min_fee_refuse" not in (
             ROOT / "observability" / "metrics.py"
         ).read_text(encoding="utf-8"):

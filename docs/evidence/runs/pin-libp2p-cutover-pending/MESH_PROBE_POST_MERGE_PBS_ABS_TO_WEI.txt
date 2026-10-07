@@ -1,0 +1,8 @@
+﻿MESH_PROBE_POST_MERGE_PBS_ABS_TO_WEI
+date: 2026-10-07
+wave: Exp→pin PBS/MEV abs_to_wei + EVM/LN satoshi honesty
+units: test_pbs_mev_abs_to_wei_honesty 3 PASS
+industrial_gate: OK
+mesh_quick: optional / not required this tip (main/API; p2p log-level only)
+soak: deferred / not run / not started
+long_range: off

@@ -1727,6 +1727,8 @@ class NodeOrchestrator:
             if not self.db.get_meta("genesis_alloc_applied"):
                 alloc = genesis_balances(founder or None)
                 for addr, amount in alloc.items():
+                    if isinstance(amount, bool):
+                        raise TypeError("bool is not an amount")
                     cur = self.db.get_balance(addr)
                     if cur < amount * 0.99:
                         self.db.set_balance(addr, int(amount))
@@ -2222,14 +2224,27 @@ class NodeOrchestrator:
 
             # ── PBS fee-bid simulation (not MEV protection; no reorder) ───────
             try:
-                pending_dicts = [{"hash": t.tx_hash, "from": t.from_addr, "to": t.to_addr,
-                                  "value": t.amount, "gasPrice": int(t.fee * 1e9),
-                                  "gas": int(getattr(t, "gas", 0) or 0),
-                                  "nonce": t.nonce,
-                                  "data": getattr(t, "data", "") or "",
-                                  "timestamp": t.timestamp,
-                                  "gas_price": int(t.fee * 1e9)}
-                                 for t in self.mempool.get(limit=self.config.max_tx_per_block)]
+                from runtime.amount import abs_to_wei
+
+                pending_for_pbs = self.mempool.get_for_block(
+                    int(self.config.max_tx_per_block),
+                    self.db.get_nonce,
+                )
+                pending_dicts = [
+                    {
+                        "hash": t.tx_hash,
+                        "from": t.from_addr,
+                        "to": t.to_addr,
+                        "value": t.amount,
+                        "gasPrice": int(abs_to_wei(t.fee)),
+                        "gas": int(getattr(t, "gas", 0) or 0),
+                        "nonce": t.nonce,
+                        "data": getattr(t, "data", "") or "",
+                        "timestamp": t.timestamp,
+                        "gas_price": int(abs_to_wei(t.fee)),
+                    }
+                    for t in pending_for_pbs
+                ]
                 # Fee-bid auction result is observational only (ordering_applied=false).
                 self.consensus.run_pbs_auction(pending_dicts)
             except Exception as exc:
@@ -2242,9 +2257,19 @@ class NodeOrchestrator:
             if self.mev_simulator and len(pending) >= 2:
                 try:
                     from features.mev_analyzer import Transaction as MevTx
-                    mev_txs = [MevTx(mp_tx.tx_hash, mp_tx.from_addr, mp_tx.to_addr,
-                                     mp_tx.amount, int(mp_tx.fee * 1e9), int(mp_tx.timestamp))
-                               for mp_tx in pending[:10]]
+                    from runtime.amount import abs_to_wei
+
+                    mev_txs = [
+                        MevTx(
+                            mp_tx.tx_hash,
+                            mp_tx.from_addr,
+                            mp_tx.to_addr,
+                            mp_tx.amount,
+                            int(abs_to_wei(mp_tx.fee)),
+                            int(mp_tx.timestamp),
+                        )
+                        for mp_tx in pending[:10]
+                    ]
                     self.mev_simulator.detect_sandwich_opportunity(mev_txs)
                 except Exception as exc:
                     _node_log.debug("[Mining] MEV scan failed: %s", exc)

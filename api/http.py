@@ -22,7 +22,7 @@ from typing import Optional, Any, Dict, List
 import threading
 
 from crypto import native
-from runtime.amount import parse_rpc_value_abs, to_satoshi
+from runtime.amount import abs_to_wei, parse_abs_int, parse_rpc_value_abs, to_satoshi
 
 
 _DEFAULT_HTTP_MAX_CONCURRENT = 128
@@ -1711,8 +1711,7 @@ class JSONRPCHandler(BaseHTTPRequestHandler):
             return None
 
         if method == "eth_gasPrice":
-            from runtime.amount import abs_to_wei
-
+            # Wave I: Absolute has no live fee market. Do not paint config as tip.
             if not bool(getattr(cfg, "advertise_config_gas_price", False)):
                 return None
             try:
@@ -6265,10 +6264,15 @@ class RESTHandler(BaseHTTPRequestHandler):
                     return
                 _reject_direct_deploy_in_prod(cfg, via_mempool=False)
                 _reject_deploy_without_salt_in_prod(body, cfg)
+                try:
+                    deploy_value = parse_abs_int(body.get("value", 0), field="value")
+                except ValueError as exc:
+                    self._error(400, str(exc))
+                    return
                 result = evm_adapter.deploy_contract(
                     deployer=body.get("from", body.get("from_address", "")),
                     bytecode_hex=body.get("bytecode", body.get("data", "")),
-                    value=_http_abs(body.get("value", 0), field="value"),
+                    value=deploy_value,
                     salt=body.get("salt"),
                 )
                 self._json(result.to_dict())
@@ -6292,11 +6296,16 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if not evm_adapter:
                     self._error(503, "EVM not enabled")
                     return
+                try:
+                    call_value = parse_abs_int(body.get("value", 0), field="value")
+                except ValueError as exc:
+                    self._error(400, str(exc))
+                    return
                 result = evm_adapter.call_contract(
                     caller=body.get("from", ""),
                     contract_addr=body.get("to", ""),
                     calldata_hex=body.get("data", ""),
-                    value=_http_abs(body.get("value", 0), field="value"),
+                    value=call_value,
                 )
                 self._json(result.to_dict())
 
@@ -6712,6 +6721,8 @@ class RESTHandler(BaseHTTPRequestHandler):
                         self._json({"algorithm": algo, "valid": bool(ok)})
                     else:
                         self._error(501, "verify not implemented in PQ manager")
+                except NotImplementedError as e:
+                    self._error(501, str(e))
                 except Exception as e:
                     self._error(500, str(e))
 
@@ -7431,12 +7442,18 @@ class RESTHandler(BaseHTTPRequestHandler):
                 if not destination or not preimage:
                     self._error(400, "destination, amount, preimage required"); return
                 try:
-                    amount, amount_sat = _http_amount_abs(
+                    amount, _amount_sat = _http_amount_abs(
                         body, cfg, field="amount"
                     )
                 except ValueError as exc:
                     self._error(400, str(exc)); return
-                path_ids = ln.find_route(destination, amount) if hasattr(ln, "find_route") else []
+                path_ids = (
+                    ln.find_route(
+                        destination, amount, amount_satoshi=int(_amount_sat)
+                    )
+                    if hasattr(ln, "find_route")
+                    else []
+                )
                 if len(path_ids) != 1:
                     self._error(
                         501,
@@ -7449,14 +7466,14 @@ class RESTHandler(BaseHTTPRequestHandler):
                     destination,
                     amount,
                     preimage,
-                    amount_satoshi=int(amount_sat),
+                    amount_satoshi=int(_amount_sat),
                 )
                 if htlc_id:
                     self._json({
                         "success": True,
                         "htlc_id": htlc_id,
                         "path": path_ids,
-                        "amount_satoshi": int(amount_sat),
+                        "amount_satoshi": int(_amount_sat),
                         "direct_channel_only": True,
                         "multi_hop_implemented": False,
                     })

@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — PBS/MEV abs_to_wei + EVM/LN satoshi honesty
+
+- main: genesis alloc refuses bool; PBS uses get_for_block + abs_to_wei; MEV fee via abs_to_wei (no fee*1e9).
+- api/http: contract deploy/call value via parse_abs_int; lightning find_route amount_satoshi; PQ verify NotImplemented→501.
+- p2p: native set_timeout_ms fail at warning. Units + industrial_gate. **Non-LR.** Mesh Quick optional. **Soak deferred.**
+
 ### Exp→pin merge wave — JSON-RPC -32602 + bridge fee_bps + gas TypeError
 
 - api/http: legacy JSON-RPC maps ValueError→-32602; status probe warns on p2p security fail; stake_satoshi int().
