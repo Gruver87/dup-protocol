@@ -388,6 +388,12 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append("verify_p2p_ci ready settle must allow longer KeepVolumes flaps")
     if "exc2" not in vp2p or "Surface body" not in vp2p:
         errors.append("verify_p2p_ci _post_json must surface HTTP body on non-auth errors")
+    if '"amount_satoshi": amount_sat' not in vp2p or '"value_satoshi": amount_sat' not in vp2p:
+        errors.append(
+            "verify_p2p_ci prod-smoke signed send must carry amount/value_satoshi (ADR 0021)"
+        )
+    if "money_abs(addr_info.get(\"balance\"" not in vp2p:
+        errors.append("verify_p2p_ci prod-smoke must parse balance via money_abs (no float)")
     if not (ROOT / "scripts" / "mempool_validation_sidecar.py").is_file():
         errors.append("scripts/mempool_validation_sidecar.py missing (soak companion)")
     else:
@@ -4705,6 +4711,12 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("config must expose p2p_mempool_require_wire_satoshi")
         if "gas_missing" not in p2p_py:
             errors.append("p2p_node must refuse missing/zero gas (no invent 21000)")
+        if "_mempool_gas_missing_refuse_total" not in p2p_py:
+            errors.append("p2p_node must init/export mempool_gas_missing_refuse_total")
+        if "_mempool_fee_unparseable_refuse_total" not in p2p_py:
+            errors.append("p2p_node must count fee_unparseable refuses (no silent pass)")
+        if 'self._last_tx_wire_reject = "fee_unparseable"' not in p2p_py:
+            errors.append("p2p_node must set fee_unparseable on unparseable fee paths")
         http_src = (ROOT / "api" / "http.py").read_text(encoding="utf-8", errors="replace")
         if "plan_transfer_fees_sat" not in http_src:
             errors.append("api/http admit must use plan_transfer_fees_sat")

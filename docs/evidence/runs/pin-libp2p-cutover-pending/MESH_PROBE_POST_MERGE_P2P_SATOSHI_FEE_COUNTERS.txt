@@ -1,0 +1,14 @@
+﻿MESH_PROBE_POST_MERGE_P2P_SATOSHI_FEE_COUNTERS
+date: 2026-10-07
+wave: Exp→pin verify_p2p_ci satoshi + mempool fee refuse counters
+units: test_amount_units + test_bridge_adr0010 49 PASS
+industrial_gate: OK
+soak: deferred / not run / not started
+long_range: off
+changes: verify_p2p_ci prod-smoke amount/value_satoshi; p2p gas_missing+fee_unparseable counters; FC on silent fee parse
+
+============================================================
+PROD MESH PROBE (chain 778888)
+============================================================
+RESULT: OK
+Report: C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid\logs\prod_mesh_probe.json

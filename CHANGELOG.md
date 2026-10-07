@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — verify_p2p_ci satoshi + mempool fee refuse counters
+
+- verify_p2p_ci prod-smoke: balance via money_abs; signed /tx/send carries amount/value_satoshi + explicit gas.
+- p2p_node: init/export gas_missing + fee_unparseable refuse counters; count fee refuse paths; fail-closed on nonfinite/max-fee parse errors (no silent pass).
+- Units: amount_units parse helpers + bridge amount_satoshi mismatch/ok. industrial_gate needles. **Non-LR.** Mesh Quick after docker rebuild. **Soak deferred.**
+
 ### Exp→pin merge wave — PathA ahead log + main stake satoshi / genesis FC
 
 - path_a: log get_block failures during ahead-refuse head bind (no silent None).

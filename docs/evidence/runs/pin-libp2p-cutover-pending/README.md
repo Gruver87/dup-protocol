@@ -67,6 +67,9 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `MESH_PROBE_POST_MERGE_UNCLE_AUDIT_FB.txt` | Uncle RPC validate + audit live_automated + bridge money + `_native_fb` Quick probe (h1490) |
 | `probe_prod_mesh_quick_merge_uncle_audit_fb.json` | Probe JSON for uncle/audit/fb wave |
 | `industrial_gate_merge_uncle_audit_fb.json` | Gate snapshot for that wave |
+| `MESH_PROBE_POST_MERGE_P2P_SATOSHI_FEE_COUNTERS.txt` | verify_p2p_ci satoshi smoke + mempool fee/gas_missing refuse counters Quick probe |
+| `probe_prod_mesh_quick_merge_p2p_satoshi_fee_counters.json` | Probe JSON for satoshi/fee-counter wave |
+| `industrial_gate_merge_p2p_satoshi_fee_counters.json` | Gate snapshot for satoshi/fee-counter wave |
 | `hw_strict_smoke_1m.log` | 1m `health_watch -Strict` smoke (EXIT=0) |
 | `README.md` | This honesty stamp |
 

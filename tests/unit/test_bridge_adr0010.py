@@ -95,6 +95,32 @@ def test_03_bad_amount_reject():
     assert not v.validate(bad).ok
 
 
+def test_03b_amount_satoshi_mismatch_reject():
+    v = InboundMessageValidator(config=_cfg())
+    env = InboundEnvelope(
+        from_chain="ethereum",
+        to_addr="0x" + "ab" * 20,
+        amount=1.0,
+        event_tx_hash="0xok",
+        amount_satoshi=2_000_000,  # disagrees with 1.0 ABS
+    )
+    vr = v.validate(env)
+    assert not vr.ok
+    assert vr.reason == "amount_satoshi_mismatch"
+
+
+def test_03c_amount_satoshi_ok():
+    v = InboundMessageValidator(config=_cfg())
+    env = InboundEnvelope(
+        from_chain="ethereum",
+        to_addr="0x" + "ab" * 20,
+        amount=1.0,
+        event_tx_hash="0xok",
+        amount_satoshi=1_000_000,
+    )
+    assert v.validate(env).ok
+
+
 def test_04_insufficient_confirmations_reject():
     cfg = _cfg(bridge_min_confirmations=12, bridge_require_l1_proof=True)
     l1 = FakeL1Rpc()

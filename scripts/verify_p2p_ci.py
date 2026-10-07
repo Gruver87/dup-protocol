@@ -1604,32 +1604,50 @@ def _send_propagation_tx_signed(
 ) -> dict:
     """POST /tx/send with a locally signed tx (prod profile; no auto_sign)."""
     from crypto.wallet import Wallet
+    from runtime.amount import money_abs, to_satoshi
 
     wallet = Wallet.import_wallet(wallet_path, allow_plaintext=True)
     chain_id = int(s1.get("chain_id", MAINNET_V1_CHAIN_ID))
     addr_info = _api(f"{url1}/address/{wallet.address}")
     nonce = int(addr_info.get("nonce", 0) or 0)
-    balance = float(addr_info.get("balance", 0) or 0)
-    if balance < 1.0:
+    balance = money_abs(addr_info.get("balance", 0), field="balance")
+    if to_satoshi(balance) < to_satoshi(1):
         raise RuntimeError(
             f"prod-smoke signer balance too low ({balance}); miner rewards may not have accrued"
         )
     last_exc: Exception | None = None
     for i in range(4):
         recipient = _unique_recipient(f"{attempt}-{i}")
+        # 1 ABS — explicit gas + satoshi for prod wire (no invent / no float-only).
+        value_abs = 1
+        amount_sat = int(to_satoshi(value_abs))
         signed = wallet.sign_transaction(
             recipient,
-            1,
+            value_abs,
             nonce,
             chain_id=chain_id,
             gas_limit=21000,
         )
-        body = {**signed, "gas": 21000}
+        body = {
+            **signed,
+            "gas": 21000,
+            "gas_limit": 21000,
+            "amount_satoshi": amount_sat,
+            "value_satoshi": amount_sat,
+        }
         try:
             return _post_json(url1, "/tx/send", body, timeout=20)
         except Exception as exc:
             last_exc = exc
             msg = str(exc).lower()
+            detail = ""
+            if hasattr(exc, "read"):
+                try:
+                    detail = exc.read().decode("utf-8", errors="replace")[:300]
+                except Exception:
+                    detail = ""
+            if detail:
+                print(f"WARN: /tx/send rejected: {exc} body={detail}")
             if "already in mempool" in msg or "500" in msg:
                 time.sleep(0.2)
                 continue

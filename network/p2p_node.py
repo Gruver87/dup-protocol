@@ -1968,7 +1968,9 @@ class P2PNode:
         self._mempool_fee_negative_refuse_total: int = 0
         self._mempool_gas_negative_refuse_total: int = 0
         self._mempool_gas_unparseable_refuse_total: int = 0
+        self._mempool_gas_missing_refuse_total: int = 0
         self._mempool_value_unparseable_refuse_total: int = 0
+        self._mempool_fee_unparseable_refuse_total: int = 0
         self._mempool_nonce_unparseable_refuse_total: int = 0
         self._mempool_empty_from_refuse_total: int = 0
         self._mempool_from_size_refuse_total: int = 0
@@ -4926,6 +4928,9 @@ class P2PNode:
                 _gp_raw = getattr(self.config, "gas_price_wei", None)
                 if _gp_raw is None:
                     self._last_tx_wire_reject = "fee_gas_price_unset"
+                    self._mempool_fee_unparseable_refuse_total = int(
+                        getattr(self, "_mempool_fee_unparseable_refuse_total", 0) or 0
+                    ) + 1
                     return None
                 try:
                     _gp = float(_gp_raw)
@@ -4955,12 +4960,21 @@ class P2PNode:
         except WireMoneyMissing as exc:
             reason = str(exc) or "fee_satoshi_required"
             self._last_tx_wire_reject = reason
+            self._mempool_fee_unparseable_refuse_total = int(
+                getattr(self, "_mempool_fee_unparseable_refuse_total", 0) or 0
+            ) + 1
             return None
         except WireMoneyMismatch:
             self._last_tx_wire_reject = "fee_satoshi_mismatch"
+            self._mempool_fee_unparseable_refuse_total = int(
+                getattr(self, "_mempool_fee_unparseable_refuse_total", 0) or 0
+            ) + 1
             return None
         except (TypeError, ValueError):
             self._last_tx_wire_reject = "fee_unparseable"
+            self._mempool_fee_unparseable_refuse_total = int(
+                getattr(self, "_mempool_fee_unparseable_refuse_total", 0) or 0
+            ) + 1
             return None
         if bool(getattr(self.config, "p2p_mempool_min_fee_refuse", True)):
             min_fee_sat = 0
@@ -5130,7 +5144,11 @@ class P2PNode:
                     ) + 1
                     return None
             except (TypeError, ValueError):
-                pass
+                self._last_tx_wire_reject = "fee_unparseable"
+                self._mempool_fee_unparseable_refuse_total = int(
+                    getattr(self, "_mempool_fee_unparseable_refuse_total", 0) or 0
+                ) + 1
+                return None
 
         # v1.3.201: cheap max-fee refuse before validate_transaction.
         # Soft DoS honesty — complements fee_too_low; not fee-market / Rust fee PQ.
@@ -5153,7 +5171,11 @@ class P2PNode:
                     ) + 1
                     return None
             except (TypeError, ValueError):
-                pass
+                self._last_tx_wire_reject = "fee_unparseable"
+                self._mempool_fee_unparseable_refuse_total = int(
+                    getattr(self, "_mempool_fee_unparseable_refuse_total", 0) or 0
+                ) + 1
+                return None
 
         # v1.3.187: cheap negative-gas refuse before validate_transaction.
         # Soft DoS honesty — complements gas_too_high; not Rust gas PQ.
@@ -8571,8 +8593,14 @@ class P2PNode:
             "mempool_gas_unparseable_refuse_total": int(
                 getattr(self, "_mempool_gas_unparseable_refuse_total", 0) or 0
             ),
+            "mempool_gas_missing_refuse_total": int(
+                getattr(self, "_mempool_gas_missing_refuse_total", 0) or 0
+            ),
             "mempool_value_unparseable_refuse_total": int(
                 getattr(self, "_mempool_value_unparseable_refuse_total", 0) or 0
+            ),
+            "mempool_fee_unparseable_refuse_total": int(
+                getattr(self, "_mempool_fee_unparseable_refuse_total", 0) or 0
             ),
             "mempool_nonce_unparseable_refuse_total": int(
                 getattr(self, "_mempool_nonce_unparseable_refuse_total", 0) or 0
