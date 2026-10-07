@@ -5,8 +5,9 @@
 **Transport:** **TCP+TLS** (pin default).  
 **Not:** Experimental libp2p demo · not a soak claim · not public mainnet.
 
-Full showcase index (funds / ПВТ): Experimental [SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md).  
-Exp live demo (libp2p): Experimental [DEMO_RUNBOOK](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DEMO_RUNBOOK.md) — **different tree**.
+Full showcase index (funds / ПВТ): [SHOWCASE.md](SHOWCASE.md).  
+Ops Console: [OPS_CONSOLE.md](OPS_CONSOLE.md).  
+Exp live demo (R&D): Experimental [DEMO_RUNBOOK](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DEMO_RUNBOOK.md) — **different tree**.
 
 ---
 

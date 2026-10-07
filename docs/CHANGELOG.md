@@ -8,6 +8,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Pin FAQ / ONE_PAGER + diligence link honesty
+
+- Added pin-honest `FAQ.md`, `ONE_PAGER.md`, `ONE_PAGER_RU.md`, `OPS_CONSOLE.md`;
+  `DEMO_RUNBOOK.md` → pin stub; `SHOWCASE.md` local paths; `secrets/README.md`.
+- ADR 0021 Exp EXECUTION_ORDER / pack links fixed to Exp GitHub.
+
 ### ADR 0020 — libp2p industrial mesh (pin docs)
 
 - **Transport honesty:** prod 3-node mesh JSON (`778888`) is **rust-libp2p** (`feature_libp2p=true`, `p2p_tls_enabled=false`). TCP+TLS/mTLS remains the **alternate** profile (`docker/node.prod.json`, ceremony, `feature_libp2p=false`). Long-Range stays **off** / refuse.

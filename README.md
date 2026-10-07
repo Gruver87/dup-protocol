@@ -16,11 +16,12 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 [![Community health](https://img.shields.io/badge/community%20health-100%25-brightgreen)](https://github.com/Gruver87/dup-protocol#docs-map)
 
 > **Industrial pin:** [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) · tip-v2 48h soak **PASS** · Phase 3–4 ops/audit binder **READY** · external firm audit **still pending**  
-> **Showcase stub:** [SHOWCASE](docs/SHOWCASE.md) · pin demo TCP+TLS → [DEMO_RUNBOOK_PIN](docs/DEMO_RUNBOOK_PIN.md) · Vision → [VISION](docs/VISION.md) · Auditor → [AUDIT_ENGAGEMENT_BRIEF](docs/AUDIT_ENGAGEMENT_BRIEF.md) · [AT_A_GLANCE](docs/AT_A_GLANCE.md) · [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md)
+> **Showcase:** [SHOWCASE](docs/SHOWCASE.md) · [FAQ](docs/FAQ.md) · [ONE_PAGER](docs/ONE_PAGER.md) / [RU](docs/ONE_PAGER_RU.md) · pin demo → [DEMO_RUNBOOK_PIN](docs/DEMO_RUNBOOK_PIN.md) · [FUND_READINESS](docs/FUND_READINESS.md) · [VISION](docs/VISION.md) · [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md)
 
-**Funds / ПВТ (full pack on Experimental):** [SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md) · [DILIGENCE_BRIEF](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DILIGENCE_BRIEF.md) · [ONE_PAGER_RU](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/ONE_PAGER_RU.md).
+**Funds / ПВТ (pin):** [SHOWCASE](docs/SHOWCASE.md) · [DILIGENCE_BRIEF](docs/DILIGENCE_BRIEF.md) · [ONE_PAGER_RU](docs/ONE_PAGER_RU.md).  
+**R&D sibling pack (not pin evidence):** [Exp SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md).
 
-**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Default industrial transport **here** remains **TCP+TLS**. Do not port Experimental kernels onto this pin. Experimental soaks ≠ this pin tip-v2 evidence.
+**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Working-tip pin mesh is **ADR 0020 rust-libp2p**; freeze tag soak is **TCP+TLS**. Experimental soaks ≠ pin tip-v2 evidence. Pin libp2p 48h soak **deferred**.
 
 ---
 
@@ -29,7 +30,7 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 | Audience | Start here |
 |----------|------------|
 | **External auditors / firms** | [AUDIT_ENGAGEMENT_BRIEF](docs/AUDIT_ENGAGEMENT_BRIEF.md) → [AUDIT_SCOPE](docs/AUDIT_SCOPE.md) → [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md) → `.\scripts\export_audit_pack.ps1` |
-| **Grant officers / diligence / ПВТ** | Pin [SHOWCASE](docs/SHOWCASE.md) → Exp [SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md) · [VISION](docs/VISION.md) · tip-v2 [375d14f](docs/evidence/runs/375d14f/) · [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
+| **Grant officers / diligence / ПВТ** | [SHOWCASE](docs/SHOWCASE.md) · [FAQ](docs/FAQ.md) · [FUND_READINESS](docs/FUND_READINESS.md) · [VISION](docs/VISION.md) · tip-v2 [375d14f](docs/evidence/runs/375d14f/) · [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
 | **Architects / principals** | [VISION](docs/VISION.md) → [AT_A_GLANCE](docs/AT_A_GLANCE.md) → mermaid below → [docs/adr/](docs/adr/) (0001–0016) |
 | **Operators** | [Start in 60 seconds](#start-in-60-seconds) · `.\scripts\verify_project.ps1` · dual pin+Exp `.\scripts\verify_dup_both.ps1 -Mode Standard` · prod mesh `.\scripts\docker_prod_3node.ps1` |
 

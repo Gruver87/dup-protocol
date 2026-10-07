@@ -3,7 +3,7 @@
 - **Status:** Accepted — Phase 0+1+2+3 landed
 - **Date:** 2026-08-28 (phase-1/2/3 refresh 2026-09-13; wire+mesh 48h refresh 2026-09-23)
 - **Deciders:** Absolute Blockchain experimental maintainers
-- **Execution order:** [EXECUTION_ORDER.md](../EXECUTION_ORDER.md)
+- **Execution order (Experimental R&D sequence — not pin evidence):** [EXECUTION_ORDER on Exp](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/EXECUTION_ORDER.md)
 
 ## Context
 
@@ -29,8 +29,8 @@ mesh probe evidence after each sub-phase.
 4. Register future native family **`mempool_kernel`** in ADR 0009 registry **only when**
    phase 1 ships with Python fallback story.
 5. **Start ADR 0021 implementation only after** libp2p 48h soak PASS on Experimental mesh
-   (**met 2026-09-03:** [`3c801b87`](../evidence/runs/3c801b87/))
-   ([EXECUTION_ORDER.md](../EXECUTION_ORDER.md) Phase 1).
+   (**met 2026-09-03:** [Exp pack `3c801b87`](https://github.com/Gruver87/dup-protocol-experimental/tree/main/docs/evidence/runs/3c801b87))
+   ([EXECUTION_ORDER on Exp](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/EXECUTION_ORDER.md) Phase 1).
 
 ## Phases
 
@@ -119,10 +119,10 @@ Pytest alone is **not** acceptance for mempool/P2P changes.
 - Phase 0–3 completion ≠ mainnet readiness.
 - Cross-node EVM evidence remains `prod_evm_smoke.py` on live mesh.
 - Ultimate Hybrid audit pin is updated only via explicit merge policy — not by this ADR alone.
-- **Wire satoshi cutover (2026-09-20):** gossip emits/prefers `fee_satoshi`/`amount_satoshi`; ABS float dual-write retained for display. **MED 2026-09-21:** float-only ingress refused by default (`p2p_mempool_require_wire_satoshi`); lab escape hatch `false` for mixed-mesh. **Mesh 48h PASS 2026-09-21→23:** [`ind48pass1`](../evidence/runs/ind48pass1/) (`passed=true`, `hard_fails=0`, `mesh_warn=0`, tip ~46099→~56972) on tip `719deb4` — proves wire path under live mesh load. Distinct from STRICT sidecar pack [`mempool48pass1`](../evidence/runs/mempool48pass1/).
+- **Wire satoshi cutover (2026-09-20):** gossip emits/prefers `fee_satoshi`/`amount_satoshi`; ABS float dual-write retained for display. **MED 2026-09-21:** float-only ingress refused by default (`p2p_mempool_require_wire_satoshi`); lab escape hatch `false` for mixed-mesh. **Mesh 48h PASS 2026-09-21→23 (Experimental):** [Exp `ind48pass1`](https://github.com/Gruver87/dup-protocol-experimental/tree/main/docs/evidence/runs/ind48pass1) (`passed=true`, `hard_fails=0`, `mesh_warn=0`) — proves wire path under live Exp mesh load. Distinct from Exp STRICT sidecar [Exp `mempool48pass1`](https://github.com/Gruver87/dup-protocol-experimental/tree/main/docs/evidence/runs/mempool48pass1). **Not** pin industrial evidence.
 
 ## Consequences
 
-- `docs/EXECUTION_ORDER.md` lists mempool Rust as **Phase 4** (after libp2p 48h and LR lab soak).
+- Experimental [EXECUTION_ORDER](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/EXECUTION_ORDER.md) lists mempool Rust as **Phase 4** (after libp2p 48h and LR lab soak) — R&D sequence, not pin evidence.
 - `PORTING_ROADMAP.md` Priority 10 points here (planned).
 - No prod JSON or runtime behavior change until phase 0 adapters are intentionally wired.
