@@ -1,4 +1,4 @@
-﻿# sync/sync_engine.py
+# sync/sync_engine.py
 """
 Sync Engine — fast catch-up for late-joining nodes
 - Peer head resolution
@@ -257,23 +257,23 @@ class SyncEngine:
         batch fetch/import through CatchUp* ports (``SyncEngineCatchUpIO``).
         """
         if self.is_syncing:
-            print("[Sync] Already in progress")
+            logger.info("[Sync] Already in progress")
             return False
 
         local_h = self._local_height()
-        print(f"[Sync] Starting fast sync from height {local_h}...")
+        logger.info(f"[Sync] Starting fast sync from height {local_h}...")
         self.is_syncing = True
         ok = False
         try:
             heads = self.request_heads()
             if not heads:
-                print("[Sync] No peers available")
+                logger.info("[Sync] No peers available")
                 self._last_sync_error = "no_peers"
                 return False
 
             best_head = self.select_best_head(heads)
             if not best_head:
-                print("[Sync] No valid head selected")
+                logger.info("[Sync] No valid head selected")
                 self._last_sync_error = "no_valid_head"
                 return False
 
@@ -296,7 +296,7 @@ class SyncEngine:
             # Empty follower tip reports height 0 — same as leader genesis height.
             # Still must import block #0; do not treat 0<=0 as "already at head".
             if best_peer_h <= local_h and not needs_genesis:
-                print(f"[Sync] Already at head (local={local_h}, peer={best_peer_h})")
+                logger.info(f"[Sync] Already at head (local={local_h}, peer={best_peer_h})")
                 ok = bool(self.sync_state())
                 if ok:
                     self._last_sync_ok_at = int(time.time())
@@ -305,12 +305,12 @@ class SyncEngine:
                     self._last_sync_error = "state_sync_failed"
                 return ok
             if needs_genesis:
-                print(
+                logger.info(
                     f"[Sync] Empty local chain: importing genesis from peer "
                     f"(peer height {best_peer_h}, head={best_head[:8]}...)"
                 )
 
-            print(f"[Sync] Selected head: {best_head[:8]}... (peer height {best_peer_h})")
+            logger.info(f"[Sync] Selected head: {best_head[:8]}... (peer height {best_peer_h})")
 
             from sync.catchup.engine_io import SyncEngineCatchUpIO
             from sync.catchup.path_a import CatchUpPathAService
@@ -362,7 +362,7 @@ class SyncEngine:
 
             if outcome.status is CatchUpStatus.REFUSED:
                 self._last_sync_error = str(outcome.reason_code or "refused")
-                print(f"[Sync] Catch-up refused: {self._last_sync_error}")
+                logger.warning(f"[Sync] Catch-up refused: {self._last_sync_error}")
                 return False
             if outcome.status is CatchUpStatus.STALLED:
                 err = str(outcome.reason_code or "fetch_stall")
@@ -370,16 +370,16 @@ class SyncEngine:
                     err = str(io._chain_error)
                 self._last_sync_error = err
                 if err == "non_contiguous_chain":
-                    print("[Sync] Downloaded chain is not contiguous")
+                    logger.info("[Sync] Downloaded chain is not contiguous")
                 else:
-                    print(f"[Sync] Chain download stalled: {err}")
+                    logger.warning(f"[Sync] Chain download stalled: {err}")
                 return False
             if outcome.status is CatchUpStatus.ERROR:
                 self._sync_fail += 1
                 self._last_sync_error = str(
                     outcome.reason_code or outcome.detail or "path_a_error"
                 )
-                print(f"[Sync] fast_sync error: {self._last_sync_error}")
+                logger.warning(f"[Sync] fast_sync error: {self._last_sync_error}")
                 return False
             if (
                 outcome.status is CatchUpStatus.INCOMPLETE
@@ -391,21 +391,21 @@ class SyncEngine:
                 # unless we already know a contiguity refuse was recorded.
                 if "non_contiguous_chain" in getattr(io, "refuses", []):
                     self._last_sync_error = "non_contiguous_chain"
-                    print("[Sync] Downloaded chain is not contiguous")
+                    logger.info("[Sync] Downloaded chain is not contiguous")
                     return False
                 if getattr(io, "_chain_error", "") == "non_contiguous_chain":
                     self._last_sync_error = "non_contiguous_chain"
-                    print("[Sync] Downloaded chain is not contiguous")
+                    logger.info("[Sync] Downloaded chain is not contiguous")
                     return False
                 if not io.fetch_calls or getattr(io, "_chain_error", ""):
                     self._last_sync_error = (
                         getattr(io, "_chain_error", "") or "download_failed"
                     )
-                    print("[Sync] Chain download failed")
+                    logger.warning("[Sync] Chain download failed")
                     return False
 
             if int(outcome.imported or 0) == 0 and outcome.status is CatchUpStatus.SKIPPED:
-                print(f"[Sync] No new blocks (local={local_h})")
+                logger.info(f"[Sync] No new blocks (local={local_h})")
             elif int(outcome.imported or 0) == 0 and outcome.status is CatchUpStatus.INCOMPLETE:
                 # Import aborted mid-way with zero progress after refuse gates,
                 # or download yielded nothing useful.
@@ -430,7 +430,7 @@ class SyncEngine:
             ):
                 tip_now = self._local_height()
                 self._last_sync_error = f"import_failed:{tip_now + 1}"
-                print(f"[Sync] Import failed at height {tip_now + 1}")
+                logger.warning(f"[Sync] Import failed at height {tip_now + 1}")
                 return False
 
             ok = bool(self.sync_state())
@@ -439,7 +439,7 @@ class SyncEngine:
                 self._last_sync_error = ""
             else:
                 self._last_sync_error = "state_sync_failed"
-            print(
+            logger.info(
                 f"[Sync] Done: imported {int(outcome.imported or 0)} blocks "
                 f"(local now {self._local_height()}; status={outcome.status.value})"
             )
@@ -447,7 +447,7 @@ class SyncEngine:
         except Exception as exc:
             self._sync_fail += 1
             self._last_sync_error = str(exc)
-            print(f"[Sync] fast_sync failed: {exc}")
+            logger.warning(f"[Sync] fast_sync failed: {exc}")
             return False
         finally:
             # Fail-closed: never leave is_syncing stuck after unexpected errors.
@@ -504,15 +504,15 @@ class SyncEngine:
         (ADR 0003 fail-closed).
         """
         if not hasattr(self.node, "blockchain"):
-            print("[Sync] Checking state consistency...")
-            print("   No blockchain attached")
+            logger.info("[Sync] Checking state consistency...")
+            logger.info("   No blockchain attached")
             self.consistency.request_lockdown("no_blockchain")
             return False
 
         bc = self.node.blockchain
         if not hasattr(bc, "get_state_root"):
-            print("[Sync] Checking state consistency...")
-            print("   [Sync] blockchain missing get_state_root — fail-closed")
+            logger.info("[Sync] Checking state consistency...")
+            logger.warning("   [Sync] blockchain missing get_state_root — fail-closed")
             self.consistency.request_lockdown("no_get_state_root")
             return False
 
@@ -527,8 +527,8 @@ class SyncEngine:
             if (now - float(self._solo_log_last_ts or 0.0)) >= float(
                 self._solo_log_interval_sec or 300.0
             ):
-                print("[Sync] Checking state consistency...")
-                print(
+                logger.info("[Sync] Checking state consistency...")
+                logger.info(
                     "   Solo / no peers — wire probe deferred (never-probed), fail-closed"
                 )
                 self._solo_log_last_ts = now
@@ -540,9 +540,9 @@ class SyncEngine:
             )
             return bool(decision.trusted)
 
-        print("[Sync] Checking state consistency...")
+        logger.info("[Sync] Checking state consistency...")
         if not hasattr(self.node, "request_peer_state_roots_sync"):
-            print(
+            logger.info(
                 "   [Sync] request_peer_state_roots_sync missing with peers "
                 "— fail-closed (never paint green without a real probe)"
             )
@@ -561,7 +561,9 @@ class SyncEngine:
         fail_ts = float(getattr(self, "_wire_probe_fail_ts", 0.0) or 0.0)
         backoff = max(0.0, float(getattr(self, "_wire_probe_backoff_sec", 8.0)))
         if fail_ts > 0.0 and (now - fail_ts) < backoff:
-            print("   [Sync] wire probe backoff after timeout/empty")
+            logger.info("   [Sync] wire probe backoff after timeout/empty")
+            # Do not apply a synthetic failed probe — that overwrote a late
+            # successful coalesced flight and kept topology_healthy false.
             return bool(self.consistency.snapshot().consistent)
 
         # Re-probe without wiping last-known green: request_probing keeps
@@ -572,7 +574,7 @@ class SyncEngine:
             # Background tip trust can afford a longer solicit than HTTP quick harness.
             raw = self.node.request_peer_state_roots_sync(timeout=70)
             if raw is None:
-                print("   [Sync] peer state_root wire probe failed: timeout/empty")
+                logger.warning("   [Sync] peer state_root wire probe failed: timeout/empty")
                 self._wire_probe_fail_ts = time.time()
                 if self.consistency.snapshot().consistent:
                     self._wire_sticky_empty_streak = int(
@@ -580,12 +582,12 @@ class SyncEngine:
                     ) + 1
                     max_sticky = int(getattr(self, "_wire_sticky_empty_max", 3) or 3)
                     if self._wire_sticky_empty_streak < max_sticky:
-                        print("   [Sync] wire probe backoff after timeout/empty")
+                        logger.info("   [Sync] wire probe backoff after timeout/empty")
                         return True
-                    print("   [Sync] sticky green expired after empty/timeout wire")
+                    logger.info("   [Sync] sticky green expired after empty/timeout wire")
                 probe = WireProbeResult.failed("probe_timeout_empty")
             elif len(raw) == 0:
-                print(
+                logger.info(
                     "   [Sync] peer state_root wire probe empty "
                     f"with {len(peers)} peer(s)"
                 )
@@ -596,9 +598,9 @@ class SyncEngine:
                     ) + 1
                     max_sticky = int(getattr(self, "_wire_sticky_empty_max", 3) or 3)
                     if self._wire_sticky_empty_streak < max_sticky:
-                        print("   [Sync] wire probe backoff after timeout/empty")
+                        logger.info("   [Sync] wire probe backoff after timeout/empty")
                         return True
-                    print("   [Sync] sticky green expired after empty/timeout wire")
+                    logger.info("   [Sync] sticky green expired after empty/timeout wire")
                 probe = WireProbeResult.failed("probe_empty")
             else:
                 wire_roots = list(raw)
@@ -606,7 +608,7 @@ class SyncEngine:
                 self._wire_sticky_empty_streak = 0
                 probe = WireProbeResult.succeeded(wire_roots=tuple(wire_roots))
         except Exception as exc:
-            print(f"   [Sync] peer state_root wire probe failed: {exc}")
+            logger.warning(f"   [Sync] peer state_root wire probe failed: {exc}")
             self._wire_probe_fail_ts = time.time()
             probe = WireProbeResult.failed(str(exc))
 
@@ -618,22 +620,22 @@ class SyncEngine:
         )
         snap = self.consistency.snapshot()
         if snap.reason_code == "state_root_mismatch":
-            print(
+            logger.info(
                 f"   State root mismatch vs peers: "
                 f"{', '.join(snap.probe.mismatch_peers)}"
             )
         elif snap.state.value == "behind_open":
-            print(
+            logger.info(
                 "   Sync incomplete vs ahead peers — not tip-consistent yet "
                 f"(local height={local_height})"
             )
         elif snap.reason_code == "no_same_height_match":
-            print(
+            logger.info(
                 "   No same-height peer root match — fail-closed "
                 f"(local height={local_height})"
             )
         elif decision.trusted:
-            print(
+            logger.info(
                 f"   State consistent (root={local_root[:12]}... height={local_height})"
             )
         return bool(decision.trusted)

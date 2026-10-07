@@ -316,6 +316,16 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         )
     if "assume open batch" in rocks_ad_py:
         errors.append("rocks_adapter must not assume open batch on probe failure")
+    smoke_py = (ROOT / "scripts" / "prod_evm_smoke.py").read_text(encoding="utf-8")
+    if '"amount_satoshi": 0' not in smoke_py or '"value_satoshi": 0' not in smoke_py:
+        errors.append("prod_evm_smoke deploy must send explicit satoshi zeros")
+    if "_force_prod_mesh_catchup" not in smoke_py:
+        errors.append("prod_evm_smoke must align mesh via _force_prod_mesh_catchup")
+    sync_eng = (ROOT / "sync" / "sync_engine.py").read_text(encoding="utf-8")
+    if "print(" in sync_eng:
+        errors.append("sync_engine must log via logger (no print)")
+    if 'logger.warning(f"[Sync] Catch-up refused:' not in sync_eng:
+        errors.append("sync_engine must warning-log catch-up refuse")
     http_bridge = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
     if "bridge get_stats failed" not in http_bridge:
         errors.append("http._bridge_for_request must log get_stats failures")

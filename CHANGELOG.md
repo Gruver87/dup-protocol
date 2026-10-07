@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — prod_evm_smoke satoshi/catchup + sync_engine logger
+
+- prod_evm_smoke: deploy `/tx/send` carries amount/value_satoshi=0; align via `_force_prod_mesh_catchup`.
+- sync_engine: print → structured logger (refuse/probe fails at warning); pin wire-probe backoff comments kept.
+- Units + industrial_gate. **Non-LR.** Mesh Quick after docker rebuild. **Soak deferred.**
+
 ### Exp→pin merge wave — P2P/http/finality/state/genesis silent-except honesty
 
 - p2p_node: timeout restore / egress hooks / native probe / catch-up ahead / attestation header honesty.

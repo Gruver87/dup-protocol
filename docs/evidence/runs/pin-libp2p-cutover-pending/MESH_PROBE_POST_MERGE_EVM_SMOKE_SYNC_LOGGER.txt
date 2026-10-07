@@ -1,0 +1,14 @@
+﻿MESH_PROBE_POST_MERGE_EVM_SMOKE_SYNC_LOGGER
+date: 2026-10-07
+wave: Exp→pin prod_evm_smoke satoshi/catchup + sync_engine logger
+units: test_prod_evm_smoke + test_silent_except_honesty 33 PASS
+industrial_gate: OK
+soak: deferred / not run / not started
+long_range: off
+live: Sync.Engine logger.info visible on mesh boot
+
+============================================================
+PROD MESH PROBE (chain 778888)
+============================================================
+RESULT: OK
+Report: C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid\logs\prod_mesh_probe.json
