@@ -12,8 +12,9 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ### Exp→pin merge wave — pin FAQ / ONE_PAGER + diligence link honesty
 
-- docs: pin-honest `FAQ.md`, `ONE_PAGER.md`, `ONE_PAGER_RU.md`, `OPS_CONSOLE.md`;
-  `DEMO_RUNBOOK.md` stub → `DEMO_RUNBOOK_PIN.md`; `SHOWCASE.md` local diligence paths.
+- docs: pin-honest `FAQ.md`, `ONE_PAGER.md`, `ONE_PAGER_RU.md`, `OPS_CONSOLE.md`,
+  `FIRM_NDA_OUTLINE.md`; `DEMO_RUNBOOK.md` stub → `DEMO_RUNBOOK_PIN.md`;
+  `SHOWCASE.md` + README local diligence paths.
 - secrets: `secrets/README.md` (ADR 0015 / no commit).
 - adr/0021: EXECUTION_ORDER + Exp soak pack links → Exp GitHub (not broken local).
 - **Docs only.** **Non-LR.** **Soak deferred / not run.**
