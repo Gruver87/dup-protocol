@@ -17,6 +17,7 @@ R&D sibling showcase (not pin evidence):
 | Vision / honest scope | [VISION.md](VISION.md) |
 | Fund / diligence card | [FUND_READINESS.md](FUND_READINESS.md) · [DILIGENCE_BRIEF.md](DILIGENCE_BRIEF.md) |
 | FAQ / one-pager EN+RU | [FAQ.md](FAQ.md) · [ONE_PAGER.md](ONE_PAGER.md) · [ONE_PAGER_RU.md](ONE_PAGER_RU.md) |
+| Elevator / firm calendar | [ELEVATOR_PITCH.md](ELEVATOR_PITCH.md) · [FIRM_ENGAGEMENT_CALENDAR.md](FIRM_ENGAGEMENT_CALENDAR.md) |
 | Auditor one-pager | [AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md) |
 | One-screen | [AT_A_GLANCE.md](AT_A_GLANCE.md) |
 | Tip-v2 48h evidence (TCP+TLS) | [`375d14f`](evidence/runs/375d14f/) |

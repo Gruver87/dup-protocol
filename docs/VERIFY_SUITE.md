@@ -22,6 +22,8 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 
 ## Sprout / aux labs (Phase 5 — offline)
 
+Profiles: [NFT](sprouts/NFT_LAB_PROFILE.md) · [AI](sprouts/AI_LAB_PROFILE.md) · [Oracle](sprouts/ORACLE_LAB_PROFILE.md) · [Shard](sprouts/SHARD_LAB_PROFILE.md).
+
 ```powershell
 .\scripts\verify_sprout_labs.ps1
 # pieces:

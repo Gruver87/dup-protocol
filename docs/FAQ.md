@@ -52,11 +52,11 @@ Only a packaged run under `docs/evidence/runs/<id>/` with report `passed=true` a
 
 ### Is the NFT marketplace ERC-721 / OpenSea?
 
-**No.** App-profile sprout; prod `feature_nft=false`. Soft escrow is not an L1 escrow contract.
+**No.** App-profile sprout; prod `feature_nft=false`. Soft escrow is not an L1 escrow contract. See [NFT_LAB_PROFILE.md](sprouts/NFT_LAB_PROFILE.md).
 
 ### What about AI agents / AI validator?
 
-Lab sprouts only. Prod `feature_ai_agents=false` / `feature_ai_validator=false`. Not consensus-wired.
+Lab sprouts only. Prod `feature_ai_agents=false` / `feature_ai_validator=false`. Not consensus-wired. See [AI_LAB_PROFILE.md](sprouts/AI_LAB_PROFILE.md).
 
 ### Former name “Absolute Blockchain”?
 

@@ -8,6 +8,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Sprout lab profiles + elevator / firm calendar
+
+- Pin-honest NFT/AI/Oracle lab profiles, elevator pitch, firm engagement calendar,
+  legacy network quarantine; SHOWCASE / VERIFY_SUITE links.
+
 ### Pin FAQ / ONE_PAGER + diligence link honesty
 
 - Added pin-honest `FAQ.md`, `ONE_PAGER.md`, `ONE_PAGER_RU.md`, `OPS_CONSOLE.md`;

@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — sprout lab profiles + elevator / firm calendar
+
+- docs: pin-honest `sprouts/{NFT,AI,ORACLE}_LAB_PROFILE.md`, `ELEVATOR_PITCH.md`,
+  `FIRM_ENGAGEMENT_CALENDAR.md`, `LEGACY_NETWORK_QUARANTINE.md`.
+- SHOWCASE / VERIFY_SUITE / sprouts README cross-links.
+- **Docs only.** **Non-LR.** **Soak deferred / not run.**
+
 ### Exp→pin merge wave — pin FAQ / ONE_PAGER + diligence link honesty
 
 - docs: pin-honest `FAQ.md`, `ONE_PAGER.md`, `ONE_PAGER_RU.md`, `OPS_CONSOLE.md`,
