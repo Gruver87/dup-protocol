@@ -1,18 +1,18 @@
-# Pin libp2p industrial mesh — cutover evidence (`pin-libp2p-cutover-pending`)
+﻿# Pin libp2p industrial mesh вЂ” cutover evidence (`pin-libp2p-cutover-pending`)
 
 **Kind:** ADR 0020 cutover  
-**Status:** **Quick probe PASS packaged** · **48h soak DEFERRED** (operator: after full merge; premature 21:11 restart **stopped** — not PASS)  
-**Chain:** prod-profile `778888` · rust-libp2p (`feature_libp2p=true`, `p2p_tls_enabled=false`)
+**Status:** **Quick probe PASS packaged** В· **48h soak DEFERRED** (operator: after full merge; premature 21:11 restart **stopped** вЂ” not PASS)  
+**Chain:** prod-profile `778888` В· rust-libp2p (`feature_libp2p=true`, `p2p_tls_enabled=false`)
 
 ## Honesty
 
-- Quick mesh probe (`probe_prod_mesh.ps1 -Quick`) → **RESULT: OK** — see `probe_prod_mesh_quick.json` + `status_snapshot.jsonl` (peers=2, aligned tip, `libp2p.active` + `rust_backend`, honesty `ADR0020_experimental_libp2p_industrial_mesh`)
-- `industrial_gate.py` → **OK** (see `industrial_gate.json`; external-audit warnings expected)
+- Quick mesh probe (`probe_prod_mesh.ps1 -Quick`) в†’ **RESULT: OK** вЂ” see `probe_prod_mesh_quick.json` + `status_snapshot.jsonl` (peers=2, aligned tip, `libp2p.active` + `rust_backend`, honesty `ADR0020_experimental_libp2p_industrial_mesh`)
+- `industrial_gate.py` в†’ **OK** (see `industrial_gate.json`; external-audit warnings expected)
 - Negative refuse notes: `NEGATIVE_REFUSE.txt`
-- **48h soak deferred** until operator declares full Exp→pin merge complete. Premature restart 2026-10-05 21:11 tip `bd500c1` was **stopped** (see `SOAK_STOPPED_PREMATURE.txt` / `SOAK_IN_PROGRESS.txt`). **Do not claim PASS.**
-- **NOT** public mainnet · **NOT** external audit
+- **48h soak deferred** until operator declares full Expв†’pin merge complete. Premature restart 2026-10-05 21:11 tip `bd500c1` was **stopped** (see `SOAK_STOPPED_PREMATURE.txt` / `SOAK_IN_PROGRESS.txt`). **Do not claim PASS.**
+- **NOT** public mainnet В· **NOT** external audit
 - Do **not** cite Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`) as pin evidence
-- Freeze tag `v1.3.1339-tip-v2-industrial` and sealed TCP+TLS packs remain **historical** — unchanged
+- Freeze tag `v1.3.1339-tip-v2-industrial` and sealed TCP+TLS packs remain **historical** вЂ” unchanged
 
 ## Operator: 48h soak still required
 
@@ -23,14 +23,14 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 ```
 
 **Suggested release tag (after soak PASS + commit):** `v1.3.1340-libp2p-industrial-mesh`  
-(Not created on this cutover — working tree dirty; freeze tag untouched.)
+(Not created on this cutover вЂ” working tree dirty; freeze tag untouched.)
 
 ## Packaged now
 
 | File | Purpose |
 |------|---------|
 | `probe_prod_mesh_quick.json` | Quick probe PASS |
-| `status_snapshot.jsonl` | Live `/status` from 18180–18182 |
+| `status_snapshot.jsonl` | Live `/status` from 18180вЂ“18182 |
 | `industrial_gate.json` | Gate snapshot |
 | `NEGATIVE_REFUSE.txt` | TLS+libp2p / `-P2pTls` / missing-swarm refuse |
 | `MESH_PROBE_POST_STRICT.txt` | Outbound/class-rate Quick probe stamp |
@@ -83,3 +83,4 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `soak_report*.json` | `passed=true`, `hard_fails=0` |
 | `soak_monitor.log` | 48h run log |
 | `manifest.json` | commit + sha256 bindings after soak |
+

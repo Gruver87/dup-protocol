@@ -1981,14 +1981,18 @@ class RocksChainStore:
                     exc,
                 )
                 continue
+            rows.append(row)
+        rows.sort(key=lambda r: int(r.get("created_at", 0) or 0), reverse=True)
+        # Overlay money only for the returned window (not the full scan bound).
+        out: List[Dict] = []
+        for row in rows[:limit]:
             row["amount"] = money_abs(row.get("amount", 0), field="amount")
             if row.get("amount_satoshi") is None:
                 row["amount_satoshi"] = int(to_satoshi(row["amount"]))
             else:
                 row["amount_satoshi"] = int(row["amount_satoshi"])
-            rows.append(row)
-        rows.sort(key=lambda r: int(r.get("created_at", 0) or 0), reverse=True)
-        return rows[:limit]
+            out.append(row)
+        return out
 
     def has_bridge_credit(self, credit_key: str) -> bool:
         return self._raw_get(kc.key_bridge_credit(credit_key)) is not None

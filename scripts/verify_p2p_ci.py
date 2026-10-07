@@ -568,12 +568,14 @@ def verify_bridge_relayer(
             print(f"FAIL: relayer incoming processed={n_in}")
             return 20
 
+        from runtime.amount import money_abs, to_satoshi
+
         bal = _api(f"{url1}/wallet/balance?address={recipient}")
-        credited = float(bal.get("balance") or 0)
-        if credited < in_amount:
+        credited = money_abs(bal.get("balance") or 0, field="balance")
+        if to_satoshi(credited) < to_satoshi(in_amount):
             # faucet may also credit; accept confirmed oracle response as proof
             credited = in_amount if n_in >= 1 else credited
-        if credited < in_amount:
+        if to_satoshi(credited) < to_satoshi(in_amount):
             print(f"FAIL: relayer incoming balance={credited} expected>={in_amount}")
             return 20
 
@@ -655,10 +657,12 @@ def _mempool_has_tx(base_url: str, tx_hash: str) -> bool:
 def _ensure_signer_funded(primary_url: str, peer_urls: list[str] | None = None) -> None:
     """Top up dev signer via faucet on every node (balances must match for P2P block import)."""
     try:
+        from runtime.amount import money_abs, to_satoshi
+
         ws = _api(f"{primary_url}/wallet/status")
         addr = ws.get("signing_address") or ws.get("address") or ""
-        bal = float(ws.get("balance", 0) or 0)
-        if not addr or bal >= 1.0:
+        bal = money_abs(ws.get("balance", 0) or 0, field="balance")
+        if not addr or to_satoshi(bal) >= to_satoshi(1):
             return
         targets = [primary_url]
         for url in peer_urls or []:

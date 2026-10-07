@@ -1,0 +1,8 @@
+﻿MESH_PROBE_POST_MERGE_STAKE_SATOSHI_CI_MONEY
+date: 2026-10-07
+wave: Exp→pin consensus stake_satoshi load + CI money_abs
+units: test_consensus_load_stake_satoshi 2 PASS
+industrial_gate: OK
+mesh_quick: optional / not required this tip (consensus/CI/storage)
+soak: deferred / not run / not started
+long_range: off

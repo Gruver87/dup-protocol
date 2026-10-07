@@ -193,7 +193,12 @@ class ConsensusAdapter:
     def _load_validators_from_db(self) -> None:
         validators = self.db.get_validators(active_only=True)
         for v in validators:
-            self._register_validator_all(v["address"], float(v["stake"]))
+            # Prefer stake_satoshi twin from DB (ADR 0021); refuse mismatch via resolve.
+            raw_sat = v.get("stake_satoshi")
+            stake_sat = int(raw_sat) if raw_sat is not None else None
+            self._register_validator_all(
+                v["address"], v.get("stake"), stake_satoshi=stake_sat
+            )
         if validators:
             logger.info(f"[Consensus] Loaded {len(validators)} validators from DB")
         if self.slashing_engine:

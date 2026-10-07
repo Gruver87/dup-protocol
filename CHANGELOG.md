@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — consensus stake_satoshi load + CI money_abs
+
+- consensus/adapter: `_load_validators_from_db` prefers DB `stake_satoshi` (mismatch refuse via resolve).
+- verify_p2p_ci: faucet/relayer balance checks via money_abs/to_satoshi (no float).
+- rocks_store get_bridge_locks: money overlay on returned window only.
+- Units + industrial_gate. **Non-LR.** Mesh Quick optional (consensus/CI/storage). **Soak deferred.**
+
 ### Exp→pin merge wave — mempool value/nonce/gas unparseable FC
 
 - p2p_node: nonfinite-value / negative-nonce / max-nonce / negative-gas parse errors refuse with counters (no silent pass).

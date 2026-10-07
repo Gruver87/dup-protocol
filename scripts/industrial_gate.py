@@ -394,6 +394,13 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         )
     if "money_abs(addr_info.get(\"balance\"" not in vp2p:
         errors.append("verify_p2p_ci prod-smoke must parse balance via money_abs (no float)")
+    if 'money_abs(ws.get("balance"' not in vp2p and "money_abs(ws.get('balance'" not in vp2p:
+        errors.append("verify_p2p_ci _ensure_signer_funded must parse balance via money_abs")
+    adapter_py = (ROOT / "consensus" / "adapter.py").read_text(encoding="utf-8")
+    if 'stake_satoshi=stake_sat' not in adapter_py or "v.get(\"stake_satoshi\")" not in adapter_py:
+        errors.append(
+            "ConsensusAdapter._load_validators_from_db must prefer stake_satoshi (ADR 0021)"
+        )
     if not (ROOT / "scripts" / "mempool_validation_sidecar.py").is_file():
         errors.append("scripts/mempool_validation_sidecar.py missing (soak companion)")
     else:
