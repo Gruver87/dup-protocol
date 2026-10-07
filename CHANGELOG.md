@@ -10,6 +10,16 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Soak prep READY (ADR 0020 libp2p) — soak NOT started
+
+- Disk freed for 48h bar; native + docker mesh rebuilt; image pin OK.
+- `prepare_48h_soak` READY · soak_preflight libp2p+wire · Quick · catchup ·
+  miner harness 5/5 · industrial_gate · midsoak honesty · sprout labs ·
+  health_watch Strict 1m `hard_fails=0` · STRICT `-PreflightOnly` PASS.
+- midsoak script: pin-local gas/NFT/AI harden test paths.
+- Evidence: `docs/evidence/runs/pin-libp2p-cutover-pending/SOAK_PREP_READY_HEAD.md`.
+- **Soak not started. Not PASS.**
+
 ### Exp→pin merge wave — mining pack + /status + state_root stale-peer
 
 - main: forge packs via `mempool.get_for_block` (nonce-contiguous; match PBS path).
