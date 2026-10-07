@@ -73,6 +73,8 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `MESH_PROBE_POST_MERGE_MEMPOOL_UNPARSEABLE_FC.txt` | mempool value/nonce/gas unparseable refuse (no silent pass) Quick probe |
 | `probe_prod_mesh_quick_merge_mempool_unparseable_fc.json` | Probe JSON for unparseable-FC wave |
 | `industrial_gate_merge_mempool_unparseable_fc.json` | Gate snapshot for unparseable-FC wave |
+| `MESH_PROBE_POST_MERGE_STAKE_SATOSHI_CI_MONEY.txt` | consensus stake_satoshi load + CI money_abs (Quick optional) |
+| `industrial_gate_merge_stake_satoshi_ci_money.json` | Gate snapshot for stake/CI money wave |
 | `hw_strict_smoke_1m.log` | 1m `health_watch -Strict` smoke (EXIT=0) |
 | `README.md` | This honesty stamp |
 
