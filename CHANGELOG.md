@@ -10,6 +10,11 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — mempool value/nonce/gas unparseable FC
+
+- p2p_node: nonfinite-value / negative-nonce / max-nonce / negative-gas parse errors refuse with counters (no silent pass).
+- industrial_gate needles. **Non-LR.** Mesh Quick after docker rebuild. **Soak deferred.**
+
 ### Exp→pin merge wave — verify_p2p_ci satoshi + mempool fee refuse counters
 
 - verify_p2p_ci prod-smoke: balance via money_abs; signed /tx/send carries amount/value_satoshi + explicit gas.

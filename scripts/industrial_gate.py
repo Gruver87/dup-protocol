@@ -4717,6 +4717,12 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("p2p_node must count fee_unparseable refuses (no silent pass)")
         if 'self._last_tx_wire_reject = "fee_unparseable"' not in p2p_py:
             errors.append("p2p_node must set fee_unparseable on unparseable fee paths")
+        if 'self._last_tx_wire_reject = "value_unparseable"' not in p2p_py:
+            errors.append("p2p_node must refuse value_unparseable (no silent pass)")
+        if 'self._last_tx_wire_reject = "nonce_unparseable"' not in p2p_py:
+            errors.append("p2p_node must refuse nonce_unparseable (no silent pass)")
+        if 'self._last_tx_wire_reject = "gas_unparseable"' not in p2p_py:
+            errors.append("p2p_node must refuse gas_unparseable on negative-gas parse fail")
         http_src = (ROOT / "api" / "http.py").read_text(encoding="utf-8", errors="replace")
         if "plan_transfer_fees_sat" not in http_src:
             errors.append("api/http admit must use plan_transfer_fees_sat")

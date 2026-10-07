@@ -5062,7 +5062,11 @@ class P2PNode:
                     ) + 1
                     return None
             except (TypeError, ValueError):
-                pass
+                self._last_tx_wire_reject = "value_unparseable"
+                self._mempool_nonfinite_value_refuse_total = int(
+                    getattr(self, "_mempool_nonfinite_value_refuse_total", 0) or 0
+                ) + 1
+                return None
 
         # v1.3.202: cheap max-value refuse before validate_transaction.
         # Soft DoS honesty — fantasy amounts fail before DB; not full tokenomics/economics.
@@ -5102,7 +5106,11 @@ class P2PNode:
                     ) + 1
                     return None
             except (TypeError, ValueError):
-                pass
+                self._last_tx_wire_reject = "nonce_unparseable"
+                self._mempool_nonce_refuse_total = int(
+                    getattr(self, "_mempool_nonce_refuse_total", 0) or 0
+                ) + 1
+                return None
 
         # v1.3.200: cheap max-nonce refuse before validate_transaction.
         # Soft DoS honesty — fantasy nonces skip cheap before DB; not nonce-window.
@@ -5122,7 +5130,11 @@ class P2PNode:
                     ) + 1
                     return None
             except (TypeError, ValueError):
-                pass
+                self._last_tx_wire_reject = "nonce_unparseable"
+                self._mempool_nonce_high_refuse_total = int(
+                    getattr(self, "_mempool_nonce_high_refuse_total", 0) or 0
+                ) + 1
+                return None
 
         # v1.3.186 / Wave J: negative-fee refuse via satoshi (not float(fee) ABS).
         if bool(getattr(self.config, "p2p_mempool_negative_fee_refuse", True)):
@@ -5188,7 +5200,11 @@ class P2PNode:
                     ) + 1
                     return None
             except (TypeError, ValueError):
-                pass
+                self._last_tx_wire_reject = "gas_unparseable"
+                self._mempool_gas_negative_refuse_total = int(
+                    getattr(self, "_mempool_gas_negative_refuse_total", 0) or 0
+                ) + 1
+                return None
 
         tx = Transaction(
             from_addr=from_addr,

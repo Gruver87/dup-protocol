@@ -70,6 +70,9 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `MESH_PROBE_POST_MERGE_P2P_SATOSHI_FEE_COUNTERS.txt` | verify_p2p_ci satoshi smoke + mempool fee/gas_missing refuse counters Quick probe |
 | `probe_prod_mesh_quick_merge_p2p_satoshi_fee_counters.json` | Probe JSON for satoshi/fee-counter wave |
 | `industrial_gate_merge_p2p_satoshi_fee_counters.json` | Gate snapshot for satoshi/fee-counter wave |
+| `MESH_PROBE_POST_MERGE_MEMPOOL_UNPARSEABLE_FC.txt` | mempool value/nonce/gas unparseable refuse (no silent pass) Quick probe |
+| `probe_prod_mesh_quick_merge_mempool_unparseable_fc.json` | Probe JSON for unparseable-FC wave |
+| `industrial_gate_merge_mempool_unparseable_fc.json` | Gate snapshot for unparseable-FC wave |
 | `hw_strict_smoke_1m.log` | 1m `health_watch -Strict` smoke (EXIT=0) |
 | `README.md` | This honesty stamp |
 

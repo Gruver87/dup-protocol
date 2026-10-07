@@ -1,0 +1,12 @@
+﻿MESH_PROBE_POST_MERGE_MEMPOOL_UNPARSEABLE_FC
+date: 2026-10-07
+wave: Exp→pin mempool value/nonce/gas unparseable FC
+industrial_gate: OK
+soak: deferred / not run / not started
+long_range: off
+
+============================================================
+PROD MESH PROBE (chain 778888)
+============================================================
+RESULT: OK
+Report: C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid\logs\prod_mesh_probe.json
