@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — tip-safety light-advance (ADR 0001, no LR)
+
+- tip_safety: `bind_imported_tip` + `_advance_after_import` + ancestry
+  `backfill_ancestry_from_chain` (no WS / FEATURE_LONG_RANGE).
+- Preserve pin fail-closed stale-window refuse on observe rebind.
+- units: contiguous light-advance + noncontiguous full-sync fallback.
+- industrial_gate needles. **Non-LR.** **Soak deferred / not run.**
+
 ### Exp→pin merge wave — AI sprout harden unit coverage
 
 - tests: port `test_ai_sprout_harden.py` (model port, profit satoshi, validator

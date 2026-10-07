@@ -5878,6 +5878,21 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append(
                 "TipSafetyShadowObserver must record last_local_forge_height via note_local_forge"
             )
+        if "backfill_ancestry_from_chain" not in shadow_py:
+            errors.append(
+                "tip-safety sync_from_chain must backfill ancestry for bounded-window walks"
+            )
+        if "_advance_after_import" not in shadow_py:
+            errors.append(
+                "tip-safety note_import_result must light-advance contiguous tip+1"
+            )
+        svc_py = (ROOT / "consensus" / "tip_safety" / "service.py").read_text(
+            encoding="utf-8"
+        )
+        if "def bind_imported_tip" not in svc_py:
+            errors.append(
+                "TipSafetyService.bind_imported_tip required for contiguous import advance"
+            )
         tip_evidence_py = (
             ROOT / "network" / "p2p_dispatch" / "tip_evidence.py"
         ).read_text(encoding="utf-8")

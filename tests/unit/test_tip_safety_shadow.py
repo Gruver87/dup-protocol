@@ -403,3 +403,55 @@ def test_p2p_import_catch_up_after_stale_tip_window() -> None:
     nxt["parent_hash"] = chain.get_block(339)["hash"]
     assert node.import_block(nxt) is True
     assert chain.get_height() == 340
+
+
+def test_note_import_light_advance_contiguous_tip() -> None:
+    """Contiguous tip+1 uses bind_imported_tip; head advances without fail."""
+    from consensus.tip_safety.shadow import backfill_ancestry_from_chain
+
+    chain = _FakeChain(10)
+    obs = TipSafetyShadowObserver(enabled=True, enforce=True)
+    assert obs.sync_from_chain(chain) is True
+    assert obs.status()["tip_safety_shadow_head_height"] == 10
+    # Ancestry backfill should have recorded more than tip-only seed.
+    n = backfill_ancestry_from_chain(obs._service.ancestry, chain)
+    assert n >= 1
+
+    nxt = _block_dict(11, n=0xABC)
+    nxt["parent_hash"] = chain.get_block(10)["hash"]
+    decision = obs.observe_before_import(nxt, chain)
+    assert decision is not None and decision.accepted is True
+    assert chain.import_block(nxt) is True
+    obs.note_import_result(True, chain)
+    assert obs.status()["tip_safety_shadow_head_height"] == 11
+    assert obs._service is not None
+    head = obs._service.state.snapshot().head
+    assert int(head.height) == 11
+    assert str(head.block_hash) == nxt["hash"]
+
+
+def test_note_import_noncontiguous_falls_back_to_full_sync() -> None:
+    chain = _FakeChain(5)
+    obs = TipSafetyShadowObserver(enabled=True, enforce=False)
+    assert obs.sync_from_chain(chain) is True
+    # Jump tip without contiguous parent link in observer state.
+    chain._height = 8
+    for i in range(6, 9):
+        prev = chain._blocks[i - 1]["hash"]
+        blk = _block_dict(i, n=0x100 + i)
+        blk["parent_hash"] = prev
+        chain._blocks[i] = blk
+    obs.note_import_result(True, chain)
+    assert obs.status()["tip_safety_shadow_head_height"] == 8
+
+
+def test_bind_imported_tip_requires_block_ref() -> None:
+    from consensus.tip_safety.service import TipSafetyService
+    from consensus.tip_safety.tip_state import TipState
+
+    state = TipState(head=BlockRef(height=1, block_hash=_h(1), parent_hash=_h(0)))
+    svc = TipSafetyService(state)
+    with pytest.raises(TipValidationError):
+        svc.bind_imported_tip("not-a-ref")  # type: ignore[arg-type]
+    svc.bind_imported_tip(BlockRef(height=2, block_hash=_h(2), parent_hash=_h(1)))
+    assert svc.state.head.height == 2

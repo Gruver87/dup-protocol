@@ -142,6 +142,19 @@ class TipSafetyService:
         )
         return decision
 
+    def bind_imported_tip(self, head: BlockRef) -> None:
+        """Advance tip+ancestry after a successful contiguous import (no re-eval).
+
+        Used by the shadow observer light-advance path to avoid rebuilding the
+        whole ``TipSafetyService`` on every tip+1 import (ADR 0001).
+        """
+        if not isinstance(head, BlockRef):
+            raise TipValidationError(
+                f"head must be BlockRef, got {type(head).__name__}"
+            )
+        self._state = self._state.with_head(head)
+        self._ancestry.record(head)
+
     def choose_and_apply(self, candidates: Sequence[BlockRef]) -> ApplyDecision:
         """Pick the best candidate via fork-choice, then apply it.
 

@@ -115,6 +115,114 @@ def tip_state_from_chain(blockchain: Any) -> TipState:
     return TipState(head=block_ref_from_mapping(block), finalized=None)
 
 
+def backfill_ancestry_from_chain(
+    window: Any,
+    blockchain: Any,
+    *,
+    stop_hash: Optional[str] = None,
+    max_steps: Optional[int] = None,
+) -> int:
+    """Record tip→parent chain into ``window`` after tip-only sync (ADR 0001).
+
+    ``sync_from_chain`` rebuilds ``TipSafetyService`` with only the live tip in
+    the ancestry window. Without this backfill, bounded-window reorg walks that
+    need recent parents may false-refuse as ``tip_unknown_parent``.
+
+    Walks via ``get_block`` / ``get_block_by_hash``. Stops at genesis, missing
+    parent, optional ``stop_hash``, or ``max_steps`` (default window cap).
+
+    Returns:
+        Number of distinct blocks recorded.
+    """
+    from consensus.tip_safety.ancestry_window import AncestryWindow
+
+    if window is None or blockchain is None:
+        return 0
+    if not isinstance(window, AncestryWindow):
+        return 0
+    try:
+        raw_h = blockchain.get_height()
+        height = int(raw_h) if raw_h is not None else -1
+    except Exception:
+        return 0
+    if height < 0 or not hasattr(blockchain, "get_block"):
+        return 0
+
+    steps = int(max_steps) if max_steps is not None else int(window.max_blocks)
+    if steps < 1:
+        return 0
+    want_stop = ""
+    if stop_hash:
+        try:
+            from consensus.tip_safety.types import normalize_block_hash
+
+            want_stop = normalize_block_hash(str(stop_hash))
+        except Exception:
+            want_stop = str(stop_hash).strip().lower()
+
+    recorded = 0
+    seen: set[str] = set()
+    cur_h = height
+    cur_map: Optional[Mapping[str, Any]] = None
+    try:
+        cur_map = blockchain.get_block(cur_h)
+    except Exception:
+        cur_map = None
+
+    for _ in range(steps):
+        if not isinstance(cur_map, Mapping):
+            break
+        try:
+            ref = block_ref_from_mapping(cur_map)
+        except TipValidationError:
+            break
+        key = str(ref.block_hash)
+        if not key or key in seen:
+            break
+        seen.add(key)
+        window.record(ref)
+        recorded += 1
+        if want_stop and key == want_stop:
+            break
+        if int(ref.height) <= 0:
+            break
+        parent = str(ref.parent_hash or "").strip()
+        if not parent:
+            break
+        nxt: Optional[Mapping[str, Any]] = None
+        if hasattr(blockchain, "get_block_by_hash"):
+            try:
+                cand = blockchain.get_block_by_hash(parent)
+                if isinstance(cand, Mapping):
+                    nxt = cand
+            except Exception:
+                nxt = None
+        if nxt is None:
+            try:
+                from consensus.tip_safety.types import normalize_block_hash
+
+                cand = blockchain.get_block(int(ref.height) - 1)
+                if isinstance(cand, Mapping):
+                    cand_hash = str(
+                        cand.get("hash") or cand.get("block_hash") or ""
+                    ).strip()
+                    try:
+                        same = normalize_block_hash(cand_hash) == normalize_block_hash(
+                            parent
+                        )
+                    except Exception:
+                        same = cand_hash.lower() == parent.lower()
+                    if cand_hash and same:
+                        nxt = cand
+            except Exception:
+                nxt = None
+        if nxt is None:
+            break
+        cur_map = nxt
+
+    return recorded
+
+
 class TipSafetyShadowObserver:
     """Tip-safety observer / gate for import candidates.
 
@@ -236,6 +344,13 @@ class TipSafetyShadowObserver:
                 self._service = TipSafetyService(
                     state, ancestry_max_blocks=max(1, max_blocks)
                 )
+                # Tip-only seed is not enough for bounded-window parent walks.
+                n = backfill_ancestry_from_chain(
+                    self._service.ancestry,
+                    blockchain,
+                )
+                if n > 1:
+                    _LOG.debug("tip_safety ancestry backfill recorded=%s", n)
             return True
         except Exception as exc:
             with self._lock:
@@ -401,11 +516,51 @@ class TipSafetyShadowObserver:
                             "shadow diverge: policy accept but import failed"
                         )
             if imported_ok:
-                self.sync_from_chain(blockchain)
+                # Contiguous tip+1: light advance (no full service rebuild).
+                # Full rebuild only on jumps / first bind / non-contiguous tip.
+                if not self._advance_after_import(blockchain):
+                    self.sync_from_chain(blockchain)
         except Exception as exc:
             with self._lock:
                 self.observe_errors += 1
             _LOG.warning("tip_safety note_import_result failed: %s", exc)
+
+    def _advance_after_import(self, blockchain: Any) -> bool:
+        """Try contiguous tip advance without full ancestry rebuild.
+
+        Returns:
+            True when light advance applied; False when caller must full-sync.
+        """
+        if self._service is None:
+            return False
+        try:
+            new_state = tip_state_from_chain(blockchain)
+        except Exception:
+            return False
+        with self._lock:
+            if self._service is None:
+                return False
+            try:
+                old = self._service.state.snapshot().head
+            except Exception:
+                return False
+            new = new_state.head
+            if int(new.height) == int(old.height) and str(new.block_hash) == str(
+                old.block_hash
+            ):
+                return True
+            parent_ok = (
+                int(new.height) == int(old.height) + 1
+                and str(new.parent_hash or "") == str(old.block_hash or "")
+            )
+            if not parent_ok:
+                return False
+            try:
+                self._service.bind_imported_tip(new)
+            except Exception as exc:
+                _LOG.debug("tip_safety light advance failed: %s", exc)
+                return False
+            return True
 
     def merge_into_status(self, target: MutableMapping[str, Any]) -> None:
         """Merge counters into a security-status mapping."""
