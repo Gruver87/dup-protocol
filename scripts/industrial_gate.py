@@ -2132,6 +2132,8 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         ai_py = (ROOT / "features" / "ai_validator.py").read_text(encoding="utf-8")
         if "invented_numbers" not in ai_py or "consensus_wired" not in ai_py:
             errors.append("AI validator must expose simulation honesty (no invented MEV numbers)")
+        if "profit_satoshi" not in ai_py or '"profit_satoshi": None' not in ai_py:
+            errors.append("AI validator MEV stub must expose profit_satoshi=None (no invent)")
         if "random.uniform" in ai_py and "detect_mev_opportunity" in ai_py:
             # Fail if invented MEV numbers remain inside detect_mev_opportunity body.
             start = ai_py.find("def detect_mev_opportunity")
@@ -2141,6 +2143,20 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
                 errors.append("AI validator must not invent MEV profit/probability via random.uniform")
         if "consensus_wired" not in http_py2 or "model_bound" not in http_py2:
             errors.append("/ai/* API must expose consensus_wired / model_bound honesty")
+        if 'path == "/nft/delist"' not in http_py2:
+            errors.append("api/http.py must expose POST /nft/delist")
+        nft_py_gate = (ROOT / "features" / "nft.py").read_text(encoding="utf-8")
+        if "def get_listings" not in nft_py_gate or "def delist" not in nft_py_gate:
+            errors.append("nft.py must expose get_listings + delist")
+        ai_ops_py = ROOT / "features" / "ai_ops.py"
+        if not ai_ops_py.is_file():
+            errors.append("features/ai_ops.py missing (ops anomaly classifier)")
+        else:
+            ai_ops_txt = ai_ops_py.read_text(encoding="utf-8")
+            if "def classify_anomaly" not in ai_ops_txt or "not consensus" not in ai_ops_txt.lower():
+                errors.append("ai_ops.classify_anomaly must exist and refuse consensus claim")
+        if not (ROOT / "scripts" / "ai_ops_anomaly.py").is_file():
+            errors.append("scripts/ai_ops_anomaly.py missing")
         # v1.3.38 — native GHOST + simple block apply/replay
         ghost_py = (ROOT / "consensus" / "ghost.py").read_text(encoding="utf-8")
         if "ghost_select_head" not in ghost_py or "ghost_cumulative_weight" not in ghost_py:

@@ -558,6 +558,24 @@ class NFTMarketplace:
         with self.lock:
             return [t.to_dict() for t in self.tokens.values() if t.for_sale]
 
+    def get_listings(self) -> List[Dict]:
+        """Alias for HTTP ``/nft/listings`` — for-sale tokens only."""
+        return self.get_on_sale()
+
+    def delist(self, token_id: str, owner: str) -> Dict:
+        """Remove a listing (owner only)."""
+        with self.lock:
+            t = self.tokens.get(token_id)
+            if not t:
+                return {"success": False, "error": "not found"}
+            if t.owner != owner:
+                return {"success": False, "error": "not owner"}
+            if not t.for_sale:
+                return {"success": False, "error": "not listed"}
+            t.for_sale = False
+            self._persist_token(token_id)
+            return {"success": True, "token_id": token_id, "for_sale": False}
+
     def get_all(self) -> List[Dict]:
         with self.lock:
             return [t.to_dict() for t in self.tokens.values()]

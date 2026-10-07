@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — AI/NFT marketplace honesty + ai_ops
+
+- nft: `get_listings` + `delist`; HTTP POST `/nft/delist` (auth + soft-escrow path unchanged).
+- ai_validator: injectible rng; MEV stub `profit_satoshi=None`; demo uses `stake_satoshi`.
+- ai_ops: off-node `classify_anomaly` + `scripts/ai_ops_anomaly.py` (NOT soak / NOT consensus).
+- Units: marketplace settle/offer/auction/delist + prod mesh AI flags. industrial_gate needles.
+- **Non-LR.** Mesh Quick optional (sprout/ops). **Soak deferred / not run.**
+
 ### Exp→pin merge wave — lightning HTLC satoshi id + EVM cover helpers
 
 - lightning: HTLC/payment ids bind `amt_sat`; HTLC amount via from_satoshi_float(amt_sat).

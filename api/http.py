@@ -7156,6 +7156,33 @@ class RESTHandler(BaseHTTPRequestHandler):
                 else:
                     self._error(501, "Offers not supported")
 
+            elif path == "/nft/delist":
+                nft = self.__class__.nft
+                if not nft:
+                    self._error(503, "NFT not enabled"); return
+                token_id = body.get("token_id", "")
+                owner = body.get("owner", "")
+                if not token_id or not owner:
+                    self._error(400, "token_id and owner required"); return
+                body = dict(body)
+                body.setdefault("action", "nft_delist")
+                auth_err = _nft_mutation_authorized(cfg, body, owner)
+                if auth_err:
+                    self._error(403, auth_err); return
+                if hasattr(nft, "delist"):
+                    result = nft.delist(token_id, owner)
+                    if isinstance(result, dict) and result.get("success"):
+                        self._json(result)
+                    else:
+                        error = (
+                            result.get("error", "Could not delist")
+                            if isinstance(result, dict)
+                            else "Could not delist"
+                        )
+                        self._error(400, error)
+                else:
+                    self._error(501, "Delist not supported")
+
             elif path == "/nft/accept-offer":
                 nft = self.__class__.nft
                 if not nft:
