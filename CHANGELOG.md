@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — lightning HTLC satoshi id + EVM cover helpers
+
+- lightning: HTLC/payment ids bind `amt_sat`; HTLC amount via from_satoshi_float(amt_sat).
+- api/http: REST POST ValueError warns before 400.
+- evm_adapter: `_abs_covers` / `_transfer_abs_fail_closed`; nested CALL cover hasattr satoshi fallback.
+- Units + industrial_gate. **Non-LR.** Mesh Quick optional. **Soak deferred.**
+
 ### Exp→pin merge wave — PBS/MEV abs_to_wei + EVM/LN satoshi honesty
 
 - main: genesis alloc refuses bool; PBS uses get_for_block + abs_to_wei; MEV fee via abs_to_wei (no fee*1e9).

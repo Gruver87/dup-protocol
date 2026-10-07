@@ -9237,6 +9237,7 @@ class RESTHandler(BaseHTTPRequestHandler):
                 self._error(404, "Endpoint not found")
 
         except ValueError as e:
+            logger.warning("REST POST rejected: %s", e)
             self._error(400, str(e))
         except Exception as e:
             logger.exception(f"REST POST error: {e}")

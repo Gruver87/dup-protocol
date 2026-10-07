@@ -79,6 +79,8 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 | `industrial_gate_merge_jsonrpc_fee_bps.json` | Gate snapshot for JSON-RPC/fee_bps wave |
 | `MESH_PROBE_POST_MERGE_PBS_ABS_TO_WEI.txt` | PBS/MEV abs_to_wei + EVM/LN satoshi honesty (Quick optional) |
 | `industrial_gate_merge_pbs_abs_to_wei.json` | Gate snapshot for PBS abs_to_wei wave |
+| `MESH_PROBE_POST_MERGE_LN_HTLC_SATOSHI_ID.txt` | lightning HTLC satoshi id + EVM cover helpers (Quick optional) |
+| `industrial_gate_merge_ln_htlc_satoshi_id.json` | Gate snapshot for LN HTLC satoshi id wave |
 | `hw_strict_smoke_1m.log` | 1m `health_watch -Strict` smoke (EXIT=0) |
 | `README.md` | This honesty stamp |
 

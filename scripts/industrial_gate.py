@@ -4801,6 +4801,16 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("HTTP contract deploy/call must parse value via parse_abs_int")
         if "amount_satoshi=int(_amount_sat)" not in http_val:
             errors.append("HTTP lightning route must pass amount_satoshi to find_route")
+        if "REST POST rejected" not in http_val:
+            errors.append("REST POST ValueError path must warn (REST POST rejected)")
+        ln_py = (ROOT / "features" / "lightning.py").read_text(encoding="utf-8")
+        if "{preimage_hash}{amt_sat}" not in ln_py:
+            errors.append("lightning add_htlc id must bind amt_sat (not float amount)")
+        if "{to_node}{amt_sat}" not in ln_py:
+            errors.append("lightning send_payment id must bind amt_sat (not float amount)")
+        evm_ad = (ROOT / "execution" / "evm_adapter.py").read_text(encoding="utf-8")
+        if "def _abs_covers" not in evm_ad or "def _transfer_abs_fail_closed" not in evm_ad:
+            errors.append("evm_adapter must expose _abs_covers / _transfer_abs_fail_closed")
         if "abs_p2p_native_mempool_min_fee_refuse" not in (
             ROOT / "observability" / "metrics.py"
         ).read_text(encoding="utf-8"):

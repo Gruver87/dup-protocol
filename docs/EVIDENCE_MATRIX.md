@@ -97,6 +97,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Item | Evidence |
 |------|----------|
+| **Exp→pin merge wave (lightning HTLC satoshi id + EVM cover helpers)** | **CLOSED** 2026-10-07 — LN HTLC/payment ids bind amt_sat; REST POST ValueError warn; EVM _abs_covers/_transfer_abs_fail_closed + CALL cover satoshi fallback; units + gate. **Mesh Quick optional this tip.** **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (PBS/MEV abs_to_wei + EVM/LN satoshi honesty)** | **CLOSED** 2026-10-07 — genesis bool refuse; PBS get_for_block+abs_to_wei; MEV abs_to_wei; HTTP parse_abs_int contract value + LN find_route satoshi; PQ NotImplemented 501; units + gate. **Mesh Quick optional this tip.** **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (JSON-RPC -32602 + bridge fee_bps + gas TypeError)** | **CLOSED** 2026-10-07 — JSONRPC ValueError→-32602; status probe p2p security warn; tx_validator TypeError→gas_required; bridge fee_bps + money_abs incoming; units + gate. **Mesh Quick optional this tip** (API/bridge/validator). **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (consensus stake_satoshi load + CI money_abs)** | **CLOSED** 2026-10-07 — ConsensusAdapter DB bootstrap prefers stake_satoshi; verify_p2p_ci faucet/relayer money_abs; rocks bridge_locks overlay window; units + gate. **Mesh Quick optional this tip** (consensus/CI/storage). **Soak deferred / not run / not started.** No Long-Range. |

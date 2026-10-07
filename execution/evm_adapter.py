@@ -391,8 +391,31 @@ class EVMAdapter:
             out["native_writeback_ops"] = len(ops)
         return out
 
+    def _abs_covers(self, addr: str, amount_abs: float) -> bool:
+        from runtime.amount import to_satoshi
+
+        need = int(to_satoshi(amount_abs or 0))
+        if need <= 0:
+            return True
+        have = int(self.db.get_balance_satoshi(self._normalize_addr(addr)) or 0)
+        return have >= need
+
+    def _transfer_abs_fail_closed(
+        self, from_addr: str, to_addr: str, amount_abs: float
+    ) -> Optional[str]:
+        """Move ABS value once in satoshi. None on success. No clamp-to-zero mint."""
+        from runtime.amount import to_satoshi
+
+        return self._transfer_sat_fail_closed(
+            from_addr, to_addr, int(to_satoshi(amount_abs or 0))
+        )
+
     def _caller_covers_call_value(self, caller: str, value_wei: int) -> bool:
-        """Nested CALL value must be covered in satoshi (wei // 10**12)."""
+        """Fail-closed: nested CALL value must be covered in satoshi (no writeback mint).
+
+        Writeback converts wei→sat as ``wei // 10**12`` (1 ABS = 1e18 wei = 1e6 sat).
+        Dust below one satoshi is a no-op transfer and does not fail the CALL.
+        """
         from runtime.amount import WEI_PER_SATOSHI
 
         need_wei = int(value_wei or 0)
@@ -402,7 +425,12 @@ class EVMAdapter:
         if sat_need <= 0:
             return True
         addr = self._normalize_addr(caller)
-        have_sat = int(self.db.get_balance_satoshi(addr) or 0)
+        if hasattr(self.db, "get_balance_satoshi"):
+            have_sat = int(self.db.get_balance_satoshi(addr) or 0)
+        else:
+            from runtime.amount import to_satoshi
+
+            have_sat = int(to_satoshi(self.db.get_balance(addr) or 0))
         return have_sat >= sat_need
 
     def _contract_call_hook(self, target: str, calldata: bytes, value: int,

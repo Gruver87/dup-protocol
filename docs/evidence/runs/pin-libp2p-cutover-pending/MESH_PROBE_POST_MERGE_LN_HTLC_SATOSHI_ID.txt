@@ -1,0 +1,8 @@
+﻿MESH_PROBE_POST_MERGE_LN_HTLC_SATOSHI_ID
+date: 2026-10-07
+wave: Exp→pin lightning HTLC satoshi id + EVM cover helpers
+units: test_lightning_htlc_satoshi_id 2 PASS
+industrial_gate: OK
+mesh_quick: optional / not required this tip (LN/EVM/API)
+soak: deferred / not run / not started
+long_range: off

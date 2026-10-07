@@ -437,8 +437,9 @@ class LightningNetwork:
         ch.balance1 = from_satoshi_float(b1)
         ch.balance2 = from_satoshi_float(b2)
         ch.state_version += 1
+        # Identity binds integer satoshi (not float ABS display).
         pid = native.sha256_hex(
-            f"{channel_id}{self.node_address}{to_node}{amount}{time.time()}".encode()
+            f"{channel_id}{self.node_address}{to_node}{amt_sat}{time.time()}".encode()
         )[:16]
         payment = LightningPayment(
             pid,
@@ -496,12 +497,18 @@ class LightningNetwork:
             return None
         ch.balance1 = from_satoshi_float(b1)
         ch.balance2 = from_satoshi_float(b2)
+        # Identity binds integer satoshi (not float ABS display).
         htlc_id = native.sha256_hex(
-            f"{channel_id}{preimage_hash}{amount}{time.time()}".encode()
+            f"{channel_id}{preimage_hash}{amt_sat}{time.time()}".encode()
         )[:16]
         htlc = LightningHTLC(
-            htlc_id, channel_id, preimage_hash, amount, expiry,
-            self.node_address, receiver,
+            htlc_id,
+            channel_id,
+            preimage_hash,
+            from_satoshi_float(amt_sat),
+            expiry,
+            self.node_address,
+            receiver,
         )
         self.htlcs[htlc_id] = htlc
         ch.state_version += 1
