@@ -27,7 +27,7 @@ This file is a **thin stub**. The full funds / ПВТ / demo pack lives on Exper
 | Need | Link |
 |------|------|
 | 15-minute brief | [DILIGENCE_BRIEF](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DILIGENCE_BRIEF.md) |
-| Fund card | [FUND_READINESS](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/FUND_READINESS.md) |
+| Fund card | [FUND_READINESS](FUND_READINESS.md) · [VERIFY_SUITE](VERIFY_SUITE.md) |
 | FAQ / one-pager EN+RU | [FAQ](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/FAQ.md) · [ONE_PAGER](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/ONE_PAGER.md) · [ONE_PAGER_RU](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/ONE_PAGER_RU.md) |
 
 Do **not** claim Experimental STRICT packs as pin tip-v2 evidence. Do **not** claim public audited mainnet.

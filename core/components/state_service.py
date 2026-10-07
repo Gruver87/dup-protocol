@@ -881,11 +881,7 @@ class StateService:
     def apply_block_reward(self, proposer: str, in_atomic: bool = False) -> float:
         from runtime.amount import from_satoshi_float, to_satoshi
 
-        current_supply_sat = 0
-        if hasattr(self.storage, "get_total_supply_satoshi"):
-            current_supply_sat = int(self.storage.get_total_supply_satoshi())
-        else:
-            current_supply_sat = to_satoshi(self.storage.get_total_supply())
+        current_supply_sat = self._total_supply_satoshi()
         max_supply_sat = to_satoshi(getattr(self.config, "max_supply", MAX_SUPPLY_ABS))
         reward_sat = to_satoshi(self.config.block_reward)
         if current_supply_sat + reward_sat > max_supply_sat:

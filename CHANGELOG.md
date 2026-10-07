@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — pin FUND_READINESS / VERIFY_SUITE + supply helper
+
+- docs: pin-honest `FUND_READINESS.md`, `VERIFY_SUITE.md`, `AUDIT_90D_FIX_PLAN.md` (fix broken local links).
+- state_service: `apply_block_reward` uses `_total_supply_satoshi()`.
+- FUND_DEMO / SHOWCASE link local fund card. Gate needles. **Non-LR.** **Soak deferred.**
+
 ### Exp→pin merge wave — sprout labs verify + plasma satoshi unit
 
 - scripts: `verify_bridge_off_lab.ps1` + pin-native `verify_sprout_labs.ps1` (bridge OFF /

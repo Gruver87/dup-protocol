@@ -15,6 +15,8 @@ def test_state_service_binds_amount_satoshi():
     assert '"amount_satoshi"' in src
     assert "value_satoshi=" in src
     assert "_total_supply_satoshi" in src
+    reward = src.split("def apply_block_reward")[1].split("def compute_state_root")[0]
+    assert "self._total_supply_satoshi()" in reward
 
 
 def test_tx_builder_refuses_invent_gas():

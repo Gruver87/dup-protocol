@@ -16,7 +16,7 @@ Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-nod
 | Industrial pin (freeze + working tip) | Show for firm scope | tag `v1.3.1339-tip-v2-industrial` (`0531995`) = **TCP+TLS** sealed evidence; working tip = ADR 0020 libp2p mesh JSON (soak pending) |
 | Fail-closed satoshi / RPC / health honesty | Code + units + industrial_gate | Exp→pin merge CLOSED — see [EVIDENCE_MATRIX](EVIDENCE_MATRIX.md) CI row |
 | STRICT 48h scoreboard | Historical packs only | Do not claim soak on current HEAD unless a new pack exists |
-| Showcase / diligence docs | Pin stub + Exp GitHub | [SHOWCASE](SHOWCASE.md) · [DILIGENCE_BRIEF (Exp)](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DILIGENCE_BRIEF.md) · [FUND_READINESS (Exp)](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/FUND_READINESS.md) |
+| Showcase / diligence docs | Pin local | [SHOWCASE](SHOWCASE.md) · [DILIGENCE_BRIEF](DILIGENCE_BRIEF.md) · [FUND_READINESS](FUND_READINESS.md) · [VERIFY_SUITE](VERIFY_SUITE.md) |
 | Phase 6 firm prep | Prep only | [FIRM_KICKOFF_CHECKLIST](FIRM_KICKOFF_CHECKLIST.md) · [AUDITS.md](AUDITS.md) · [AUDIT_ENGAGEMENT_BRIEF](AUDIT_ENGAGEMENT_BRIEF.md) · `logs/audit_pack_20261004.zip` |
 
 ---

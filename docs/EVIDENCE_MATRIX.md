@@ -97,6 +97,7 @@ Full JSON template: [docs/evidence_run.example.json](evidence_run.example.json) 
 
 | Item | Evidence |
 |------|----------|
+| **Exp→pin merge wave (pin FUND_READINESS / VERIFY_SUITE + supply helper)** | **CLOSED** 2026-10-07 — pin-honest FUND_READINESS + VERIFY_SUITE + AUDIT_90D_FIX_PLAN; apply_block_reward via _total_supply_satoshi; gate needles. **Mesh Quick optional this tip** (docs). **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (sprout labs verify + plasma satoshi unit)** | **CLOSED** 2026-10-07 — verify_bridge_off_lab + verify_sprout_labs aggregator; plasma total_amount_satoshi unit; gate needles. **Mesh Quick optional this tip** (ops/labs). **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (smart-accounts credentials + oracle/cross-shard labs)** | **CLOSED** 2026-10-07 — recover_account credentials (Wave K); create/stats honesty; oracle_lab + cross_shard_lab + verify wrappers; smart-account auth units + gate. **Mesh Quick optional this tip** (sprout labs). **Soak deferred / not run / not started.** No Long-Range. |
 | **Exp→pin merge wave (NFT/AI labs + dual-stack + PQ honesty)** | **CLOSED** 2026-10-07 — port nft_lab/ai_lab (audit remediation surface); dual_stack unit; PQ boot NotImplemented honesty; gate needles. **Mesh Quick optional this tip** (labs/ops). **Soak deferred / not run / not started.** No Long-Range. |

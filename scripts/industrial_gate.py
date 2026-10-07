@@ -264,6 +264,9 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         "docs/DILIGENCE_BRIEF.md",
         "docs/EXTERNAL_AUDIT_ENGAGEMENT.md",
         "docs/adr/0023-absolute-vm-opcode-map.md",
+        "docs/FUND_READINESS.md",
+        "docs/VERIFY_SUITE.md",
+        "docs/AUDIT_90D_FIX_PLAN.md",
     ):
         if not (ROOT / rel).is_file():
             errors.append(f"missing firm/ops surface: {rel}")
@@ -272,6 +275,17 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append(
             "pin DILIGENCE_BRIEF must not cite Experimental soak packs as pin evidence"
         )
+    fund = (ROOT / "docs" / "FUND_READINESS.md").read_text(encoding="utf-8")
+    if "3c801b87" in fund or "lp2pstrict1" in fund:
+        errors.append(
+            "pin FUND_READINESS must not cite Experimental soak packs as pin evidence"
+        )
+    if "libp2p 48h soak is deferred" not in fund and "48h soak is deferred" not in fund:
+        errors.append("pin FUND_READINESS must disclose deferred pin libp2p soak")
+    ss_py = (ROOT / "core" / "components" / "state_service.py").read_text(encoding="utf-8")
+    reward_chunk = ss_py.split("def apply_block_reward")[1].split("def compute_state_root")[0]
+    if "self._total_supply_satoshi()" not in reward_chunk:
+        errors.append("apply_block_reward must use _total_supply_satoshi()")
     p2p_honest = (ROOT / "network" / "p2p_node.py").read_text(encoding="utf-8")
     if "get_block failed during head-height bind" not in p2p_honest:
         errors.append(
