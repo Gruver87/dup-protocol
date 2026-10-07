@@ -2084,6 +2084,19 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             cs_lab = (ROOT / "scripts" / "cross_shard_lab.py").read_text(encoding="utf-8")
             if "export_cross_shard_payload" not in cs_lab:
                 errors.append("cross_shard_lab must exercise debit/credit ACK path")
+        if not (ROOT / "scripts" / "verify_bridge_off_lab.ps1").is_file():
+            errors.append("scripts/verify_bridge_off_lab.ps1 missing")
+        if not (ROOT / "scripts" / "verify_sprout_labs.ps1").is_file():
+            errors.append("scripts/verify_sprout_labs.ps1 missing (Phase 5 sprout aggregator)")
+        else:
+            sprout_ps1 = (ROOT / "scripts" / "verify_sprout_labs.ps1").read_text(
+                encoding="utf-8"
+            )
+            if "NOT soak" not in sprout_ps1 or "NOT Long-Range" not in sprout_ps1:
+                errors.append("verify_sprout_labs must refuse soak / Long-Range claims")
+        plasma_py = (ROOT / "features" / "plasma.py").read_text(encoding="utf-8")
+        if "total_amount_satoshi" not in plasma_py:
+            errors.append("PlasmaBlock.to_db must emit total_amount_satoshi (ADR 0021)")
         if "feature_minivm" not in main_py2 or "MiniVM: disabled" not in main_py2:
             errors.append("main.py must gate MiniVM on feature_minivm")
         if "unsigned DAO vote forbidden in prod" not in http_py2:

@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — sprout labs verify + plasma satoshi unit
+
+- scripts: `verify_bridge_off_lab.ps1` + pin-native `verify_sprout_labs.ps1` (bridge OFF /
+  oracle / cross-shard / NFT / AI — NOT soak / NOT Long-Range).
+- tests: `test_plasma_amount_satoshi` (PlasmaBlock.to_db total_amount_satoshi).
+- industrial_gate needles. **Non-LR.** Mesh Quick optional. **Soak deferred / not run.**
+
 ### Exp→pin merge wave — smart-accounts credentials + oracle/cross-shard labs
 
 - smart_accounts: recover_account passes guardian credentials (Wave K); create/stats honesty
