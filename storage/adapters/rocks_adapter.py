@@ -323,8 +323,11 @@ class RocksDBStorageAdapter:
             try:
                 if bool(getattr(conn, "in_transaction", False)):
                     return True
-            except Exception:
-                pass
+            except Exception as exc:
+                # Pin fail-closed: probe failure ≠ open batch (do not assume nested).
+                logger.warning(
+                    "in_transaction probe failed; treat as no open batch: %s", exc
+                )
         return False
 
     def _persist_locked_into_batch(

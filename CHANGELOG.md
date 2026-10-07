@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — P2P/http/finality/state/genesis silent-except honesty
+
+- p2p_node: timeout restore / egress hooks / native probe / catch-up ahead / attestation header honesty.
+- api/http: bridge get_stats + server_close logs; rocks_adapter probe fail-closed (no assume-open).
+- finality_engine native fallbacks; state_truth get_balance; consistency on_change; genesis founder/meta; main secret lookup.
+- Units + industrial_gate. **Non-LR.** Mesh Quick after docker rebuild. **Soak deferred.**
+
 ### Exp→pin merge wave — peer/fork/catchup/rocks silent-except honesty
 
 - peer_manager: strike_count / set _inbound / eclipse subnet probe debug logs (no silent pass).

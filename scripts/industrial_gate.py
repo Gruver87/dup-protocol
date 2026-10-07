@@ -300,7 +300,25 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
     rocks_store_py = (ROOT / "storage" / "rocks_store.py").read_text(encoding="utf-8")
     if "[RocksStore] prefix_last chain tip failed" not in rocks_store_py:
         errors.append("rocks_store get_chain_tip must log prefix_last failures")
+    if "[P2P] restore native timeout failed" not in p2p_honest:
+        errors.append("p2p_node must log native timeout restore failures")
+    if "get_block_by_hash failed for attestation gossip" not in p2p_honest:
+        errors.append("p2p_node must refuse attestation gossip without observed header")
+    finality_py = (ROOT / "finality_engine.py").read_text(encoding="utf-8")
+    if "native fe_epoch failed; Python path" not in finality_py:
+        errors.append("finality_engine must log native fe_epoch failures")
+    rocks_ad_py = (ROOT / "storage" / "adapters" / "rocks_adapter.py").read_text(
+        encoding="utf-8"
+    )
+    if "treat as no open batch" not in rocks_ad_py:
+        errors.append(
+            "rocks_adapter in_transaction probe fail must not assume open batch"
+        )
+    if "assume open batch" in rocks_ad_py:
+        errors.append("rocks_adapter must not assume open batch on probe failure")
     http_bridge = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+    if "bridge get_stats failed" not in http_bridge:
+        errors.append("http._bridge_for_request must log get_stats failures")
     if "bridge_result_normalize_failed" not in http_bridge:
         errors.append(
             "_bridge_http_result must refuse truthy non-bool on normalize failure"

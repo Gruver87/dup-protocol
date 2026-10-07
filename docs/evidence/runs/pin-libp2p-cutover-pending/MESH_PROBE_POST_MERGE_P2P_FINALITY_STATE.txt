@@ -1,0 +1,13 @@
+﻿MESH_PROBE_POST_MERGE_P2P_FINALITY_STATE
+date: 2026-10-07
+wave: Exp→pin P2P/http/finality/state/genesis silent-except honesty
+units: test_silent_except_honesty 28 PASS
+industrial_gate: OK
+soak: deferred / not run / not started
+long_range: off
+
+============================================================
+PROD MESH PROBE (chain 778888)
+============================================================
+RESULT: OK
+Report: C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid\logs\prod_mesh_probe.json

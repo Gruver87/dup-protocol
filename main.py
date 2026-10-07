@@ -457,7 +457,8 @@ class NodeOrchestrator:
                 try:
                     if sm.has_secret(logical):
                         return (sm.get_secret(logical) or "").strip()
-                except Exception:
+                except Exception as exc:
+                    _node_log.warning("secret lookup failed for %s: %s", logical, exc)
                     continue
             return ""
 

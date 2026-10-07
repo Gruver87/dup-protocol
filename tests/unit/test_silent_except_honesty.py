@@ -502,3 +502,34 @@ def test_silent_except_wave_needles_peer_fork_rocks():
     assert "[ForkSide] persist last evidence failed" in fork
     rocks = Path("storage/rocks_store.py").read_text(encoding="utf-8")
     assert "[RocksStore] prefix_last chain tip failed" in rocks
+
+
+def test_silent_except_wave_needles_p2p_finality_state():
+    from pathlib import Path
+
+    p2p = Path("network/p2p_node.py").read_text(encoding="utf-8")
+    assert "[P2P] restore native timeout failed" in p2p
+    assert "def _invoke_peer_hook" in p2p
+    assert "[P2P] native capability probe failed" in p2p
+    assert "[P2P] get_block failed during catch-up ahead bind" in p2p
+    assert "get_block_by_hash failed for attestation gossip" in p2p
+    assert "Do not gossip an attestation whose target header is unknown" in p2p
+    http = Path("api/http.py").read_text(encoding="utf-8")
+    assert "bridge get_stats failed" in http
+    assert "server_close failed" in http
+    finality = Path("finality_engine.py").read_text(encoding="utf-8")
+    assert "native fe_epoch failed; Python path" in finality
+    assert "native fe_quorum_reached failed; Python path" in finality
+    assert "native fe_can_finalize failed; Python path" in finality
+    state = Path("runtime/state_truth.py").read_text(encoding="utf-8")
+    assert "get_balance failed for %s" in state
+    cons = Path("sync/consistency/store.py").read_text(encoding="utf-8")
+    assert "consistency on_change callback failed" in cons
+    rocks_ad = Path("storage/adapters/rocks_adapter.py").read_text(encoding="utf-8")
+    assert "in_transaction probe failed; treat as no open batch" in rocks_ad
+    assert "assume open batch" not in rocks_ad
+    bc = Path("core/blockchain.py").read_text(encoding="utf-8")
+    assert "genesis artifact re-export skipped" in bc
+    assert "genesis_founder meta read failed" in bc
+    main_py = Path("main.py").read_text(encoding="utf-8")
+    assert "secret lookup failed for %s" in main_py

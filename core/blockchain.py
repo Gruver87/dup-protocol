@@ -533,8 +533,8 @@ class Blockchain:
                 last = self.storage.get_block(0) or self.storage.get_last_block()
                 if last and int(last.get("height", last.get("number", -1)) or -1) == 0:
                     self._export_genesis_artifact(last)
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"[Blockchain] genesis artifact re-export skipped: {exc}")
 
     def _export_genesis_artifact(self, block_dict: Dict) -> None:
         """Publish minted genesis #0 to shared ceremony artifact path (followers)."""
@@ -554,7 +554,8 @@ class Blockchain:
             founder = ""
             try:
                 founder = str(self.storage.get_meta("genesis_founder") or "").strip()
-            except Exception:
+            except Exception as exc:
+                print(f"[Blockchain] genesis_founder meta read failed: {exc}")
                 founder = ""
             if not founder:
                 founder = self._resolve_genesis_founder()
@@ -587,7 +588,8 @@ class Blockchain:
 
                     manifest = getattr(self.config, "validators_manifest_path", "") or ""
                     founder = manifest_founder_address(manifest)
-                except Exception:
+                except Exception as exc:
+                    print(f"[Blockchain] manifest founder resolve failed: {exc}")
                     founder = ""
             if founder:
                 try:
@@ -972,7 +974,8 @@ class Blockchain:
         # Prefer founder embedded by leader export / pin / ceremony manifest.
         try:
             founder = str(self.storage.get_meta("genesis_founder") or "").strip()
-        except Exception:
+        except Exception as exc:
+            print(f"[Blockchain] genesis_founder meta read failed: {exc}")
             founder = ""
         if not founder:
             try:
@@ -980,7 +983,8 @@ class Blockchain:
 
                 manifest = getattr(self.config, "validators_manifest_path", "") or ""
                 founder = manifest_founder_address(manifest)
-            except Exception:
+            except Exception as exc:
+                print(f"[Blockchain] manifest founder resolve failed: {exc}")
                 founder = ""
         if not founder and not getattr(self.config, "follower_genesis_sync", False):
             founder = str(getattr(self.config, "founder_address", "") or "").strip()

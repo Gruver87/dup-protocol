@@ -424,13 +424,17 @@ class PeerConnection:
                     try:
                         conn.set_read_timeout_ms(poll_ms)
                         restored = True
-                    except Exception:
+                    except Exception as exc:
+                        logger.debug(
+                            "[P2P] set_read_timeout_ms poll failed: %s", exc
+                        )
                         restored = False
                 elif hasattr(conn, "set_timeout_ms"):
                     try:
                         conn.set_timeout_ms(poll_ms)
                         restored = True
-                    except Exception:
+                    except Exception as exc:
+                        logger.debug("[P2P] set_timeout_ms poll failed: %s", exc)
                         restored = False
             try:
                 return method(*args, **kwargs)
@@ -442,8 +446,8 @@ class PeerConnection:
                             conn.set_timeout_ms(full_ms)
                         elif hasattr(conn, "set_timeout_ms"):
                             conn.set_timeout_ms(full_ms)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("[P2P] restore native timeout failed: %s", exc)
 
         if lock is None:
             return _run()
@@ -808,6 +812,20 @@ class PeerConnection:
             return f"{self.host}:{self.port}"
         return str(self.host or "unknown")
 
+    def _invoke_peer_hook(self, cb: Optional[Callable[[], None]], *, name: str) -> None:
+        """Run send/drop/egress counters without letting a hook abort the wire path."""
+        if cb is None:
+            return
+        try:
+            cb()
+        except Exception as exc:
+            logger.warning(
+                "[P2P] %s hook failed to %s: %s",
+                name,
+                self.peer_id or self.host,
+                exc,
+            )
+
     def _egress_ok(self, msg_type: str, payload: bytes) -> bool:
         """v1.3.85: cost-weighted outbound bandwidth gate (fail-closed drop)."""
         table = self._rl_table
@@ -824,12 +842,7 @@ class PeerConnection:
 
         reason = self._rl_call(_admit)
         if reason:
-            cb = self._on_egress_reject
-            if cb is not None:
-                try:
-                    cb()
-                except Exception:
-                    pass
+            self._invoke_peer_hook(self._on_egress_reject, name="egress_reject")
             return False
         return True
 
@@ -874,12 +887,9 @@ class PeerConnection:
                             else "prepare_failed"
                         )
                         if "egress_bandwidth" in reason:
-                            cb = self._on_egress_reject
-                            if cb is not None:
-                                try:
-                                    cb()
-                                except Exception:
-                                    pass
+                            self._invoke_peer_hook(
+                                self._on_egress_reject, name="egress_reject"
+                            )
                         else:
                             logger.warning(
                                 "[P2P] egress prepare reject to %s (%s)",
@@ -911,12 +921,9 @@ class PeerConnection:
                 if isinstance(out, dict):
                     reason = str(out.get("reason") or "")
                 if "egress_bandwidth" in reason:
-                    cb = self._on_egress_reject
-                    if cb is not None:
-                        try:
-                            cb()
-                        except Exception:
-                            pass
+                    self._invoke_peer_hook(
+                        self._on_egress_reject, name="egress_reject"
+                    )
                 else:
                     logger.warning(
                         "[P2P] egress prepare reject to %s (%s)",
@@ -977,20 +984,6 @@ class PeerConnection:
                     pass
             await self._send_wake.wait()
 
-    def _invoke_peer_hook(self, cb: Optional[Callable[[], None]], *, name: str) -> None:
-        """Run send/drop counters without letting a hook abort the wire path."""
-        if cb is None:
-            return
-        try:
-            cb()
-        except Exception as exc:
-            logger.warning(
-                "[P2P] %s hook failed to %s: %s",
-                name,
-                self.peer_id or self.host,
-                exc,
-            )
-
     async def _send_loop(self) -> None:
         root_types = {MSG_STATE_ROOT_REQUEST, MSG_STATE_ROOT_RESPONSE}
         while True:
@@ -1004,7 +997,12 @@ class PeerConnection:
             # v1.3.95: drain additional pending items for one native write hop.
             max_batch = max(1, int(getattr(self, "_native_write_batch", 8) or 8))
             first_type = str(batch[0][0] or "") if batch else ""
-            root_waiting = not self._send_root_q.empty()
+            root_waiting = False
+            try:
+                root_waiting = not self._send_root_q.empty()
+            except Exception as exc:
+                logger.debug("[P2P] send_root_q.empty probe failed: %s", exc)
+                root_waiting = False
             # Singleton flush for state_root; yield if a root frame is waiting so
             # BLOCK/STATUS cannot head-of-line block the probe inside the batch.
             if first_type not in root_types and not root_waiting:
@@ -1290,7 +1288,10 @@ class PeerConnection:
                     "poll_timeout_ms"
                     in inspect.signature(self._native_conn.read_message_loop_events).parameters
                 )
-            except Exception:
+            except Exception as exc:
+                logger.debug(
+                    "[P2P] native loop poll_timeout_ms probe failed: %s", exc
+                )
                 supports_poll = False
             self._native_loop_poll_arg = supports_poll
         if supports_poll:
@@ -1644,8 +1645,8 @@ class PeerConnection:
         if worker is not None and not worker.done():
             try:
                 worker.cancel()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("[P2P] close cancel send worker failed: %s", exc)
         try:
             # Sentinel on every outbound queue so the worker wakes and exits.
             for attr in ("_send_q", "_send_ctrl_q", "_send_root_q"):
@@ -1870,7 +1871,8 @@ class P2PNode:
                     )
             except RuntimeError:
                 raise
-            except Exception:
+            except Exception as exc:
+                logger.warning("[P2P] native capability probe failed: %s", exc)
                 self._native_read_message = False
                 self._native_write_message = False
                 self._native_read_messages = False
@@ -2829,8 +2831,8 @@ class P2PNode:
         if self._native_listener is not None:
             try:
                 self._native_listener.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("[P2P] native listener close failed: %s", exc)
             self._native_listener = None
         ds = getattr(self, "_dual_stack", None)
         if ds is not None:
@@ -5616,7 +5618,10 @@ class P2PNode:
         if head:
             try:
                 blk = self.get_block(head)
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "[P2P] get_block failed during catch-up ahead bind: %s", exc
+                )
                 blk = None
         policy = getattr(self, "catch_up", None) or getattr(self, "catch_up_policy", None)
         if policy is not None:
@@ -7469,11 +7474,26 @@ class P2PNode:
         block_hash = att_data.get("target_hash") or att_data.get("block_hash", "")
         if validator != self.validator_keys.get_address() or not block_hash:
             return
-        block_data = {"hash": block_hash, "number": att_data.get("target_height")}
-        if not block_data.get("number") and self.blockchain:
-            last = self.blockchain.get_last_block()
-            if last:
-                block_data["number"] = last.get("height", last.get("number"))
+        blk = None
+        if self.blockchain is not None and hasattr(self.blockchain, "get_block_by_hash"):
+            try:
+                blk = self.blockchain.get_block_by_hash(block_hash)
+            except Exception as exc:
+                logger.warning(
+                    "[P2P] get_block_by_hash failed for attestation gossip: %s",
+                    exc,
+                )
+                blk = None
+        if not isinstance(blk, dict):
+            # Do not gossip an attestation whose target header is unknown —
+            # signing against live tip painted target_height≠header height.
+            return
+        number = blk.get("height", blk.get("number"))
+        try:
+            number = int(number)
+        except (TypeError, ValueError):
+            return
+        block_data = {"hash": str(blk.get("hash") or block_hash), "number": number}
         slot = att_data.get("slot", 0)
         try:
             signed = self.validator_keys.sign_attestation(block_data, slot)

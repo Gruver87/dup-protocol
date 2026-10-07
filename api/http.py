@@ -771,8 +771,8 @@ def _bridge_for_request(handler_cls, cfg):
             try:
                 if stats().get("enabled") is False:
                     rust_bridge = None
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("bridge get_stats failed: %s", exc)
     if _is_production_cfg(cfg):
         if rust_bridge and getattr(rust_bridge, "_mode", "") == "rust":
             return rust_bridge
@@ -11156,8 +11156,8 @@ def shutdown_http_server(
         t.join(timeout=max(1.0, float(timeout)))
         try:
             server.server_close()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("%s server_close failed: %s", name, exc)
         print(f"[{name}] Server shutdown complete")
     except Exception as e:
         print(f"[{name}] Shutdown warning: {e}")
