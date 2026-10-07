@@ -103,42 +103,42 @@ class ConsensusAdapter:
                 self.pbs_market = PBSMarket()
                 self.pbs_market.add_builder(Builder("default-builder"))
                 self.pbs_market.add_proposer(Proposer("default-proposer"))
-                print(
+                logger.info(
                     "[Consensus] LMD-GHOST + Slashing + ValidatorRegistry + PBS: "
                     "enabled (fee-bid simulation; mev_protection=false)"
                 )
             else:
                 self.pbs_market = None
-                print(
+                logger.info(
                     "[Consensus] LMD-GHOST + Slashing + ValidatorRegistry: enabled (PBS off)"
                 )
         else:
             self.slashing_engine = None
             self.validator_registry = None
             self.pbs_market = None
-            print("[Consensus] Basic PoS mode (engine_slashing not available)")
+            logger.warning("[Consensus] Basic PoS mode (engine_slashing not available)")
 
         # staging/prod → unified: never construct parallel engines
         if _CASPER_AVAILABLE and not self._unified_consensus:
             epoch_sz = getattr(config, "epoch_size", 32)
             self.casper_engine = ConsensusEngineCasper(epoch_size=epoch_sz)
-            print("[Consensus] CasperFFG two-step finality: enabled")
+            logger.info("[Consensus] CasperFFG two-step finality: enabled")
         else:
             self.casper_engine = None
             if _CASPER_AVAILABLE and self._unified_consensus:
-                print("[Consensus] Casper parallel engine: disabled (unified mode)")
+                logger.info("[Consensus] Casper parallel engine: disabled (unified mode)")
 
         if _BEACON_AVAILABLE and not self._unified_consensus:
             epoch_sz = getattr(config, "epoch_size", 32)
             self.beacon_engine = ConsensusEngineBeacon(epoch_size=epoch_sz)
-            print("[Consensus] BeaconChain engine: enabled (parallel fork choice)")
+            logger.info("[Consensus] BeaconChain engine: enabled (parallel fork choice)")
         else:
             self.beacon_engine = None
             if _BEACON_AVAILABLE and self._unified_consensus:
-                print("[Consensus] Beacon parallel engine: disabled (unified mode)")
+                logger.info("[Consensus] Beacon parallel engine: disabled (unified mode)")
 
         if self._unified_consensus:
-            print(
+            logger.info(
                 f"[Consensus] Unified path: LMD-GHOST + FinalityEngine "
                 f"(deployment_mode={self._deployment_mode})"
             )
@@ -195,7 +195,7 @@ class ConsensusAdapter:
         for v in validators:
             self._register_validator_all(v["address"], float(v["stake"]))
         if validators:
-            print(f"[Consensus] Loaded {len(validators)} validators from DB")
+            logger.info(f"[Consensus] Loaded {len(validators)} validators from DB")
         if self.slashing_engine:
             self.slashing_engine.slashing.register_slash_callback(
                 self._on_validator_slashed
@@ -210,17 +210,17 @@ class ConsensusAdapter:
             self.engine.slash_validator(address)
         except Exception as e:
             persist_err = e
-            print(f"[Consensus] FAIL: engine slash for {address[:16]}...: {e}")
+            logger.warning(f"[Consensus] FAIL: engine slash for {address[:16]}...: {e}")
         try:
             self.db.slash_validator(address)
         except Exception as e:
             persist_err = e
-            print(f"[Consensus] FAIL: slash persist for {address[:16]}...: {e}")
+            logger.warning(f"[Consensus] FAIL: slash persist for {address[:16]}...: {e}")
         if self.validator_registry:
             try:
                 self.validator_registry.slash_validator(address)
             except Exception as e:
-                print(f"[Consensus] FAIL: slash registry for {address[:16]}...: {e}")
+                logger.warning(f"[Consensus] FAIL: slash registry for {address[:16]}...: {e}")
                 if persist_err is None:
                     persist_err = e
         if persist_err is not None:
@@ -283,7 +283,7 @@ class ConsensusAdapter:
             if self.validator_registry:
                 self.validator_registry.register_validator(address, stake_sat)
             self._sync_finality_validator_count()
-            print(f"[Consensus] New validator: {address[:12]}... stake_sat={stake_sat}")
+            logger.info(f"[Consensus] New validator: {address[:12]}... stake_sat={stake_sat}")
         return ok
 
     def slash_validator(self, address: str) -> None:
@@ -454,7 +454,7 @@ class ConsensusAdapter:
         if self.slashing_engine:
             ok = self.slashing_engine.on_attestation(validator_addr, block_hash, slot_n)
             if not ok:
-                print(
+                logger.info(
                     f"[Consensus] Attestation rejected (slashing): {validator_addr[:12]}..."
                 )
                 self._fail_closed_double_vote(validator_addr, block_hash, slot_n)
@@ -632,13 +632,13 @@ class ConsensusAdapter:
                 if self.casper_engine.is_finalized(block_hash):
                     return True
             except Exception as exc:
-                print(f"[Consensus] casper is_finalized error: {exc}")
+                logger.warning(f"[Consensus] casper is_finalized error: {exc}")
         if block_hash and self.beacon_engine:
             try:
                 if self.beacon_engine.is_finalized(block_hash):
                     return True
             except Exception as exc:
-                print(f"[Consensus] beacon is_finalized error: {exc}")
+                logger.warning(f"[Consensus] beacon is_finalized error: {exc}")
         return False
 
     def get_finality_status(self, block_number: int) -> Dict:
@@ -665,14 +665,14 @@ class ConsensusAdapter:
                 self.casper_engine.add_block(blk_for_fork)
             except Exception as exc:
                 self._casper_ingest_fail += 1
-                print(f"[Consensus] casper add_block error: {exc}")
+                logger.warning(f"[Consensus] casper add_block error: {exc}")
 
         if not self._unified_consensus and self.beacon_engine:
             try:
                 self.beacon_engine.add_block(blk_for_fork)
             except Exception as exc:
                 self._beacon_ingest_fail += 1
-                print(f"[Consensus] beacon add_block error: {exc}")
+                logger.warning(f"[Consensus] beacon add_block error: {exc}")
 
         if proposer and self.validator_registry:
             self.validator_registry.record_produced_block(proposer)

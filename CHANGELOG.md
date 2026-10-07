@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — legacy_test_p2p quarantine + consensus adapter logger
+
+- network/legacy_test_p2p: Phase D quarantine; network/p2p/* shims with DeprecationWarning.
+- legacy MessageHandler: import-result honesty + send failure logs (no silent except).
+- consensus/adapter: print → logger; pin tip AncestryWindow weak_subjectivity honesty kept (no LR import).
+- Units + industrial_gate. **Non-LR.** Mesh Quick optional (quarantine/logger). **Soak deferred.**
+
 ### Exp→pin merge wave — prod_evm_smoke satoshi/catchup + sync_engine logger
 
 - prod_evm_smoke: deploy `/tx/send` carries amount/value_satoshi=0; align via `_force_prod_mesh_catchup`.

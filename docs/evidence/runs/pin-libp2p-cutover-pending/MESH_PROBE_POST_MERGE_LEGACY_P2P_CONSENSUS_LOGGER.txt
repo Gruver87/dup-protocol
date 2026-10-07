@@ -1,0 +1,18 @@
+MESH_PROBE_POST_MERGE_LEGACY_P2P_CONSENSUS_LOGGER
+date: 2026-10-07
+wave: Exp→pin legacy_test_p2p quarantine + consensus adapter logger
+units: test_legacy_test_p2p_quarantine + honesty/smoke 36 PASS
+industrial_gate: OK
+mesh_quick: optional this tip (quarantine + logger; industrial mesh path unchanged)
+soak: deferred / not run / not started
+long_range: off
+pin_ws_honesty: consensus.adapter.weak_subjectivity_status tip AncestryWindow only (no LR import)
+silent_except_pin_worse_vs_exp: 0
+
+optional_probe:
+============================================================
+PROD MESH PROBE (chain 778888)
+============================================================
+RESULT: OK
+Report: C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid\logs\prod_mesh_probe.json
+

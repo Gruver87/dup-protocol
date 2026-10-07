@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Peer discovery for legacy tests."""
-from typing import List, Optional
+"""Shim → ``network.legacy_test_p2p.discovery`` (Phase D quarantine)."""
+from __future__ import annotations
 
+import warnings
 
-class Discovery:
-    def __init__(self, peer_manager, p2p_server):
-        self.peer_manager = peer_manager
-        self.p2p_server = p2p_server
-        self._bootstrap: List[str] = []
+warnings.warn(
+    "network.p2p.discovery is legacy-test-only; import network.legacy_test_p2p.discovery",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-    def add_bootstrap_node(self, address: str) -> None:
-        self._bootstrap.append(address)
-
-    def get_bootstrap_count(self) -> int:
-        return len(self._bootstrap)
+from network.legacy_test_p2p.discovery import *  # noqa: F401,F403

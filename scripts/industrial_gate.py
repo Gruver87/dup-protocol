@@ -1887,9 +1887,29 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("WebSocket _broadcast must count/log send failures")
         if "Fail-closed: bind/runtime failure must not leave a live flag" not in ws_py:
             errors.append("WebSocket start must clear _running on bind/runtime failure")
-        mh_py = (ROOT / "network" / "p2p" / "message_handler.py").read_text(encoding="utf-8")
+        if not (ROOT / "network" / "legacy_test_p2p").is_dir():
+            errors.append("legacy_test_p2p quarantine package missing (Phase D)")
+        mh_py = (ROOT / "network" / "legacy_test_p2p" / "message_handler.py").read_text(
+            encoding="utf-8"
+        )
         if "_send_failures" not in mh_py or "_send_unbound" not in mh_py:
             errors.append("legacy MessageHandler._send must count unbound/send failures")
+        if "[MessageHandler]" not in mh_py or "failed peer=" not in mh_py:
+            errors.append("legacy MessageHandler._send must log send failures")
+        shim_mh = (ROOT / "network" / "p2p" / "message_handler.py").read_text(
+            encoding="utf-8"
+        )
+        if "network.legacy_test_p2p.message_handler" not in shim_mh:
+            errors.append("network.p2p.message_handler must shim to legacy_test_p2p")
+        adapter_py_log = (ROOT / "consensus" / "adapter.py").read_text(encoding="utf-8")
+        if "print(" in adapter_py_log:
+            errors.append("consensus/adapter must log via logger (no print)")
+        if 'logger.warning(f"[Consensus] FAIL: engine slash' not in adapter_py_log:
+            errors.append("consensus/adapter must warning-log engine slash failures")
+        if 'from consensus.long_range' in adapter_py_log:
+            errors.append(
+                "pin consensus/adapter must not import Long-Range weak_subjectivity runtime"
+            )
         clone_py = (ROOT / "storage" / "chain_clone.py").read_text(encoding="utf-8")
         if "Fail-closed: when RocksEngine is available" not in clone_py:
             errors.append("chain_clone must fail-closed on Rocks checkpoint when native present")
