@@ -729,6 +729,8 @@ class SmartAccountManager:
             "address": address,
             "owner": owner,
             "auth_method": method.value,
+            "execution_bound": True,
+            "persistent": False,
         }
 
     def create_session_key(
@@ -794,19 +796,32 @@ class SmartAccountManager:
         
         return True
     
-    def recover_account(self, identifier: str, new_owner: str, guardians: List[str]) -> bool:
-        """Guardian quorum recovery — request, approve, execute."""
+    def recover_account(
+        self,
+        identifier: str,
+        new_owner: str,
+        guardians: List[str],
+        credentials: Optional[List[Any]] = None,
+    ) -> bool:
+        """Guardian quorum recovery — request, approve, execute.
+
+        Wave K: each approval needs a matching credential when a verifier is bound.
+        """
         account = self.get_account(identifier)
         if not account or not new_owner or not guardians:
             return False
+        creds = list(credentials or [])
         request_id = None
-        for guardian in guardians:
+        for idx, guardian in enumerate(guardians):
+            cred = creds[idx] if idx < len(creds) else None
             if request_id:
-                if not account.approve_recovery(request_id, guardian):
+                if not account.approve_recovery(request_id, guardian, credential=cred):
                     return False
                 continue
             request_id = account.request_recovery(guardian)
-            if request_id and not account.approve_recovery(request_id, guardian):
+            if request_id and not account.approve_recovery(
+                request_id, guardian, credential=cred
+            ):
                 return False
         if not request_id:
             return False
@@ -833,5 +848,7 @@ class SmartAccountManager:
             'persistent': False,
             'execution_bound': bool(self.transaction_executor),
             'in_memory_registry': True,
+            # Manager instance exists; not a claim of durable/production custody.
             'enabled': True,
+            'canonical': False,
         }

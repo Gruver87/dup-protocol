@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — smart-accounts credentials + oracle/cross-shard labs
+
+- smart_accounts: recover_account passes guardian credentials (Wave K); create/stats honesty
+  (`execution_bound`/`persistent`/`canonical=False`).
+- tests: refresh `test_smart_accounts_auth.py` (executor-bound create + credential recovery).
+- scripts: `oracle_lab.py`, `cross_shard_lab.py`, verify wrappers + pin-honest `verify_nft_marketplace.ps1`.
+- industrial_gate needles. **Non-LR.** Mesh Quick optional. **Soak deferred / not run.**
+
 ### Exp→pin merge wave — NFT/AI labs + dual-stack + PQ honesty
 
 - scripts: port `nft_lab.py` + `ai_lab.py` (offline sprout honesty; audit remediation expects nft_lab).

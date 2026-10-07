@@ -2065,6 +2065,25 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
         sa_py = (ROOT / "features" / "smart_accounts.py").read_text(encoding="utf-8")
         if "execution_bound" not in sa_py or "in_memory_registry" not in sa_py:
             errors.append("SmartAccountManager stats must expose execution_bound honesty")
+        if "'canonical': False" not in sa_py and '"canonical": False' not in sa_py:
+            errors.append("SmartAccountManager stats must expose canonical=False")
+        if "credentials: Optional[List[Any]]" not in sa_py:
+            errors.append(
+                "SmartAccountManager.recover_account must accept credentials "
+                "(Wave K guardian verifier)"
+            )
+        if not (ROOT / "scripts" / "oracle_lab.py").is_file():
+            errors.append("scripts/oracle_lab.py missing")
+        else:
+            oracle_lab = (ROOT / "scripts" / "oracle_lab.py").read_text(encoding="utf-8")
+            if "aggregate_symbol" not in oracle_lab or "stale" not in oracle_lab.lower():
+                errors.append("oracle_lab must exercise quorum aggregate + stale refuse")
+        if not (ROOT / "scripts" / "cross_shard_lab.py").is_file():
+            errors.append("scripts/cross_shard_lab.py missing")
+        else:
+            cs_lab = (ROOT / "scripts" / "cross_shard_lab.py").read_text(encoding="utf-8")
+            if "export_cross_shard_payload" not in cs_lab:
+                errors.append("cross_shard_lab must exercise debit/credit ACK path")
         if "feature_minivm" not in main_py2 or "MiniVM: disabled" not in main_py2:
             errors.append("main.py must gate MiniVM on feature_minivm")
         if "unsigned DAO vote forbidden in prod" not in http_py2:
