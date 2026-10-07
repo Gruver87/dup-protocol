@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Exp→pin merge wave — AI sprout harden unit coverage
+
+- tests: port `test_ai_sprout_harden.py` (model port, profit satoshi, validator
+  sim stake, prod AI flags, ops classifier).
+- Units PASS. **Non-LR.** **Soak deferred / not run.**
+
 ### Exp→pin merge wave — sprout lab profiles + elevator / firm calendar
 
 - docs: pin-honest `sprouts/{NFT,AI,ORACLE}_LAB_PROFILE.md`, `ELEVATOR_PITCH.md`,

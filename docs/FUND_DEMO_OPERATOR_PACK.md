@@ -16,8 +16,9 @@ Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-nod
 | Industrial pin (freeze + working tip) | Show for firm scope | tag `v1.3.1339-tip-v2-industrial` (`0531995`) = **TCP+TLS** sealed evidence; working tip = ADR 0020 libp2p mesh JSON (soak pending) |
 | Fail-closed satoshi / RPC / health honesty | Code + units + industrial_gate | Exp→pin merge CLOSED — see [EVIDENCE_MATRIX](EVIDENCE_MATRIX.md) CI row |
 | STRICT 48h scoreboard | Historical packs only | Do not claim soak on current HEAD unless a new pack exists |
-| Showcase / diligence docs | Pin local | [SHOWCASE](SHOWCASE.md) · [DILIGENCE_BRIEF](DILIGENCE_BRIEF.md) · [FUND_READINESS](FUND_READINESS.md) · [VERIFY_SUITE](VERIFY_SUITE.md) |
-| Phase 6 firm prep | Prep only | [FIRM_KICKOFF_CHECKLIST](FIRM_KICKOFF_CHECKLIST.md) · [AUDITS.md](AUDITS.md) · [AUDIT_ENGAGEMENT_BRIEF](AUDIT_ENGAGEMENT_BRIEF.md) · `logs/audit_pack_20261004.zip` |
+| Showcase / diligence docs | Pin local | [SHOWCASE](SHOWCASE.md) · [FAQ](FAQ.md) · [ELEVATOR_PITCH](ELEVATOR_PITCH.md) · [FUND_READINESS](FUND_READINESS.md) · [VERIFY_SUITE](VERIFY_SUITE.md) |
+| Sprout lab profiles | Offline honesty | [NFT](sprouts/NFT_LAB_PROFILE.md) · [AI](sprouts/AI_LAB_PROFILE.md) · [Oracle](sprouts/ORACLE_LAB_PROFILE.md) |
+| Phase 6 firm prep | Prep only | [FIRM_KICKOFF_CHECKLIST](FIRM_KICKOFF_CHECKLIST.md) · [FIRM_ENGAGEMENT_CALENDAR](FIRM_ENGAGEMENT_CALENDAR.md) · [AUDITS.md](AUDITS.md) · [AUDIT_ENGAGEMENT_BRIEF](AUDIT_ENGAGEMENT_BRIEF.md) · `logs/audit_pack_20261004.zip` |
 
 ---
 
