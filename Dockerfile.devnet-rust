@@ -40,7 +40,8 @@ ENV PYTHONUTF8=1
 ENV PYTHONIOENCODING=utf-8
 ENV PYTHONUNBUFFERED=1
 
-COPY requirements.txt .
+# requirements.txt aggregates -r requirements-dev.txt -> requirements-runtime.txt
+COPY requirements.txt requirements-dev.txt requirements-runtime.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .

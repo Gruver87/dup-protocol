@@ -38,6 +38,9 @@ def test_live_tls_verify_fails_when_not_ready():
     sec = {"tls": {"enabled": True, "ready": False, "errors": ["cert missing"]}}
 
     def fake_api(url, timeout=10.0):
+        if url.rstrip("/").endswith("/status"):
+            # TCP+TLS alternate: libp2p off so TLS path still applies.
+            return {"libp2p": {"feature_libp2p": False, "active": False}}
         if "/p2p/security" in url:
             return sec
         if "/health/ready" in url:
@@ -50,6 +53,33 @@ def test_live_tls_verify_fails_when_not_ready():
         errors, _warnings, meta = mod.verify_p2p_tls_mesh(check_static=False, require_tls=True)
     assert meta["reachable"] == 3
     assert any("P2P TLS not ready" in e for e in errors)
+
+
+def test_live_libp2p_mesh_is_not_applicable_for_tls_verify():
+    """ADR 0020 default mesh: Noise active → TLS verify N/A (exit-path ready)."""
+    mod = _load("verify_p2p_tls_mesh", "scripts/verify_p2p_tls_mesh.py")
+
+    def fake_api(url, timeout=10.0):
+        if url.rstrip("/").endswith("/status"):
+            return {
+                "libp2p": {
+                    "feature_libp2p": True,
+                    "active": True,
+                    "honesty": "ADR0020_experimental_libp2p_industrial_mesh",
+                }
+            }
+        if "/health/ready" in url:
+            return {"status": "ready"}
+        return {}
+
+    with patch.object(mod, "_api", side_effect=fake_api), patch.object(
+        mod, "_probe_ready", return_value=True
+    ):
+        errors, warnings, meta = mod.verify_p2p_tls_mesh(check_static=False, require_tls=True)
+    assert errors == []
+    assert meta.get("not_applicable") is True
+    assert meta.get("transport_mode") == "adr0020_libp2p_noise"
+    assert any("ADR 0020" in w for w in warnings)
 
 
 def test_p2p_tls_preflight_static():

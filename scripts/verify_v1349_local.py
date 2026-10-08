@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Local smoke for Absolute Hybrid v1.3.45–v1.3.49 (native EVM CALL wave).
+"""Local smoke for native EVM CALL wave (landed as Absolute Hybrid v1.3.45–v1.3.49).
+
+Kernels remain on the industrial pin; version gate accepts any ``1.3.N`` with
+``N >= 49`` (e.g. ``1.3.206-industrial``). This is not the daily verify ladder —
+use ``verify_industrial_waves`` / ``verify_project`` for that.
 
 Run from repo root (PowerShell / bash):
 
@@ -17,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -91,9 +96,11 @@ def step_env_and_kernels(*, strict: bool) -> list[str]:
     errors: list[str] = []
     from runtime.config import Config
 
-    ver = Config().node_version
-    if not str(ver).startswith("1.3.49"):
-        errors.append(f"node_version expected 1.3.49-*, got {ver!r}")
+    ver = str(Config().node_version)
+    # CALL wave shipped at 1.3.49; industrial pin keeps the kernels on later tags.
+    m = re.match(r"^1\.3\.(\d+)", ver)
+    if not m or int(m.group(1)) < 49:
+        errors.append(f"node_version expected 1.3.N with N>=49 (CALL wave+), got {ver!r}")
         _fail(f"node_version={ver}")
     else:
         _ok(f"node_version={ver}")

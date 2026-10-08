@@ -11,6 +11,22 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = Split-Path -Parent $ScriptDir
 Set-Location $Root
 
+function Invoke-DockerCompose {
+    param([Parameter(Mandatory = $true)][string[]]$ComposeArgs)
+    # docker writes progress to stderr; with $ErrorActionPreference=Stop that becomes a
+    # terminating NativeCommandError even when exit code is 0.
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & docker @ComposeArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw ("docker failed rc={0}: {1}" -f $LASTEXITCODE, ($ComposeArgs -join " "))
+        }
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+}
+
 function Get-SeedPortState([int]$Port) {
     try {
         $ready = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health/ready" -TimeoutSec 3
@@ -75,44 +91,39 @@ if ($Mesh3) {
 }
 
 if ($Down) {
-    docker compose @composeArgs down
-    exit $LASTEXITCODE
+    Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("down"))
+    exit 0
 }
 
 if (-not $seedAlreadyRunning) {
     if (-not $SkipBuild) {
-        docker compose @composeArgs build testnet-seed
-        if (-not $?) { exit 1 }
+        Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("build", "testnet-seed"))
     }
 
-    docker compose @composeArgs up -d testnet-seed
-    if (-not $?) { exit 1 }
+    Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("up", "-d", "testnet-seed"))
 
     if ($WithValidator) {
         if ($Mesh3) {
-            docker compose @composeArgs up -d testnet-seed testnet-validator testnet-validator-3
+            Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("up", "-d", "testnet-seed", "testnet-validator", "testnet-validator-3"))
         } else {
-            docker compose @composeArgs up -d testnet-validator
+            Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("up", "-d", "testnet-validator"))
         }
-        if (-not $?) { exit 1 }
     }
 } else {
     Write-Host "OK: testnet seed already running on :$httpPortNum (chain 77777)" -ForegroundColor Green
     if ($WithValidator) {
         if (-not $SkipBuild) {
             if ($Mesh3) {
-                docker compose @composeArgs build testnet-validator testnet-validator-3
+                Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("build", "testnet-validator", "testnet-validator-3"))
             } else {
-                docker compose @composeArgs build testnet-validator
+                Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("build", "testnet-validator"))
             }
-            if (-not $?) { exit 1 }
         }
         if ($Mesh3) {
-            docker compose @composeArgs up -d testnet-validator testnet-validator-3
+            Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("up", "-d", "testnet-validator", "testnet-validator-3"))
         } else {
-            docker compose @composeArgs up -d testnet-validator
+            Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("up", "-d", "testnet-validator"))
         }
-        if (-not $?) { exit 1 }
     }
 }
 

@@ -10,6 +10,28 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### CI: clippy `manual_is_multiple_of` (abs_native)
+
+- Replace `len() % 2` / `i % N == 0` with `is_multiple_of` so `-D warnings`
+  clippy on current stable (hybrid job 3.12) passes.
+
+### Fix Dockerfile.devnet-rust pip layer (requirements chain)
+
+- COPY `requirements.txt` alone broke BuildKit: aggregator `-r requirements-dev.txt`
+  (→ `requirements-runtime.txt`) was missing before `pip install`.
+- `docker_testnet_seed.ps1`: docker stderr progress no longer aborts under
+  `$ErrorActionPreference=Stop`.
+- `verify_testnet_mesh`: solo seed soft-PASS when only `p2p_state_consistent`
+  fails (align with `prod_smoke`).
+
+### Honesty: P2P TLS verify vs ADR 0020 libp2p mesh
+
+- `verify_p2p_tls_mesh`: live `status.libp2p.active` → **N/A** (Noise), not FAIL
+  telling operators to use `-P2pTls` (refused by `docker_prod_3node.ps1`).
+- `docs/P2P_TLS.md`: TCP+TLS is alternate (`docker_prod_3node_p2ptls.ps1`); default
+  mesh is ADR 0020 libp2p.
+- `verify_v1349_local`: version gate accepts `1.3.N` with `N>=49` (industrial pin).
+
 ### Fix verify_industrial_waves 1.3.115 ready-listener needle
 
 - Needle matched obsolete `native TCP/TLS path uses _native_listener` string;

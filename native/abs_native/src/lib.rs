@@ -101,7 +101,7 @@ fn merkle_root_strings(items: &[String]) -> String {
     let mut layer: Vec<String> = items.iter().map(|item| hash_string(item)).collect();
 
     while layer.len() > 1 {
-        if layer.len() % 2 == 1 {
+        if !layer.len().is_multiple_of(2) {
             let last = layer[layer.len() - 1].clone();
             layer.push(last);
         }
@@ -129,7 +129,7 @@ fn merkle_proof_strings(items: &[String], target_index: usize) -> Vec<String> {
     let mut index = target_index;
 
     while layer.len() > 1 {
-        if layer.len() % 2 == 1 {
+        if !layer.len().is_multiple_of(2) {
             let last = layer[layer.len() - 1].clone();
             layer.push(last);
         }

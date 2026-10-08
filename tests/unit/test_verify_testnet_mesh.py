@@ -47,6 +47,36 @@ def test_solo_seed_warns_without_validator():
     assert meta["reachable"] == 1
 
 
+def test_solo_seed_soft_pass_p2p_state_consistent_only():
+    """Solo seed: only p2p_state_consistent fail is soft-PASS (prod_smoke honesty)."""
+    mod = _load()
+    ready = {"status": "ready"}
+    status = {"chain_id": 77777, "height": 4, "peers": 0}
+    harness = {
+        "harness_healthy": False,
+        "tip_state_aligned": True,
+        "failed_checks": ["p2p_state_consistent"],
+        "peers": [],
+        "live_state_root": "abc",
+    }
+    mesh = {"peer_count": 0, "expected_peers": 1, "mesh_healthy": False, "height_aligned": True}
+
+    def fake_api(url, timeout=10.0):
+        if "/health/ready" in url:
+            return ready
+        if "/status" in url:
+            return status
+        if "/testnet/mesh" in url:
+            return mesh
+        return harness
+
+    with patch.object(mod, "_api", side_effect=fake_api), patch.object(mod, "_probe_health", return_value=True):
+        errors, warnings, meta = mod.verify_testnet_mesh(wait_sec=0)
+    assert errors == []
+    assert any("soft-PASS" in w for w in warnings)
+    assert meta["nodes"][0].get("harness_smoke_ok") is True
+
+
 def test_two_node_mesh_fails_when_not_healthy():
     mod = _load()
     ready = {"status": "ready"}

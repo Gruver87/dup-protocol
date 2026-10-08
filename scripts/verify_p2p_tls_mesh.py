@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Verify P2P wire TLS on prod 3-node mesh (:18180-:18182)."""
+"""Verify P2P wire TLS on the TCP+TLS alternate mesh (:18180-:18182).
+
+ADR 0020: the default pin industrial 3-node mesh uses rust-libp2p (Noise), not
+native mTLS. ``docker_prod_3node.ps1`` refuses ``-P2pTls``. For TLS/mTLS evidence
+use ``.\\scripts\\docker_prod_3node_p2ptls.ps1`` (or the p2ptls compose overlay),
+then re-run this script. When the live mesh reports ``status.libp2p.active``,
+this verifier exits 0 as NOT_APPLICABLE (Noise session crypto — not a TLS FAIL).
+"""
 
 from __future__ import annotations
 
@@ -19,6 +26,11 @@ DEFAULT_NODES = (
     "http://127.0.0.1:18182",
 )
 TLS_MESH_ROOT = ROOT / "data" / "p2p_tls_prod_mesh"
+_LIBP2P_NA_HINT = (
+    "ADR 0020 libp2p mesh (Noise) — P2P TLS verify N/A; "
+    "use probe_prod_mesh / status.libp2p. TCP+TLS alternate: "
+    ".\\scripts\\docker_prod_3node_p2ptls.ps1"
+)
 
 
 def _api(url: str, timeout: float = 10.0) -> dict[str, Any]:
@@ -68,6 +80,13 @@ def check_static_tls_material() -> tuple[list[str], list[str], dict[str, Any]]:
     return errors, warnings, meta
 
 
+def _libp2p_active(status: dict[str, Any]) -> bool:
+    block = status.get("libp2p")
+    if not isinstance(block, dict):
+        return False
+    return bool(block.get("active")) and bool(block.get("feature_libp2p", True))
+
+
 def verify_p2p_tls_mesh(
     *,
     node_urls: list[str] | None = None,
@@ -80,13 +99,11 @@ def verify_p2p_tls_mesh(
     errors: list[str] = []
     warnings: list[str] = []
     urls = [u.rstrip("/") for u in (node_urls or list(DEFAULT_NODES)) if u]
-    meta: dict[str, Any] = {"expected_nodes": len(urls), "require_tls": require_tls}
-
-    if check_static:
-        static_errors, static_warnings, static_meta = check_static_tls_material()
-        errors.extend(static_errors)
-        warnings.extend(static_warnings)
-        meta["static"] = static_meta
+    meta: dict[str, Any] = {
+        "expected_nodes": len(urls),
+        "require_tls": require_tls,
+        "transport_mode": "tcp_tls",
+    }
 
     deadline = time.time() + max(0, wait_sec)
     reachable: list[str] = []
@@ -95,6 +112,42 @@ def verify_p2p_tls_mesh(
         if len(reachable) == len(urls) or time.time() >= deadline:
             break
         time.sleep(3)
+
+    # ADR 0020: live industrial mesh is libp2p/Noise — do not demand mTLS or -P2pTls.
+    libp2p_nodes = 0
+    if reachable and require_tls:
+        for url in reachable:
+            try:
+                st = _api(f"{url}/status", timeout=10)
+                if _libp2p_active(st):
+                    libp2p_nodes += 1
+            except (urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError):
+                pass
+        if libp2p_nodes == len(reachable) and libp2p_nodes > 0:
+            meta["transport_mode"] = "adr0020_libp2p_noise"
+            meta["libp2p_active_nodes"] = libp2p_nodes
+            meta["reachable"] = len(reachable)
+            meta["timestamp"] = datetime.now(timezone.utc).isoformat()
+            meta["ready"] = True
+            meta["not_applicable"] = True
+            warnings.append(_LIBP2P_NA_HINT)
+            # Static TLS material is optional for Noise mesh; keep as warnings only.
+            if check_static:
+                _se, static_warnings, static_meta = check_static_tls_material()
+                warnings.extend(static_warnings)
+                if _se:
+                    warnings.append(
+                        "TLS cert material incomplete (expected for ADR 0020 default mesh; "
+                        "generate only for docker_prod_3node_p2ptls.ps1)"
+                    )
+                meta["static"] = static_meta
+            return [], warnings, meta
+
+    if check_static:
+        static_errors, static_warnings, static_meta = check_static_tls_material()
+        errors.extend(static_errors)
+        warnings.extend(static_warnings)
+        meta["static"] = static_meta
 
     live_nodes: list[dict[str, Any]] = []
     for i, url in enumerate(urls):
@@ -117,7 +170,11 @@ def verify_p2p_tls_mesh(
             }
             if require_tls:
                 if not row["tls"]["enabled"]:
-                    errors.append(f"{role} P2P TLS not enabled (start with -P2pTls)")
+                    errors.append(
+                        f"{role} P2P TLS not enabled "
+                        f"(TCP+TLS alternate: .\\scripts\\docker_prod_3node_p2ptls.ps1; "
+                        f"ADR 0020 default mesh refuses -P2pTls)"
+                    )
                 elif not row["tls"]["ready"]:
                     errors.append(
                         f"{role} P2P TLS not ready: {(tls.get('errors') or ['unknown'])[:2]}"
@@ -189,6 +246,8 @@ def main() -> int:
             print("RESULT: FAIL")
             for err in errors:
                 print(f"  - {err}")
+        elif meta.get("not_applicable"):
+            print("RESULT: N/A (ADR 0020 libp2p / Noise — not TCP+TLS)")
         else:
             print("RESULT: OK")
         for warn in warnings:

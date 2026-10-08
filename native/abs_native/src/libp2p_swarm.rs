@@ -728,7 +728,7 @@ pub fn identity_key_parent_unattested_strategy() -> &'static str {
 fn wide_path(path: &std::path::Path) -> Result<Vec<u16>, String> {
     use std::os::windows::ffi::OsStrExt;
     let mut w: Vec<u16> = path.as_os_str().encode_wide().collect();
-    if w.iter().any(|c| *c == 0) {
+    if w.contains(&0) {
         return Err("path contains NUL".into());
     }
     w.push(0);

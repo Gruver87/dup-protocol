@@ -92,7 +92,7 @@ fn merkle_root_from_digests_inner(leaves: &[[u8; 32]]) -> [u8; 32] {
     }
     let mut layer: Vec<[u8; 32]> = leaves.to_vec();
     while layer.len() > 1 {
-        if layer.len() % 2 == 1 {
+        if !layer.len().is_multiple_of(2) {
             let last = *layer.last().unwrap();
             layer.push(last);
         }

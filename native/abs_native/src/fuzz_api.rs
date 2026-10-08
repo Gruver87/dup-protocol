@@ -125,7 +125,7 @@ mod smoke {
             let refs: Vec<&[u8]> = chunks.iter().map(|c| c.as_slice()).collect();
             let _ = fuzz_p2p_frame_feed(max_bytes, &refs);
             // Deterministic progress marker every 2k (keeps CI logs quiet).
-            if i % 2000 == 0 {
+            if i.is_multiple_of(2000) {
                 let _ = i;
             }
         }

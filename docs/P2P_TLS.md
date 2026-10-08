@@ -1,8 +1,15 @@
-# P2P wire TLS (prod mesh default)
+# P2P wire TLS (TCP+TLS alternate)
 
 TLS on the **P2P port** (default `:5000`) is separate from HTTP/RPC TLS (nginx).
 
-**Prod 3-node mesh:** P2P TLS + mTLS is the **default** (`.\scripts\docker_prod_3node.ps1`). Use `-NoP2pTls` only for local plaintext labs.
+**ADR 0020 (current pin industrial mesh):** the default 3-node mesh
+(`.\scripts\docker_prod_3node.ps1`) uses **rust-libp2p Noise**, not native mTLS.
+That script **refuses** `-P2pTls`. Session crypto is Noise; verify with
+`.\scripts\probe_prod_mesh.ps1` / `GET /status` → `libp2p.active`.
+
+**TCP+TLS / mTLS** remains the **alternate** profile (freeze tag
+`v1.3.1339-tip-v2-industrial` evidence, single-node `docker/node.prod.json`,
+or `.\scripts\docker_prod_3node_p2ptls.ps1`). Use this document for that path.
 
 ## Threat model (honest)
 
@@ -36,20 +43,26 @@ python scripts/gen_p2p_dev_tls.py --out-dir data/p2p_tls_dev --node-id dev-node-
 
 **Windows:** `gen_p2p_mesh_tls.py` uses OpenSSL from PATH if present (e.g. Git for Windows), otherwise falls back to the `cryptography` Python package (already in `requirements.txt`).
 
-## Docker prod 3-node mesh
+## Docker prod 3-node mesh (TCP+TLS alternate)
+
+Default industrial mesh is ADR 0020 libp2p — start that with
+`.\scripts\docker_prod_3node.ps1` (no TLS flags). For the **mTLS alternate**:
 
 ```powershell
 python scripts/gen_p2p_mesh_tls.py   # CN = docker-prod-mesh-1..3 (matches mesh JSON node_id)
-.\scripts\docker_prod_3node.ps1      # TLS+mTLS overlay ON by default
-# plaintext lab only:
-.\scripts\docker_prod_3node.ps1 -NoP2pTls
+.\scripts\docker_prod_3node_p2ptls.ps1
 ```
 
 Uses `docker-compose.prod.3node.p2ptls.yml` (mounts `data/p2p_tls_prod_mesh/nodeN` → `/app/p2p_tls`).
+Do **not** combine with `feature_libp2p=true` (Config refuses both-true).
 
 ### Verify and evidence
 
+On the **default libp2p** mesh, `python scripts/verify_p2p_tls_mesh.py` returns
+**N/A** (exit 0) — Noise, not a TLS FAIL. For TCP+TLS evidence:
+
 ```powershell
+.\scripts\docker_prod_3node_p2ptls.ps1
 .\scripts\probe_p2p_tls_mesh.ps1
 python scripts/verify_p2p_tls_mesh.py --wait 120
 .\scripts\p2p_tls_evidence_suite.ps1
@@ -67,20 +80,19 @@ Preflight (static or live):
 .\scripts\monolith_gate.ps1 -P2pTlsPreflight -P2pTlsLive
 ```
 
-### 48h soak with TLS
+### 48h soak
 
-Prod mesh TLS is the default path. For a dedicated TLS soak:
-
-```powershell
-.\scripts\prepare_48h_soak.ps1 -RequireP2pTls
-```
-
-Use `-NoP2pTls` on `docker_prod_3node.ps1` only for plaintext lab meshes.
+- **ADR 0020 libp2p mesh (default):** `.\scripts\prepare_48h_soak.ps1` with
+  `--require-libp2p` (see soak prep scripts). Pin libp2p soak not claimed until
+  packaged.
+- **TCP+TLS alternate:** `.\scripts\prepare_48h_soak.ps1 -RequireP2pTls` on the
+  p2ptls profile only.
 
 ## Observability
 
 - `GET /p2p/security` → `tls` block (`enabled`, `ready`, `fail_closed`, `identity_binding`, `fingerprint_allowlist`, `errors`)
-- Industrial gate warns when `deployment_mode=prod` and `p2p_tls_enabled=false`
+- ADR 0020 mesh: `GET /status` → `libp2p.active` / `feature_libp2p`; industrial gate requires mesh JSON `feature_libp2p=true` and `p2p_tls_enabled=false`
+- On TCP+TLS alternate only: industrial gate expects `p2p_tls_enabled=true`
 
 ## HTTP vs P2P
 

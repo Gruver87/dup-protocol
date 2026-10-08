@@ -35,6 +35,26 @@ def _probe_health(base_url: str, timeout: float = 5.0) -> bool:
         return False
 
 
+def _harness_smoke_ok(harness: dict[str, Any]) -> bool:
+    """Soft-pass solo / soft P2P lag — same honesty as ``prod_smoke._harness_smoke_ok``."""
+    if harness.get("harness_healthy", True):
+        return True
+    failed = set(harness.get("failed_checks") or [])
+    soft = {"tip_state_aligned", "p2p_state_consistent", "peer_probe_ok"}
+    if not failed <= soft:
+        return False
+    peers = harness.get("peers") or []
+    live = str(harness.get("live_state_root") or "").strip().lower()
+    if peers and live and all(p.get("match") is True for p in peers):
+        return True
+    if not peers and failed <= {"p2p_state_consistent"}:
+        return True
+    if failed <= {"peer_probe_ok"} and harness.get("tip_state_aligned"):
+        if harness.get("peer_probe_error") == "timeout":
+            return True
+    return False
+
+
 def verify_testnet_mesh(
     *,
     seed_url: str = DEFAULT_SEED,
@@ -79,8 +99,15 @@ def verify_testnet_mesh(
             harness = _api(f"{url}/chain/consistency/harness?quick=1&peer_timeout=5", timeout=25)
             row["harness_healthy"] = bool(harness.get("harness_healthy"))
             row["tip_state_aligned"] = bool(harness.get("tip_state_aligned"))
-            if not row["harness_healthy"]:
-                errors.append(f"{role} harness unhealthy")
+            row["harness_smoke_ok"] = _harness_smoke_ok(harness)
+            if not row["harness_smoke_ok"]:
+                failed = harness.get("failed_checks") or []
+                errors.append(f"{role} harness unhealthy failed={failed}")
+            elif not row["harness_healthy"]:
+                warnings.append(
+                    f"{role} harness soft-PASS (solo/soft P2P flags; "
+                    f"failed={harness.get('failed_checks') or []})"
+                )
         except (urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
             warnings.append(f"{role} harness: {exc}")
         nodes.append(row)
