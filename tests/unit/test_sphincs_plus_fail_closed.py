@@ -121,9 +121,9 @@ def test_pq_keygen_returns_real_result_or_backend_error(sphincs_server):
         f"{sphincs_server}/pq/keygen",
         {"algorithm": "dilithium"},
     )
-    assert status == 200
-    assert body["keys"]["public_key"]
-    assert body["keys"]["private_key"]
+    # Educational hash-demo Dilithium removed (Wave I): no NIST ML-DSA backend on pin.
+    assert status == 501
+    assert "Dilithium key generation backend not available" in body["error"]
 
 
 def test_pq_hybrid_encrypt_fails_closed_without_backend(sphincs_server):

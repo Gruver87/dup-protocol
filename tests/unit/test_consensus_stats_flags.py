@@ -16,6 +16,7 @@ def test_consensus_stats_feature_flags():
     os.close(fd)
     cfg = Config()
     cfg.db_path = path
+    cfg.feature_mev = True  # PBS fee-bid simulation is opt-in (ADR 0016 sprout)
     db = Database(path)
     db.initialize()
     try:

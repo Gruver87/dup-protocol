@@ -104,9 +104,9 @@ def test_recent_transactions_endpoint():
     )
     db.conn.execute(
         """INSERT INTO transactions
-           (hash, from_addr, to_addr, value, fee, block_height, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        ("abc123", cfg.miner_address, "0xdead", 10.0, 0.1, 1, "confirmed"),
+           (hash, from_addr, to_addr, value, fee, gas, block_height, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        ("abc123", cfg.miner_address, "0xdead", 10.0, 0.1, 21000, 1, "confirmed"),
     )
     db.conn.commit()
     base, server = _start_server(bc, mp, db, cfg)

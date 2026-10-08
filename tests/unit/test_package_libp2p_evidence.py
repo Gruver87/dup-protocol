@@ -6,8 +6,11 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 _PACK = ROOT / "scripts" / "package_libp2p_evidence.py"
+_HARD = ROOT / "scripts" / "verify_adr0019_libp2p_hard.py"
 
 
 def _load_pack():
@@ -20,6 +23,20 @@ def _load_pack():
     return mod
 
 
+def test_evidence_pack_refuses_without_hard_verify_list_on_pin() -> None:
+    """Pin (ADR 0020) has no Experimental ADR 0019 lab suite: packager must refuse."""
+    if _HARD.is_file():
+        pytest.skip("hard-verify lab list present (Experimental tree); see next test")
+    sys.modules.pop("package_libp2p_evidence", None)
+    with pytest.raises(RuntimeError, match="hard-verify lab list not on disk"):
+        _load_pack()
+    sys.modules.pop("package_libp2p_evidence", None)
+
+
+@pytest.mark.skipif(
+    not _HARD.is_file(),
+    reason="verify_adr0019_libp2p_hard.py is Experimental-only; not on the industrial pin",
+)
 def test_evidence_labs_are_hard_verify_list() -> None:
     pack = _load_pack()
     hard = pack.hard_verify_lab_paths()

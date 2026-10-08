@@ -81,12 +81,19 @@ def test_normalize_tx_status_omitted_and_unknown_are_zero():
     assert Database._normalize_tx_status("success") == 1
 
 
-def test_format_receipt_omitted_status_is_0x0():
+def test_format_receipt_omitted_status_is_null_not_reverted():
+    """Missing stored status is null (unobserved); never fabricated as 0x0 revert."""
     from api.http import _format_receipt
 
     receipt = _format_receipt({"hash": "0xabc", "block_height": 1, "from_addr": "0x1"})
     assert receipt is not None
-    assert receipt["status"] == "0x0"
+    assert receipt["status"] is None
+
+    stored = _format_receipt(
+        {"hash": "0xabc", "block_height": 1, "from_addr": "0x1", "status": 0}
+    )
+    assert stored is not None
+    assert stored["status"] == "0x0"
 
 
 def test_build_sync_status_p2p_fallback_fail_closed_with_peers():

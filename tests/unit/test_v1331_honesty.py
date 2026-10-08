@@ -55,7 +55,8 @@ def test_ai_no_fake_confidence():
     assert '"confidence": None' in text
     assert "model_bound" in text
     assert "executor_bound" in text
-    assert "no ML model or trade executor bound" in text
+    assert "no ML model bound" in text
+    assert "no trade executor" in text
 
 
 def test_will_persist_fail_closed():

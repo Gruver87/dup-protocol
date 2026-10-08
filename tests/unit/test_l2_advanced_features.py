@@ -72,9 +72,18 @@ def test_plasma_merkle_proof_roundtrip():
     recipient = "0x" + "2" * 40
     db.set_balance(user, 100.0)
 
+    from crypto.keys import KeyGenerator
+
+    kp = KeyGenerator.generate_keypair()  # plasma admits only signed L2 txs
     pl = PlasmaChain(chain_id="merkle", db=db)
     pl.deposit(user, 30.0)
-    txh = pl.submit_transaction(user, recipient, 7.0)
+    txh = pl.submit_transaction(
+        user,
+        recipient,
+        7.0,
+        private_key=kp.private_key,
+        public_key=kp.public_key.hex(),
+    )
     assert txh
     blk = pl.submit_block()
     assert blk

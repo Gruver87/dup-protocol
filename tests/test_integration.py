@@ -50,6 +50,8 @@ def config():
     cfg.block_time = 1
     cfg.mining_enabled = False
     cfg.bridge_enabled = False
+    # PBS fee-bid simulation is an ADR 0016 sprout: off by default, opt-in here.
+    cfg.feature_mev = True
     return cfg
 
 
@@ -511,6 +513,7 @@ class TestFullNodeIntegration:
         cfg.http_port = 8088
         cfg.mining_enabled = False
         cfg.bridge_enabled = False
+        cfg.feature_mev = True  # ADR 0016 sprout: PBS simulation opt-in
         
         node = NodeOrchestrator(cfg)
         
@@ -536,9 +539,10 @@ class TestFullNodeIntegration:
         assert node.p2p is not None
         assert node.p2p.sync_engine is not None
         
-        # Features
-        assert node.nft is not None
-        assert node.zk is not None
+        # Features (ADR 0016 sprouts are OFF by default on the pin)
+        assert node.nft is None
+        assert node.sharding is None
+        assert node.zk is None  # feature_zk is R&D / off by default
         assert node.evm is not None
         
         # Cleanup

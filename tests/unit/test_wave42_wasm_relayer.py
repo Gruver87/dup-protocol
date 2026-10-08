@@ -40,12 +40,21 @@ def test_wasm_call_persists_storage():
 
     vm = WASMVirtualMachine(db=db)
     addr = vm.deploy("token", owner, "Tok", {"initialSupply": 1000})
-    out = vm.call(addr, "transfer", {"to": "0x" + "c" * 40, "amount": 100}, owner)
+    # Wave M: pseudo-token money mutator is refused (not real WASM execution).
+    refused = vm.call(addr, "transfer", {"to": "0x" + "c" * 40, "amount": 100}, owner)
+    assert refused["success"] is False
+    assert refused["error"] == "wasm_pseudo_token_host_refused"
+
+    # Owner storage writes still persist across VM instances.
+    out = vm.call(addr, "setStorage", {"key": "k1", "value": "v1"}, owner)
     assert out["success"] is True
 
     vm2 = WASMVirtualMachine(db=db)
+    got = vm2.call(addr, "getStorage", {"key": "k1"}, owner)
+    assert got["result"] == "v1"
+    # Refused transfer must not have moved balances.
     bal = vm2.call(addr, "balanceOf", {"account": owner}, owner)
-    assert bal["result"] == 900
+    assert bal["result"] == 1000
 
 
 def test_wasm_deploy_rejects_low_balance():

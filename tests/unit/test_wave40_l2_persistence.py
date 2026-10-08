@@ -182,6 +182,14 @@ def test_plasma_finalize_exit_requires_credit_backend():
     assert pl.deposits["dep1"]["status"] == "exiting"
 
 
+def _plasma_signing_kwargs():
+    """Plasma admits only signed L2 txs (Wave K fail-closed)."""
+    from crypto.keys import KeyGenerator
+
+    kp = KeyGenerator.generate_keypair()
+    return {"private_key": kp.private_key, "public_key": kp.public_key.hex()}
+
+
 def test_plasma_block_persisted():
     from features.plasma import PlasmaChain
     from storage.database import Database
@@ -195,7 +203,7 @@ def test_plasma_block_persisted():
 
     pl = PlasmaChain(chain_id="test", db=db)
     assert pl.deposit(user, 10.0)
-    assert pl.submit_transaction(user, recipient, 5.0)
+    assert pl.submit_transaction(user, recipient, 5.0, **_plasma_signing_kwargs())
     blk = pl.submit_block()
     assert blk is not None
 
@@ -218,7 +226,7 @@ def test_plasma_transfer_requires_l2_balance():
     assert pl.submit_transaction(user, recipient, 1.0) is None
     assert pl.deposit(user, 10.0)
     assert pl.submit_transaction(user, recipient, 11.0) is None
-    assert pl.submit_transaction(user, recipient, 4.0)
+    assert pl.submit_transaction(user, recipient, 4.0, **_plasma_signing_kwargs())
     assert pl.submit_transaction(user, recipient, 7.0) is None
 
 
@@ -236,6 +244,6 @@ def test_plasma_exit_requires_unspent_l2_balance():
     pl = PlasmaChain(chain_id="test", db=db)
     did = pl.deposit(user, 10.0)
     assert did
-    assert pl.submit_transaction(user, recipient, 6.0)
+    assert pl.submit_transaction(user, recipient, 6.0, **_plasma_signing_kwargs())
 
     assert pl.request_exit(did, user) is None

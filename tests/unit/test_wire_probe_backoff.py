@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -38,7 +39,8 @@ def test_sync_engine_defaults_expose_backoff_attrs() -> None:
     assert eng._wire_probe_backoff_sec == 8.0
 
 
-def test_timeout_sets_fail_ts_and_backoff_skips_resolicit(capsys) -> None:
+def test_timeout_sets_fail_ts_and_backoff_skips_resolicit(caplog) -> None:
+    caplog.set_level(logging.INFO, logger="Sync.Engine")
     probe = MagicMock(return_value=None)
     eng = _engine(probe)
     assert eng.sync_state() is False
@@ -48,7 +50,7 @@ def test_timeout_sets_fail_ts_and_backoff_skips_resolicit(capsys) -> None:
     # Second call inside backoff must NOT solicit again and must stay fail-closed.
     assert eng.sync_state() is False
     assert probe.call_count == 1
-    assert "wire probe backoff" in capsys.readouterr().out
+    assert "wire probe backoff" in caplog.text
 
 
 def test_empty_and_exception_probe_set_fail_ts() -> None:

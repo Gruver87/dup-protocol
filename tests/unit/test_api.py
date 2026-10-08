@@ -248,7 +248,9 @@ def test_status_has_health_links(api_server):
     assert "bridge_locks_total" in data
     assert data["bridge_pending"] == 0
     assert "native_crypto" in data
-    assert "secp256k1_verify" in data["native_crypto"]["kernels"]
+    # /status ships a slim snapshot; the full kernel list is deferred to /native/crypto.
+    assert data["native_crypto"].get("kernels_deferred") is True
+    assert "kernels" not in data["native_crypto"]
     assert "rust_bridge" in data
     assert "ok" in data["rust_bridge"]
 
@@ -263,6 +265,8 @@ def test_openapi_lists_native_crypto(api_server):
 
 def test_status_bridge_pending_counts(api_server, industrial_config):
     base, cfg = api_server
+    # /status only counts bridge locks when the bridge is enabled (pin default: OFF).
+    cfg.bridge_enabled = True
     db = Database(cfg.db_path, synchronous="NORMAL")
     db.save_bridge_lock("0xfrom", "ethereum", "0xto", 5.0, "pending99")
     status, body = _get(f"{base}/status")
@@ -431,7 +435,10 @@ def test_sync_status_real(api_server):
     status, body = _get(f"{base}/sync/status")
     data = json.loads(body)
     assert status == 200
-    assert data["enabled"] is True
+    # api_server fixture has no SyncEngine: fail-closed, never paint enabled:true.
+    assert data["enabled"] is False
+    assert data["sync_engine_missing"] is True
+    assert data["source"] == "p2p_fallback"
     assert "local_height" in data
     assert data["solo_mode"] is True
 
@@ -461,7 +468,7 @@ def test_tx_send_alias(api_server, industrial_config):
     sender = "0x" + "a" * 40
     recipient = "0x" + "b" * 40
     db.set_balance(sender, 100.0)
-    body = {"from": sender, "to": recipient, "value": 1.0, "nonce": 0}
+    body = {"from": sender, "to": recipient, "value": 1.0, "nonce": 0, "gas": 21000}
     status, raw = _post(f"{base}/tx/send", body)
     data = json.loads(raw)
     assert status == 200

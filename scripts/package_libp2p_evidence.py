@@ -31,6 +31,13 @@ _HARD = ROOT / "scripts" / "verify_adr0019_libp2p_hard.py"
 
 def hard_verify_lab_paths() -> Tuple[str, ...]:
     """Return hard-verify lab relative paths. Missing/empty list is an error."""
+    if not _HARD.is_file():
+        # Industrial pin does not carry the Experimental-only ADR 0019 lab suite
+        # (ADR 0020). Refuse explicitly — never fabricate an empty/partial pack.
+        raise RuntimeError(
+            f"hard-verify lab list not on disk: {_HARD.relative_to(ROOT)} "
+            "(Experimental-only ADR 0019 labs; not available on the pin)"
+        )
     spec = importlib.util.spec_from_file_location("verify_adr0019_libp2p_hard", _HARD)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"cannot load {_HARD}")

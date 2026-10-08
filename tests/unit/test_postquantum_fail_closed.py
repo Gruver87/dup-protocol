@@ -49,7 +49,9 @@ def test_sphincs_and_falcon_verify_fail_closed_without_backend():
             public_key_hash="fake",
             message_hash="fake",
         )
-        assert pqm.verify(signature, message, b"public") is False
+        # No backend: refuse (raise) — never return a bool that could read as a verdict.
+        with pytest.raises(NotImplementedError):
+            pqm.verify(signature, message, b"public")
         assert signature.verified is False
 
 
@@ -87,10 +89,28 @@ def test_hybrid_crypto_fails_closed_without_backend():
         hybrid.hybrid_decrypt({}, keypair)
 
 
-def test_dilithium_commitment_path_still_verifies_and_rejects_tamper():
+def test_dilithium_fails_closed_no_hash_demo_backend():
+    """Educational hash-demo Dilithium was removed (Wave I); no NIST ML-DSA backend."""
     pqm = PostQuantumManager()
-    keypair = pqm.generate_keypair(PQAlgorithm.DILITHIUM)
-    signature = pqm.sign(b"absolute-chain", keypair)
+    with pytest.raises(NotImplementedError):
+        pqm.generate_keypair(PQAlgorithm.DILITHIUM)
 
-    assert pqm.verify(signature, b"absolute-chain", keypair.public_key) is True
-    assert pqm.verify(signature, b"tampered", keypair.public_key) is False
+    keypair = PQKeyPair(
+        algorithm=PQAlgorithm.DILITHIUM,
+        security_level=SecurityLevel.LEVEL5,
+        public_key=b"public",
+        private_key=b"private",
+    )
+    with pytest.raises(NotImplementedError):
+        pqm.sign(b"absolute-chain", keypair)
+
+    signature = PQSignature(
+        id="fake",
+        algorithm=PQAlgorithm.DILITHIUM,
+        signature=b"a" * 64,
+        public_key_hash="fake",
+        message_hash="fake",
+    )
+    with pytest.raises(NotImplementedError):
+        pqm.verify(signature, b"absolute-chain", b"public")
+    assert signature.verified is False

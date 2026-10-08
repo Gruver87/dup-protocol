@@ -369,6 +369,8 @@ def test_prod_bridge_does_not_fallback_to_simulator(tmp_path, monkeypatch):
                 "from_address": "0x" + "1" * 40,
                 "to_address": "0x" + "2" * 40,
                 "amount": 1,
+                # prod requires explicit satoshi integers at the input boundary
+                "amount_satoshi": 100_000_000,
             },
         )
         assert st == 503
