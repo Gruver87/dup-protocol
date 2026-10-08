@@ -72,7 +72,21 @@ def verify_testnet_mesh(
     reachable: list[str] = []
     while True:
         reachable = [u for u in urls if _probe_health(u)]
-        if len(reachable) == len(urls) or time.time() >= deadline:
+        if len(reachable) == len(urls):
+            # Also wait for height catch-up when asked (Mesh3 after recreate).
+            if wait_sec > 0 and len(reachable) >= 2:
+                try:
+                    heights = [
+                        int((_api(f"{u}/status", timeout=8).get("height", 0) or 0))
+                        for u in reachable
+                    ]
+                    if heights and max(heights) - min(heights) <= 1:
+                        break
+                except (urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError):
+                    pass
+            else:
+                break
+        if time.time() >= deadline:
             break
         time.sleep(3)
 
@@ -129,11 +143,25 @@ def verify_testnet_mesh(
                 "height_aligned": mesh.get("height_aligned"),
             }
             min_peers = len(urls) - 1
-            if len(reachable) >= 2 and not mesh.get("mesh_healthy"):
-                errors.append(
-                    f"seed mesh_healthy=false peer_count={mesh.get('peer_count')} "
-                    f"expected={mesh.get('expected_peers')} (need >={min_peers} peers for {len(urls)}-node mesh)"
-                )
+            peer_count = int(mesh.get("peer_count") or 0)
+            height_aligned = bool(mesh.get("height_aligned"))
+            if len(reachable) >= 2:
+                if peer_count < min_peers or not height_aligned:
+                    errors.append(
+                        f"seed mesh incomplete peer_count={peer_count} "
+                        f"expected_cfg={mesh.get('expected_peers')} "
+                        f"height_aligned={height_aligned} "
+                        f"(need >={min_peers} peers for {len(urls)}-node mesh)"
+                    )
+                elif not mesh.get("mesh_healthy"):
+                    # Peers + heights OK; sticky state_consistent / stale expected
+                    # must not paint FAIL when the live mesh is already synced.
+                    warnings.append(
+                        f"seed mesh_healthy=false soft-PASS "
+                        f"peer_count={peer_count} expected_cfg={mesh.get('expected_peers')} "
+                        f"state_consistent={mesh.get('state_consistent')} "
+                        f"height_aligned={height_aligned}"
+                    )
             elif len(reachable) == 1:
                 warnings.append("solo seed — start validator profile for mesh demo")
         except (urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:

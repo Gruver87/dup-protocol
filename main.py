@@ -2657,6 +2657,14 @@ def build_config(args: argparse.Namespace) -> Config:
 
     # Credentials from env must survive JSON merge (node JSON does not store secrets).
     config.apply_env_secrets()
+    # Docker mesh overlays (e.g. Mesh3 TESTNET_EXPECTED_PEERS=2) must survive JSON
+    # defaults like docker/node.testnet.seed.json testnet_expected_peers:1.
+    if "TESTNET_EXPECTED_PEERS" in os.environ:
+        from runtime.env_loader import env_int
+
+        config.testnet_expected_peers = env_int(
+            "TESTNET_EXPECTED_PEERS", config.testnet_expected_peers
+        )
     config.resolve_storage_paths()
 
     # 3) CLI — высший приоритет

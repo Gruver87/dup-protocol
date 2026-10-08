@@ -10,6 +10,25 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Fix testnet mesh scripts: PowerShell switch splat
+
+- `docker_testnet_mesh3.ps1` / `mesh.ps1` used array splat `@("-Mesh3")`, which
+  does **not** bind `[switch]` on Windows PowerShell — only seed started.
+  Use hashtable splat `@{ Mesh3 = $true }` instead.
+
+### Fix testnet Mesh3 expected_peers + verify soft-PASS
+
+- `build_config`: `TESTNET_EXPECTED_PEERS` survives JSON merge (seed JSON no
+  longer hard-pins `testnet_expected_peers: 1` over Mesh3 env `2`).
+- `verify_testnet_mesh`: FAIL only when peer_count/height incomplete; soft-PASS
+  when peers+heights OK but sticky `mesh_healthy=false` / `state_consistent`.
+
+### Fix testnet Mesh3: always bring up validators + wait ready
+
+- `docker_testnet_mesh3.ps1` defaults to `-SkipBuild` (use `-Rebuild` for image).
+- `docker_testnet_seed.ps1`: `--env-file .env.testnet`, log validator up, wait
+  `/health/ready` on :19081/:19082 before exit 0 (no silent solo-only PASS).
+
 ### CI: clippy `manual_is_multiple_of` (abs_native)
 
 - Replace `len() % 2` / `i % N == 0` with `is_multiple_of` so `-D warnings`

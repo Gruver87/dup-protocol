@@ -82,7 +82,11 @@ if ($portState.State -eq "Conflict") {
 }
 $seedAlreadyRunning = ($portState.State -eq "AbsRunning")
 
-$composeArgs = @("-f", "docker-compose.testnet.yml", "-p", "abs-testnet")
+$composeArgs = @(
+    "-f", "docker-compose.testnet.yml",
+    "--env-file", ".env.testnet",
+    "-p", "abs-testnet"
+)
 if ($Mesh3) {
     $composeArgs += @("-f", "docker-compose.testnet.mesh3.yml", "--profile", "validators")
     $WithValidator = $true
@@ -104,8 +108,10 @@ if (-not $seedAlreadyRunning) {
 
     if ($WithValidator) {
         if ($Mesh3) {
+            Write-Host "Starting Mesh3 validators (:19081/:19082)..." -ForegroundColor Cyan
             Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("up", "-d", "testnet-seed", "testnet-validator", "testnet-validator-3"))
         } else {
+            Write-Host "Starting Mesh2 validator (:19081)..." -ForegroundColor Cyan
             Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("up", "-d", "testnet-validator"))
         }
     }
@@ -114,14 +120,18 @@ if (-not $seedAlreadyRunning) {
     if ($WithValidator) {
         if (-not $SkipBuild) {
             if ($Mesh3) {
+                Write-Host "Building validator images (Mesh3)..." -ForegroundColor Cyan
                 Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("build", "testnet-validator", "testnet-validator-3"))
             } else {
+                Write-Host "Building validator image..." -ForegroundColor Cyan
                 Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("build", "testnet-validator"))
             }
         }
         if ($Mesh3) {
+            Write-Host "Starting Mesh3 validators (:19081/:19082)..." -ForegroundColor Cyan
             Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("up", "-d", "testnet-validator", "testnet-validator-3"))
         } else {
+            Write-Host "Starting Mesh2 validator (:19081)..." -ForegroundColor Cyan
             Invoke-DockerCompose -ComposeArgs (@("compose") + $composeArgs + @("up", "-d", "testnet-validator"))
         }
     }
@@ -152,6 +162,30 @@ try {
 } catch {
     Write-Host "WARN: seed started but status check failed: $($_.Exception.Message)" -ForegroundColor Yellow
     exit 1
+}
+
+if ($WithValidator) {
+    $vPorts = @(if ($env:TESTNET_HTTP_PORT_2) { [int]$env:TESTNET_HTTP_PORT_2 } else { 19081 })
+    if ($Mesh3) {
+        $vPorts += if ($env:TESTNET_HTTP_PORT_3) { [int]$env:TESTNET_HTTP_PORT_3 } else { 19082 }
+    }
+    $deadline = (Get-Date).AddMinutes(3)
+    foreach ($vp in $vPorts) {
+        Write-Host "Waiting for validator http://127.0.0.1:$vp/health/ready ..."
+        $ok = $false
+        while ((Get-Date) -lt $deadline) {
+            try {
+                $r = Invoke-RestMethod -Uri "http://127.0.0.1:$vp/health/ready" -TimeoutSec 5
+                if ($r.status -eq "ready") { $ok = $true; break }
+            } catch { }
+            Start-Sleep -Seconds 3
+        }
+        if (-not $ok) {
+            Write-Host "FAIL: validator not ready on :$vp (check: docker compose -p abs-testnet ps)" -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "OK: validator ready on :$vp" -ForegroundColor Green
+    }
 }
 
 exit 0
