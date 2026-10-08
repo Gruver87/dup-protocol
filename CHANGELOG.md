@@ -10,6 +10,11 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Fix verify_industrial_waves 1.3.115 ready-listener needle
+
+- Needle matched obsolete `native TCP/TLS path uses _native_listener` string;
+  align with docstring + ADR 0020 `_libp2p_listening` (unblocks Quick).
+
 ### Soak VOID — host power-off (2026-10-08)
 
 - STRICT 48h libp2p kickoff `9dd3e7dd` / PID 944 **VOID**: ~4.09h log gap after laptop off;
