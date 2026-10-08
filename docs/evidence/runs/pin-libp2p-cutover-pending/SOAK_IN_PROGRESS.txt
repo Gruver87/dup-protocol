@@ -1,13 +1,8 @@
-﻿status: IN_PROGRESS — NOT a soak PASS
-started_at: 2026-10-07T23:40:58+02:00
-pid: 944
-tip: 9dd3e7dd00df18f046efb8e01459523dc378a090
-image: sha256:be576392c01f2ba22bebebef1e4e486b7106ae373ebbbd3dedf1be5265bfa908
-mode: STRICT 48h pin libp2p (IntervalSec=60, FullHarnessEvery=6)
-log: logs/soak_48h_libp2p_strict.log
-report: logs/soak_report_48h_libp2p_strict.json
-bar: hard_fails=0 mesh_warn=0 (soft peer_probe/harness_timeout WARN OK)
-claim: only after ~48h with report passed=true
-check: .\scripts\check_soak.ps1
-stop: .\scripts\stop_soak_monitors.ps1 -Force
-note: do not rebuild Docker / -KeepVolumes until soak ends; Sleep=Never on AC
+﻿status: STOPPED / VOID — NOT a soak PASS · NOT IN PROGRESS
+stopped_at: 2026-10-08T18:52+02:00
+reason: host power-off broke continuous STRICT window (log gap ~4.09h)
+see: SOAK_VOID_HOST_POWEROFF_2026-10-08.txt
+archive_log: logs/soak_48h_libp2p_strict_VOID_poweroff_2026-10-08.log
+prior_kickoff: 2026-10-07T23:40:58+02:00 tip 9dd3e7dd PID 944
+claim: forbidden until a fresh continuous 48h pack exists
+operator: soak NOT restarted (explicit)

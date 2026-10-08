@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Soak VOID — host power-off (2026-10-08)
+
+- STRICT 48h libp2p kickoff `9dd3e7dd` / PID 944 **VOID**: ~4.09h log gap after laptop off;
+  post-resume mesh FAIL. Monitors stopped; soak **not** restarted.
+- Archive: `logs/soak_48h_libp2p_strict_VOID_poweroff_2026-10-08.log` ·
+  `docs/evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`.
+- **Not PASS.**
+
 ### Soak prep READY (ADR 0020 libp2p) — soak NOT started
 
 - Disk freed for 48h bar; native + docker mesh rebuilt; image pin OK.

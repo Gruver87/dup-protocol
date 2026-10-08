@@ -1,0 +1,11 @@
+status: VOID — NOT a soak PASS · NOT continuous 48h evidence
+stopped_at: 2026-10-08T18:52:00+02:00
+reason: host/laptop powered off; soak_monitor resumed after wake but log has multi-hour gap
+prior_kickoff: 2026-10-07T23:40:58+02:00 tip 9dd3e7dd PID 944
+log_gap: 2026-10-08 14:41:30 -> 2026-10-08 18:46:51 (~4.09h no samples)
+post_resume: under_mesh/solo WARN + FAIL mesh misaligned delta=1 at 18:48:29
+fail_lines: >=1 (STRICT bar broken even without gap)
+archive_log: logs/soak_48h_libp2p_strict_VOID_poweroff_2026-10-08.log
+note: logs/soak_report_48h.json passed=true is HISTORICAL Jul-2026 (v1.2.84) — unrelated
+claim: forbidden
+operator: monitors stopped; soak NOT restarted (2026-10-08)

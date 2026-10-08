@@ -1,28 +1,30 @@
 ﻿# Pin libp2p industrial mesh — cutover evidence (`pin-libp2p-cutover-pending`)
 
 **Kind:** ADR 0020 cutover  
-**Status:** **Quick probe PASS packaged** · **48h soak PREP READY on HEAD** (see [`SOAK_PREP_READY_HEAD.md`](SOAK_PREP_READY_HEAD.md)) · soak **NOT started** · **NOT PASS**  
+**Status:** **Quick probe PASS packaged** · **48h STRICT attempt VOID** (host power-off 2026-10-08 — see [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](SOAK_VOID_HOST_POWEROFF_2026-10-08.txt)) · soak **STOPPED** · **NOT PASS**  
 **Chain:** prod-profile `778888` · rust-libp2p (`feature_libp2p=true`, `p2p_tls_enabled=false`)
 
 ## Honesty
 
-- Quick mesh probe (`probe_prod_mesh.ps1 -Quick`) → **RESULT: OK**
+- Quick mesh probe (`probe_prod_mesh.ps1 -Quick`) → **RESULT: OK** (prep wave)
 - `industrial_gate.py` → **OK** (external-audit warnings expected)
-- **48h prep READY** on working tip (disk, image pin, libp2p preflight, catchup, miner harness ×5, midsoak honesty, sprout labs, Strict 1m `hard_fails=0`, STRICT preflight-only)
+- Kickoff 2026-10-07 23:40 tip `9dd3e7dd` PID 944 — **VOID**: log gap ~4.09h after laptop power-off; post-resume mesh FAIL/misalign
+- Archive: `logs/soak_48h_libp2p_strict_VOID_poweroff_2026-10-08.log` — **do not cite as PASS**
 - Premature restart 2026-10-05 21:11 was **stopped** (`SOAK_STOPPED_PREMATURE.txt`) — not PASS
 - **NOT** public mainnet · **NOT** external audit
 - Do **not** cite Experimental libp2p soaks as pin evidence
 - Freeze tag `v1.3.1339-tip-v2-industrial` / TCP+TLS tip-v2 packs remain **historical**
 
-## Operator: start when ready
+## Operator: fresh start later (not auto)
 
 ```powershell
 cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
-# Sleep=Never on AC. Do NOT rebuild Docker until 48h ends.
+# Sleep=Never on AC for full 48h. Do NOT rebuild Docker until soak ends.
+.\scripts\prepare_48h_soak.ps1
 .\scripts\start_soak_prod_mesh_48h_strict.ps1 -SkipRebuild
 ```
 
-Only claim PASS when report has `passed=true` and `hard_fails=0` (STRICT: `mesh_warn=0`).
+Only claim PASS when report has `passed=true` and `hard_fails=0` (STRICT: `mesh_warn=0`) on a **continuous** run.
 
 **Suggested release tag (after soak PASS + commit):** `v1.3.1340-libp2p-industrial-mesh`
 
