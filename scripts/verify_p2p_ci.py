@@ -31,6 +31,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 from crypto import native
+from runtime.harness_honesty import harness_smoke_ok
 from runtime.mainnet_constants import MAINNET_V1_CHAIN_ID
 
 
@@ -2063,23 +2064,13 @@ def verify_state_consistency(urls: list[str], status: dict) -> int:
                 print(f"FAIL: node{i} harness: {exc}")
                 return False, [], [f"node{i}"]
             roots.append(str(h.get("live_state_root") or "").lower())
-            if not h.get("harness_healthy"):
+            # Soft-PASS only with peer-match wire evidence (not soft-set alone).
+            if not harness_smoke_ok(h):
                 all_ok = False
                 failed = h.get("failed_checks") or []
                 failed_nodes.append(f"node{i}:{','.join(failed)}")
         roots_match = bool(roots[0] and all(r == roots[0] for r in roots))
         mesh_ok = all_ok and roots_match
-        if not mesh_ok and roots_match and failed_nodes:
-            # Roots agree across nodes: tolerate tip-metadata drift, short wire-probe
-            # flaps, and sticky p2p_state_consistent lag (sync_state may still be catching up).
-            soft = {"tip_state_aligned", "peer_probe_ok", "p2p_state_consistent"}
-            tip_only = all(
-                {x.strip() for x in item.split(":", 1)[-1].split(",") if x.strip()}
-                <= soft
-                for item in failed_nodes
-            )
-            if tip_only:
-                mesh_ok = True
         return mesh_ok, roots, failed_nodes
 
     ok, roots, failed = _run_harness()
@@ -3035,15 +3026,9 @@ def verify_prod_post_checks(url: str, *mesh_urls: str) -> int:
     except Exception as exc:
         errors.append(f"features: {exc}")
 
-    # Align with verify_state_consistency soft set: wire-probe flaps and sticky
-    # p2p_state_consistent lag are tolerated when mesh roots already match.
-    _soft_harness = {"tip_state_aligned", "peer_probe_ok", "p2p_state_consistent"}
-
+    # Soft-PASS only with peer-match wire evidence (runtime.harness_honesty).
     def _harness_ok(h: dict) -> bool:
-        if h.get("harness_healthy", True):
-            return True
-        failed = set(h.get("failed_checks") or [])
-        return failed <= _soft_harness
+        return harness_smoke_ok(h)
 
     def _collect_mesh_harness() -> tuple[list[str], list[str], list[str]]:
         harness_errors: list[str] = []

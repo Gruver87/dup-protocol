@@ -78,5 +78,8 @@ python scripts/external_audit_tracker.py --list
 
 - PASS on verify / industrial_gate ≠ public mainnet  
 - tip-v2 soak PASS is **TCP+TLS freeze-tag** evidence, not current-HEAD libp2p soak  
+- Harness soft-PASS requires peer-match wire evidence (`runtime/harness_honesty.py`); sticky `_state_consistent` lag alone does not greenwash  
+- `/health/ready` still fail-closed on the live P2P flag when peers are present  
+
 - Experimental packs (`3c801b87`, Long-Range, Exp EVM STRICT) are **not** pin industrial evidence  
 - Bridge stays OFF on live mesh without audited L1 cutover  

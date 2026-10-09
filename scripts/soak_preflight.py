@@ -14,6 +14,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from runtime.harness_honesty import harness_smoke_ok
+
 PROD_MESH_URLS = (
     "http://127.0.0.1:18180",
     "http://127.0.0.1:18181",
@@ -218,12 +220,7 @@ def run_soak_preflight(
         if sec_rc != 0:
             errors.append("verify_p2p_security_mesh failed (see stdout above)")
 
-    # Same soft set as verify_p2p_ci mesh harness: tip/wire/state lag is not a
-    # hard soak blocker when heights + peers already agree across the mesh.
-    _SOFT_HARNESS = frozenset(
-        {"tip_state_aligned", "peer_probe_ok", "p2p_state_consistent"}
-    )
-
+    # Soft-PASS only with peer-match wire evidence (runtime.harness_honesty).
     harness_urls = list(reachable) if require_wire_probe else reachable[:1]
     for url in harness_urls:
         attempts = 3 if require_wire_probe else 1
@@ -254,15 +251,13 @@ def run_soak_preflight(
             errors.append(f"harness {url}: {last_exc}")
             continue
         failed = list(harness.get("failed_checks") or [])
-        if not harness.get("harness_healthy"):
-            hard = failed if require_wire_probe else [f for f in failed if f not in _SOFT_HARNESS]
-            if hard:
-                errors.append(f"harness {url}: {failed}")
-            else:
-                warnings.append(
-                    f"harness soft fails (tolerated): {failed} "
-                    "(tip/wire/state lag under tip-v2 forge load)"
-                )
+        if not harness_smoke_ok(harness):
+            errors.append(f"harness {url}: {failed}")
+        elif not harness.get("harness_healthy"):
+            warnings.append(
+                f"harness soft fails (tolerated): {failed} "
+                "(peer-match wire evidence; tip/wire/state lag)"
+            )
         elif require_wire_probe and harness.get("peer_probe_error"):
             # Full harness + still-healthy: leftover timeout field is a WARN, not
             # a prepare hard fail (48h scores harness flake as WARN).

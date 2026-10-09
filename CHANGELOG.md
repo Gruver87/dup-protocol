@@ -10,6 +10,15 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Security honesty harden wave 2 (no soak)
+
+- Shared `runtime/harness_honesty.harness_smoke_ok`: peered soft-PASS requires
+  peer `match=true` + live root (used by prod_smoke, verify_testnet_mesh,
+  verify_prod_mesh_probe, verify_p2p_ci, soak_preflight).
+- Harness JSON exposes `p2p_flag_consistent` + `wire_consistent` (sticky lag
+  split; `/health/ready` still gates on the live flag).
+- Gate needles for the shared import + honesty fields.
+
 ### Security honesty harden (no soak)
 
 - `verify_testnet_mesh`: soft-PASS only when `state_consistent=true`;

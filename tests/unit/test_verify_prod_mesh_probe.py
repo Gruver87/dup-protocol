@@ -40,7 +40,14 @@ def test_aligned_mesh_ok_with_mocks():
     mod = _load()
     ready = {"status": "ready"}
     status = {"chain_id": 778888, "height": 10, "peers": 2, "deployment_mode": "prod", "head_hash": "0xabc"}
-    harness = {"harness_healthy": True, "tip_state_aligned": True, "live_state_root": "0xroot"}
+    harness = {
+        "harness_healthy": True,
+        "tip_state_aligned": True,
+        "live_state_root": "0xroot",
+        "p2p_flag_consistent": True,
+        "wire_consistent": True,
+        "peers": [{"match": True}, {"match": True}],
+    }
     topo = {"topology_healthy": True, "peer_count": 2}
 
     def fake_api(url, timeout=10.0):
@@ -56,6 +63,43 @@ def test_aligned_mesh_ok_with_mocks():
         errors, _warnings, meta = mod.verify_prod_mesh_probe(wait_sec=0)
     assert errors == []
     assert meta["reachable"] == 3
+
+
+def test_prod_mesh_probe_fails_soft_flags_without_peer_match():
+    """Sticky soft flags without peer match must not greenwash prod mesh."""
+    mod = _load()
+    ready = {"status": "ready"}
+    status = {
+        "chain_id": 778888,
+        "height": 10,
+        "peers": 2,
+        "deployment_mode": "prod",
+        "head_hash": "0xabc",
+    }
+    harness = {
+        "harness_healthy": False,
+        "tip_state_aligned": True,
+        "live_state_root": "0xroot",
+        "failed_checks": ["p2p_state_consistent"],
+        "peers": [{"match": False}],
+        "p2p_flag_consistent": False,
+        "wire_consistent": False,
+    }
+    topo = {"topology_healthy": True, "peer_count": 2}
+
+    def fake_api(url, timeout=10.0):
+        if "/health/ready" in url:
+            return ready
+        if "/status" in url:
+            return status
+        if "/p2p/topology" in url:
+            return topo
+        return harness
+
+    with patch.object(mod, "_api", side_effect=fake_api), patch.object(mod, "_probe_ready", return_value=True):
+        errors, _warnings, meta = mod.verify_prod_mesh_probe(wait_sec=0)
+    assert meta["reachable"] == 3
+    assert any("harness unhealthy" in e for e in errors)
 
 
 def test_head_mismatch_retries_then_ok():

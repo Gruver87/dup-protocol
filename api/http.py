@@ -9768,6 +9768,9 @@ def _build_state_consistency_harness(
         },
         {
             "id": "p2p_state_consistent",
+            # Sticky flag lag: wire roots already match → check ok (ready still
+            # gates on the live flag). Auditors: see p2p_flag_consistent /
+            # wire_consistent top-level fields for the split.
             "ok": bool(state_consistent) or wire_consistent,
             "detail": (
                 "P2P wire state consistency flag"
@@ -9857,6 +9860,9 @@ def _build_state_consistency_harness(
         "harness_healthy": harness_healthy,
         "canonical_state_root_source": "blockchain.database",
         "failed_checks": [c["id"] for c in checks if not c["ok"]],
+        # Honesty split: flag vs live wire (sticky lag can diverge briefly).
+        "p2p_flag_consistent": bool(state_consistent),
+        "wire_consistent": bool(wire_consistent),
         "policy": policy,
         "monitor_quick": quick,
         "peer_timeout_sec": peer_timeout,

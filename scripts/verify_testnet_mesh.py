@@ -13,6 +13,11 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from runtime.harness_honesty import harness_smoke_ok as _harness_smoke_ok
+
 DEFAULT_SEED = "http://127.0.0.1:19080"
 DEFAULT_MESH2 = ("http://127.0.0.1:19081",)
 DEFAULT_MESH3 = (
@@ -33,26 +38,6 @@ def _probe_health(base_url: str, timeout: float = 5.0) -> bool:
         return str(row.get("status", "")).lower() == "ready"
     except (urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError):
         return False
-
-
-def _harness_smoke_ok(harness: dict[str, Any]) -> bool:
-    """Soft-pass solo / soft P2P lag — same honesty as ``prod_smoke._harness_smoke_ok``."""
-    if harness.get("harness_healthy", True):
-        return True
-    failed = set(harness.get("failed_checks") or [])
-    soft = {"tip_state_aligned", "p2p_state_consistent", "peer_probe_ok"}
-    if not failed <= soft:
-        return False
-    peers = harness.get("peers") or []
-    live = str(harness.get("live_state_root") or "").strip().lower()
-    if peers and live and all(p.get("match") is True for p in peers):
-        return True
-    if not peers and failed <= {"p2p_state_consistent"}:
-        return True
-    if failed <= {"peer_probe_ok"} and harness.get("tip_state_aligned"):
-        if harness.get("peer_probe_error") == "timeout":
-            return True
-    return False
 
 
 def verify_testnet_mesh(

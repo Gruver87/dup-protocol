@@ -15,6 +15,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from runtime.harness_honesty import harness_smoke_ok
 from runtime.mainnet_constants import MAINNET_V1_CHAIN_ID
 
 DEFAULT_NODES = (
@@ -121,8 +122,17 @@ def verify_prod_mesh_probe(
                 row["harness_healthy"] = bool(harness.get("harness_healthy"))
                 row["tip_state_aligned"] = bool(harness.get("tip_state_aligned"))
                 row["state_root"] = harness.get("live_state_root")
-                if not row["harness_healthy"]:
-                    errors.append(f"{role} harness unhealthy")
+                row["p2p_flag_consistent"] = harness.get("p2p_flag_consistent")
+                row["wire_consistent"] = harness.get("wire_consistent")
+                row["harness_smoke_ok"] = harness_smoke_ok(harness)
+                if not row["harness_smoke_ok"]:
+                    failed = harness.get("failed_checks") or []
+                    errors.append(f"{role} harness unhealthy failed={failed}")
+                elif not row["harness_healthy"]:
+                    warnings.append(
+                        f"{role} harness soft-PASS "
+                        f"(peer-match wire evidence; failed={harness.get('failed_checks') or []})"
+                    )
                 if not row["tip_state_aligned"]:
                     errors.append(f"{role} tip_state not aligned")
             except (urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:

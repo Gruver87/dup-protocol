@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from runtime.mainnet_constants import MAINNET_V1_CHAIN_ID
+from runtime.harness_honesty import harness_smoke_ok as _harness_smoke_ok
 
 
 def _post_json(url: str, payload: Dict[str, Any] | None = None, timeout: float = 120.0) -> Tuple[int, Any]:
@@ -29,30 +30,6 @@ def _post_json(url: str, payload: Dict[str, Any] | None = None, timeout: float =
             return resp.status, json.loads(raw)
         except json.JSONDecodeError:
             return resp.status, raw
-
-
-def _harness_smoke_ok(harness: Dict[str, Any]) -> bool:
-    """Soft-pass mesh lag / solo-node P2P N/A — never invent peer alignment."""
-    if harness.get("harness_healthy", True):
-        return True
-    failed = set(harness.get("failed_checks") or [])
-    # Align with verify_p2p_ci soft set when roots/tip already honest.
-    soft = {"tip_state_aligned", "p2p_state_consistent", "peer_probe_ok"}
-    if not failed <= soft:
-        return False
-    peers = harness.get("peers") or []
-    live = str(harness.get("live_state_root") or "").strip().lower()
-    # Peered mesh: tolerate soft flags when every peer root already matches.
-    if peers and live and all(p.get("match") is True for p in peers):
-        return True
-    # Solo node (no peers): P2P consistency is N/A — not a mesh claim.
-    if not peers and failed <= {"p2p_state_consistent"}:
-        return True
-    # Wire-probe timeout with tip already aligned (same honesty as harness ?quick=1).
-    if failed <= {"peer_probe_ok"} and harness.get("tip_state_aligned"):
-        if harness.get("peer_probe_error") == "timeout":
-            return True
-    return False
 
 
 def _fetch(url: str, timeout: float = 8.0) -> Tuple[int, Any]:

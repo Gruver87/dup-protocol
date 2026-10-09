@@ -324,6 +324,27 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
             "verify_p2p_tls_mesh ADR 0020 N/A path must set ready=False "
             "(N/A ≠ TLS ready)"
         )
+    # Shared harness soft-PASS: peer-match invariant (no soft-set-only greenwash).
+    hh = (ROOT / "runtime" / "harness_honesty.py").read_text(encoding="utf-8")
+    if "def harness_smoke_ok" not in hh or 'all(p.get("match") is True' not in hh:
+        errors.append(
+            "runtime/harness_honesty.py must define harness_smoke_ok with peer match"
+        )
+    for rel, needle in (
+        ("scripts/prod_smoke.py", "from runtime.harness_honesty import"),
+        ("scripts/verify_testnet_mesh.py", "from runtime.harness_honesty import"),
+        ("scripts/verify_prod_mesh_probe.py", "from runtime.harness_honesty import"),
+        ("scripts/verify_p2p_ci.py", "from runtime.harness_honesty import"),
+        ("scripts/soak_preflight.py", "from runtime.harness_honesty import"),
+    ):
+        txt = (ROOT / rel).read_text(encoding="utf-8")
+        if needle not in txt:
+            errors.append(f"{rel} must import runtime.harness_honesty")
+    http_harness = (ROOT / "api" / "http.py").read_text(encoding="utf-8")
+    if '"p2p_flag_consistent"' not in http_harness or '"wire_consistent"' not in http_harness:
+        errors.append(
+            "consistency harness must expose p2p_flag_consistent + wire_consistent"
+        )
     ss_py = (ROOT / "core" / "components" / "state_service.py").read_text(encoding="utf-8")
     reward_chunk = ss_py.split("def apply_block_reward")[1].split("def compute_state_root")[0]
     if "self._total_supply_satoshi()" not in reward_chunk:
