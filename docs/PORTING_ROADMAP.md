@@ -136,7 +136,7 @@ Goal: move deterministic, CPU-bound, and consensus-critical code to **Rust/PyO3*
 - [x] Production stack gate: `scripts/verify_prod_stack.py`
 - [x] Live prod smoke: `scripts/prod_smoke.py`
 - [x] Release gate: `scripts/release_gate.ps1`
-- [x] Multi-node P2P smoke: `scripts/multi_node_smoke.ps1` / `.sh`
+- [x] Multi-node P2P smoke: `python scripts/verify_p2p_ci.py --mode auto`
 - [x] Docker prod: node + relayer sidecar
 - [x] Grafana panels for native crypto / bridge / L1 RPC metrics
 

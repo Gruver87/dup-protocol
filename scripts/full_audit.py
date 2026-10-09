@@ -98,7 +98,7 @@ def _run_subprocess(
         print(f"  [FAIL] {name}: timeout after {timeout}s")
         if "P2P" in name:
             print("  Hint: .\\scripts\\stop_node.ps1  then  .\\scripts\\start_two_nodes.ps1 -Fresh")
-            print("  Or increase wait: .\\scripts\\test_full_project.ps1 -Live -P2P -P2PWait 600")
+            print("  Or increase wait: .\\scripts\\test_blockchain_full.ps1 -Live -P2P -P2PWait 600")
     except Exception as exc:
         res.ok = False
         res.critical = 1

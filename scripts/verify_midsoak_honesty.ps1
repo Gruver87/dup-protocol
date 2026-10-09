@@ -198,5 +198,5 @@ Write-Host "Shortcuts:" -ForegroundColor DarkGray
 Write-Host "  .\scripts\verify_midsoak_honesty.ps1 -Quick" -ForegroundColor DarkGray
 Write-Host "  .\scripts\verify_midsoak_honesty.ps1 -WithSoakStatus" -ForegroundColor DarkGray
 Write-Host "  .\scripts\verify_midsoak_honesty.ps1 -All" -ForegroundColor DarkGray
-Write-Host "  .\scripts\verify_audit_remediation_2026_10_02.ps1 -Quick" -ForegroundColor DarkGray
+Write-Host "  .\scripts\verify_security_honesty.ps1" -ForegroundColor DarkGray
 exit 0

@@ -56,7 +56,7 @@ if ($Help) {
     Write-Host "  .\scripts\verify_full_blockchain.ps1   (deep scan, still no soak)"
     Write-Host ""
     Write-Host "  Does NOT start 48h soak. Does NOT rebuild Docker."
-    Write-Host "  OK != public mainnet. Pin libp2p 48h soak is deferred until operator orders it."
+    Write-Host "  OK != public mainnet. Pin libp2p 48h soak is VOID (2026-10-08 · not PASS)."
     Write-Host "  Exit: 0 OK, 1 FAIL, 2 mesh required but unreachable"
     Write-Host ""
     exit 0

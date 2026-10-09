@@ -83,8 +83,8 @@ Preflight (static or live):
 ### 48h soak
 
 - **ADR 0020 libp2p mesh (default):** `.\scripts\prepare_48h_soak.ps1` with
-  `--require-libp2p` (see soak prep scripts). Pin libp2p soak not claimed until
-  packaged.
+  `--require-libp2p` (see soak prep scripts). Pin libp2p 48h soak is **VOID**
+  (2026-10-08 · not PASS · not restarted); Quick probe PASS is packaged.
 - **TCP+TLS alternate:** `.\scripts\prepare_48h_soak.ps1 -RequireP2pTls` on the
   p2ptls profile only.
 

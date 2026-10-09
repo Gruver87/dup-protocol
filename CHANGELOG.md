@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Root cruft wave 7 + script honesty VOID (no soak)
+
+- Delete orphan wrappers: `test_full_project.ps1`, `full_audit.ps1`,
+  `multi_node_smoke.ps1`, `verify_endpoints.ps1`,
+  `verify_audit_remediation_2026_10_02.ps1`.
+- `check_blockchain.py` / `run_all_tests.ps1` / P2P_TLS / CHANGELOG ADR0020
+  section: soak **deferred/IN PROGRESS → VOID** (2026-10-08).
+
 ### Root cruft wave 6 + VOID residual sync (no soak)
 
 - Docs: MAINNET_GAP, THREAT_MODEL, FUND_DEMO opener, ADR 0019/0020,
@@ -524,12 +532,12 @@ Canonical language for this repository is **English**. Older entries below may s
 - **Outbound send-queue split + class rate limits:** `_send_ctrl_q` / `_send_root_q` / `_next_outbound` (state_root → ctrl → gossip); `_class_rate_ok` for attest/tx/block announce quotas; soft-refuse `rate_limit_class_exceeded`. Config keys `p2p_attest_messages_per_sec` / `p2p_tx_messages_per_sec` / `p2p_block_announce_messages_per_sec`. Units `test_p2p_send_queue_split.py`, `test_p2p_class_rate.py`.
 - **ADR 0021 diligence surface:** `test_mempool_port.py`, industrial_gate mempool_store needles, `verify_global_rd_audit.ps1` (Host). `verify_adr0021_phase1.py --skip-mesh` PASS.
 - **EVM depth labs (host):** ported `evm_*_lab.py` + `EVM_COMPAT_MATRIX.md` + `verify_evm_depth_lab.ps1`; block RPC passes `query=` for logsBloom reconstruction; missing `extraData` stays null (no invent `0x`). **RESULT: PASS** host verify (`--skip-mesh`). **Not** EVM 48h / not mesh probe this wave.
-- **Honesty:** 48h libp2p soak deferred by operator — do not claim soak PASS.
+- **Honesty:** 48h libp2p soak later **VOID** (2026-10-08) — do not claim soak PASS.
 
 ### ADR 0020 — libp2p industrial mesh cutover (pin)
 
 - **Transport (2026-10-05+):** prod 3-node mesh (`778888`) defaults to **rust-libp2p** — `docker/node.prod.mesh{1,2,3}.json` set `feature_libp2p=true`, `p2p_tls_enabled=false`; mutually exclusive with TCP+TLS (`feature_libp2p=false`). Single-node / ceremony profile `docker/node.prod.json` keeps TCP+TLS alternate. Boot fail-closed if native libp2p unavailable. **Not** public mainnet.
-- **Evidence honesty:** freeze tag `v1.3.1339-tip-v2-industrial` + `docs/evidence/runs/375d14f/` remain **TCP+TLS tip-v2** proof — sealed packs unchanged. Post-cutover **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/` (`industrial_gate` OK). **48h libp2p soak IN PROGRESS** (`logs/soak_48h_libp2p_industrial.log` — claim PASS only with `hard_fails=0`). Do **not** cite Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`, `0a7932c4`) as pin transport evidence. Long-Range stays **off**.
+- **Evidence honesty:** freeze tag `v1.3.1339-tip-v2-industrial` + `docs/evidence/runs/375d14f/` remain **TCP+TLS tip-v2** proof — sealed packs unchanged. Post-cutover **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/` (`industrial_gate` OK). **48h libp2p soak VOID** (host power-off 2026-10-08 — not PASS · not restarted). Do **not** cite Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`, `0a7932c4`) as pin transport evidence. Long-Range stays **off**.
 - **Suggested operator tag after soak PASS:** `v1.3.1340-libp2p-industrial-mesh` (document only — **no tag** until repo clean + soak pack).
 - **Docs:** [docs/CHANGELOG.md](docs/CHANGELOG.md) · [ADR 0020](docs/adr/0020-libp2p-industrial-mesh.md) · EVIDENCE_MATRIX / MAINNET_GAP / audit pack honesty sync.
 
@@ -560,7 +568,7 @@ Canonical language for this repository is **English**. Older entries below may s
 - **Docs (2026-10-02):** NOTICE + `docs/IP_AND_ATTRIBUTION.md`; LICENSE/CITATION/README = D.U.P. / DUP Labs attribution. **Not** unstealable source.
 - **Docs (2026-10-02):** Belarus TM prep [`docs/TRADEMARK_FILING_PREP_BY.md`](docs/TRADEMARK_FILING_PREP_BY.md) — НЦИС checklist **DUP PROTOCOL** / **DUP LABS** (9+42). Prep only; not filed / not legal advice.
 - **P1 (2026-10-02):** Hybrid/Rocks satoshi refuse float fallback; `/epoch/current` null without manager; bridge prefers `amount_satoshi` + no invented `enabled=True`. **Not** soak.
-- **P1 (2026-10-02):** validator manifest prefers `stake_satoshi`; WS `burned_satoshi`/`value_satoshi` twins. Verify: `.\scripts\verify_audit_remediation_2026_10_02.ps1 -Quick`. **Not** soak.
+- **P1 (2026-10-02):** validator manifest prefers `stake_satoshi`; WS `burned_satoshi`/`value_satoshi` twins. Verify: `.\scripts\verify_security_honesty.ps1` / unit slice. **Not** soak.
 - **P1 (2026-10-02):** `mainnet_readiness` prefers `data/ceremony_deploy.json` pin when ceremony_dir auto-detected (stale shell `GENESIS_CEREMONY_HASH` no longer flaps industrial_gate). **Not** soak.
 - **P1 (2026-10-02):** Decimal `to_satoshi` for canonical serializer / native Python canonicalize / EVM writeback floats; Rust `canonicalize_value` uses `to_satoshi_inner`; bridge inbound prefers `amount_satoshi` (prod refuses float-only). **Not** soak / native rebuild not applied to running mesh.
 - **P1 (2026-10-02):** Wave N + RPC honesty — PoS stake integer satoshi; finality empty-set no invented denom; `eth_getBalance` via satoshi×wei; `eth_call`/`estimateGas` fail-closed (no painted `0x`/`21000`); `eth_gasPrice` null unless `advertise_config_gas_price`; feeHistory no stub 0.5 ratios. Units: `tests/unit/test_wave_n_rpc_honesty.py`. **Not** soak.

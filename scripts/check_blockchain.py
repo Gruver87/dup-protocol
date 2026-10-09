@@ -133,7 +133,7 @@ def soak_honesty() -> dict[str, Any]:
         "note": (
             "48h PASS requires this tree's soak_report with passed=true and "
             "hard_fails=0. Do not cite Experimental soaks as pin evidence. "
-            "Pin libp2p 48h soak is still deferred until operator orders it."
+            "Pin libp2p 48h soak is VOID (2026-10-08 · not PASS · not restarted)."
         ),
     }
 

@@ -91,4 +91,4 @@ docker compose -f docker-compose.observability.yml up -d
 - [x] Live prod smoke gate (`scripts/prod_smoke.py`)
 - [x] One-shot full test entry: `scripts/test_all.ps1` / `test_all.sh`
 - [x] Production stack gate: `scripts/verify_prod_stack.py`
-- [x] Multi-node P2P smoke: `scripts/multi_node_smoke.ps1`
+- [x] Multi-node P2P smoke: `python scripts/verify_p2p_ci.py --mode auto`
