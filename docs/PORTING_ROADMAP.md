@@ -1247,7 +1247,7 @@ Goal: move deterministic, CPU-bound, and consensus-critical code to **Rust/PyO3*
 
 1. Python tests + golden vectors first.
 2. Rust implementation with identical behavior + PyO3 export.
-3. CI: build wheel + targeted pytest in `check_hybrid_full`.
+3. CI: build wheel + targeted pytest in `test_blockchain_full` / `verify_project`.
 4. Enable in prod via `require_native_crypto: true`.
 5. Monitor `/metrics` native crypto gauges.
 

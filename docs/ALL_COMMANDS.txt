@@ -122,7 +122,7 @@
 cd C:\Users\vovun\Desktop\Absolute_Blockchain_Experimental
 pip install -r requirements.txt
 .\scripts\build_native.ps1
-.\scripts\init_env.ps1
+Copy-Item .env.example .env
 # notepad .env  →  python scripts/apply_local_secrets.py
 
 # Поднять 3-node prod mesh + проверить (см. Часть 30 — обязательный порядок)
@@ -142,7 +142,7 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 # =============================================================================
 
 pip install -r requirements.txt
-.\scripts\init_env.ps1
+Copy-Item .env.example .env
 notepad .env
 python scripts/apply_local_secrets.py
 

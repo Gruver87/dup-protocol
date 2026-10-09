@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Root cruft wave 10 + matrix VOID sync (no soak)
+
+- Delete `check_hybrid_full.{ps1,sh}`, `create_release.ps1`, `init_env.ps1`,
+  `generate_rpc_key.py` (keep `verify_dup_both.ps1` — README dual-repo entry).
+- Retarget ARCHITECTURE / RELEASE_CHECKLIST / PORTING_ROADMAP /
+  ALL_COMMANDS to `test_blockchain_full` / `.env.example`.
+- EVIDENCE_MATRIX merge-wave rows: soak deferred → VOID timeline note.
+
 ### Root cruft wave 9 + engagement VOID test (no soak)
 
 - Delete thin wrappers: `multi_node_smoke.sh`, `quick_restore.ps1`,

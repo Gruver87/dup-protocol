@@ -323,7 +323,7 @@ Backup: `scripts/backup_chainstore.ps1 -DockerMesh1` · DR: `scripts/dr_restore_
 | CI pytest + native build | `.github/workflows/test.yml` |
 | Docker prod image | `.github/workflows/docker-prod-image.yml` |
 | Dependency audit | `.github/workflows/security-audit.yml` |
-| Local full gate | `scripts/check_hybrid_full.ps1` |
+| Local full gate | `scripts/test_blockchain_full.ps1` / `scripts/verify_project.ps1` |
 | Industrial / needle honesty | `scripts/industrial_gate.py` |
 | Prod profile enforcement | `scripts/prod_gate.py` |
 | State consistency | `GET /chain/consistency/harness` |
