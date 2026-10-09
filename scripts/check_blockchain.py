@@ -215,7 +215,7 @@ def main() -> int:
 
     if not args.skip_gate:
         _banner("3) industrial_gate")
-        # Do NOT pass --min-soak-hours: pin libp2p 48h soak is deferred / not PASS.
+        # Do NOT pass --min-soak-hours: pin libp2p 48h soak is VOID / not PASS.
         rc = _run([py, "scripts/industrial_gate.py"])
         steps.append({"name": "industrial_gate", "rc": rc})
         if rc != 0:
@@ -253,7 +253,7 @@ def main() -> int:
             "PASS is not public mainnet",
             "this script does not start soak",
             "this script does not rebuild Docker",
-            "industrial_gate is not --min-soak-hours 48 (pin libp2p soak deferred)",
+            "industrial_gate is not --min-soak-hours 48 (pin libp2p soak VOID)",
         ],
         "rerun": [
             "python scripts/check_blockchain.py",
