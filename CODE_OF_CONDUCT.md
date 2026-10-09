@@ -2,7 +2,10 @@
 
 ## Our pledge
 
-We build Absolute Blockchain as an **evidence-first** open-source project. Contributors and visitors are expected to keep discussions technical, respectful, and honest about what is proven vs not proven.
+We build **DUP Protocol** (DUP Labs; formerly Absolute Blockchain) as an
+**evidence-first** open-source project. Contributors and visitors are expected
+to keep discussions technical, respectful, and honest about what is proven vs
+not proven.
 
 ## Standards
 
@@ -13,8 +16,8 @@ We build Absolute Blockchain as an **evidence-first** open-source project. Contr
 
 ## Enforcement
 
-Report abusive behavior to the repository owner via GitHub or the contact listed in [SECURITY.md](../SECURITY.md). Maintainers may close issues/PRs that violate this code or the honesty rules in the README.
+Report abusive behavior to the repository owner via GitHub or the contact listed in [SECURITY.md](SECURITY.md). Maintainers may close issues/PRs that violate this code or the honesty rules in the README.
 
 ## Attribution
 
-Adapted for Absolute Blockchain Ultimate Hybrid (MIT). Inspired by the Contributor Covenant spirit, kept short on purpose.
+Adapted for DUP Protocol / DUP Labs (MIT). Inspired by the Contributor Covenant spirit, kept short on purpose.

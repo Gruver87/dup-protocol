@@ -58,17 +58,19 @@ python scripts/external_audit_tracker.py --list
 
 ---
 
-## Cruft removed / quarantined this wave
+## Cruft removed / quarantined
 
 | Action | Why |
 |--------|-----|
-| Deleted nested `nft_images/nft_images/` | Duplicate demo art tree |
-| Deleted empty `services/`, `db/`, `node/` packages | Zero importers |
-| Renamed `SOAK_IN_PROGRESS.txt` → `SOAK_STOPPED_VOID.txt` | Filename was dishonest |
-| `RELEASE_NOTES_v*.md` stay at repo root | `verify_industrial_waves` / gate needles — marked historical in [releases/README.md](releases/README.md) |
-| `docker-compose.ha.yml` | Deprecated header — superseded by prod 3-node |
+| Nested `nft_images/nft_images/`, empty `services`/`db`/`node` | Duplicate / husks (wave 1) |
+| `SOAK_IN_PROGRESS.txt` → `SOAK_STOPPED_VOID.txt` | Dishonest filename |
+| Root marketing `linkedin_*` / `twitter_*` / `social_*` / HTML explorers / `nft_core.py` / obsolete `init_git`/`build_docker` / `ARCHITECTURE_AUDIT.md` | Noise, not industrial evidence (wave 2) |
+| `docker-compose.yml` / `.ha.yml` / `.observability.yml` | DEPRECATED / OPTIONAL LAB headers |
+| `docs/evidence/runs/latest/README.md` | Pointer-only honesty (not HEAD soak) |
+| Brand pass: DISCLAIMER, CoC, IR/DR, ADR README, RELEASING, PR template | DUP Labs current; Absolute = formerly |
+| `RELEASE_NOTES_v*.md` stay at repo root | Gate needles — see [releases/README.md](releases/README.md) |
 
-**Do not touch:** sealed packs under `docs/evidence/runs/375d14f/`, phase packs, cutover VOID artifacts.
+**Do not touch:** sealed packs under `docs/evidence/runs/375d14f/`, phase packs, cutover VOID artifacts. Prometheus alert *names* `Absolute*` (gate needles).
 
 ---
 

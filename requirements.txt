@@ -1,4 +1,4 @@
-﻿# Absolute Blockchain Node — dependencies (aggregator).
+﻿# DUP Protocol industrial pin — dependencies (aggregator).
 # Runtime (prod image): requirements-runtime.txt (+ requirements-runtime.lock)
 # Dev/CI tests:       requirements-dev.txt
 

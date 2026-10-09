@@ -1,7 +1,7 @@
-# Absolute Blockchain — Disaster Recovery Runbooks
+# DUP Protocol — Disaster Recovery Runbooks
 
 **Audience:** SRE / DevOps / validator operators  
-**Scope:** Absolute Hybrid node (`rocksdb` prod profile, chain id `778888` mainnet-v1 prep)  
+**Scope:** DUP Protocol industrial pin (`rocksdb` prod profile, chain id `778888` mainnet-v1 prep; formerly Absolute Hybrid)  
 **Honesty:** This is an **operations** document for a production-*profile* codebase. It is **not** a claim of a launched public mainnet or a completed external security audit.  
 **Related:** [ADR 0014](adr/0014-graceful-shutdown-deep-health.md) · [ADR 0015](adr/0015-observability-secret-management.md) · [STORAGE_ROCKSDB.md](STORAGE_ROCKSDB.md) · [AUDITS.md](AUDITS.md) · [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) · [SECURITY.md](../SECURITY.md)
 

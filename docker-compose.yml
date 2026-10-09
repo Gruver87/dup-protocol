@@ -1,5 +1,9 @@
 ﻿version: '3.8'
 
+# DEPRECATED (2026-10-09) — legacy root 3-node sketch.
+# Maintained paths: docker-compose.devnet*.yml · docker-compose.prod.3node.yml · docker-compose.testnet*.yml.
+# Do not cite as fund/audit mesh evidence.
+#
 # Legacy 3-node compose — use docker-compose.devnet.yml for the maintained two-node devnet.
 services:
   node1:

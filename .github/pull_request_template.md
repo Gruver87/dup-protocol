@@ -2,7 +2,7 @@
 
 Brief description of what changed and **why**.
 
-> Absolute Blockchain Ultimate Hybrid is a **production-hardened R&D / devnet** stack — **not** a launched public mainnet. Do not claim mainnet readiness without updating [docs/EVIDENCE_MATRIX.md](../docs/EVIDENCE_MATRIX.md).
+> **DUP Protocol** (DUP Labs) is a **production-hardened R&D / private-mesh** stack — **not** a launched public mainnet. Do not claim mainnet readiness without updating [docs/EVIDENCE_MATRIX.md](../docs/EVIDENCE_MATRIX.md) · front door [docs/FUND_AUDIT_PREP.md](../docs/FUND_AUDIT_PREP.md).
 
 ## Related issues
 

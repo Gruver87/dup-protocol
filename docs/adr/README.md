@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-Boundary ADRs for Absolute Blockchain Ultimate Hybrid.  
+Boundary ADRs for **DUP Protocol** (industrial pin; formerly Absolute Blockchain Ultimate Hybrid).  
 **Stack claimed in docs:** **0001–0016** · **0018–0020** (libp2p transport + industrial mesh on pin) · **0013 intentionally unused** (number reserved / skipped).
 
 | ADR | Title | Status |

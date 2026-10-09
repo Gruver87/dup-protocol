@@ -1,14 +1,13 @@
-# Absolute Blockchain — Справочник команд
+# DUP Protocol — Справочник команд
 
+> **Актуальный verify ladder:** [`VERIFY_SUITE.md`](VERIFY_SUITE.md) · fund front door [`FUND_AUDIT_PREP.md`](FUND_AUDIT_PREP.md)  
 > **Полный список (без секретов):** [`ALL_COMMANDS.txt`](ALL_COMMANDS.txt)  
-> **Личная копия (Desktop):** `Absolute_Blockchain_All_Commands_FIXED.txt`  
-> **Бэкап Desktop:** `Absolute_Blockchain_All_Commands_FIXED.bak_20260828.txt`  
 > **Секреты:** только `.env` — [`secrets/README.md`](../secrets/README.md)
 
 | | |
 |---|---|
-| **Обновлено** | 2026-08-28 |
-| **Репозитории** | [Hybrid](https://github.com/Gruver87/dup-protocol) (audit pin) · [Experimental](https://github.com/Gruver87/dup-protocol-experimental) (R&D) |
+| **Обновлено** | 2026-10-09 |
+| **Репозитории** | [dup-protocol](https://github.com/Gruver87/dup-protocol) (audit pin) · [dup-protocol-experimental](https://github.com/Gruver87/dup-protocol-experimental) (R&D) |
 | **Entry** | `python main.py` / `.\scripts\start_node.ps1` |
 | **Статус** | audit-freeze / prod-profile mesh — **не** public audited mainnet |
 

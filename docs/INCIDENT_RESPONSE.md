@@ -1,8 +1,8 @@
-# Incident Response Runbook — Absolute Blockchain
+# Incident Response Runbook — DUP Protocol
 
-**Version:** 1.1  
-**Updated:** 2026-08-02  
-**Scope:** Absolute Blockchain Ultimate Hybrid (L1 node, P2P, bridge, prod profile)
+**Version:** 1.2  
+**Updated:** 2026-10-09  
+**Scope:** DUP Protocol industrial pin (formerly Absolute Blockchain Ultimate Hybrid) — L1 node, P2P, bridge, prod profile
 
 Industrial tip-v2 note: keep bridge OFF; do not flip `state_root_encoding_version` /
 ceremony arming across KeepVolumes — wipe mesh (`-NoCloneDb`) on encoding cutovers.

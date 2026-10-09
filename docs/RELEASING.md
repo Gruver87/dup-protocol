@@ -1,6 +1,6 @@
 # Releasing
 
-How Absolute Blockchain Ultimate Hybrid ships tags. Pattern matches industrial
+How **DUP Protocol** (industrial pin) ships tags. Pattern matches industrial
 waves already on `master` (v1.3.65+).
 
 ## Honesty first

@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Noise cleanup wave 2 (no soak)
+
+- Remove root marketing posts, dead HTML explorers, `nft_core.py`, obsolete
+  `init_git`/`build_docker`, legacy `ARCHITECTURE_AUDIT.md`.
+- DEPRECATED/OPTIONAL headers on legacy compose; `runs/latest/README` honesty.
+- Brand pass: CoC, IR/DR, ADR README, RELEASING, PR template, COMMANDS_REFERENCE.
+- `.gitignore`: `*.log` (keep evidence logs via exception).
+
 ### Fund / audit prep wave (no soak)
 
 - Front door: `docs/FUND_AUDIT_PREP.md` — honest VOID soak + org blockers.

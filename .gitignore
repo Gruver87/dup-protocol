@@ -38,6 +38,8 @@ backups/
 *.broken
 *.bak
 node_debug.log
+*.log
+!docs/evidence/**/*.log
 test_hardened_system/
 pytest-cache-files*/
 

@@ -2,7 +2,7 @@
 
 **Status:** planning doc — no public URL is promised until every item in **Go-live** is checked.
 
-Target (example): `https://testnet.absolute-chain.org` → explorer + RPC behind TLS.
+Target (example placeholder only): operator-chosen TLS hostname → explorer + RPC.
 
 ---
 

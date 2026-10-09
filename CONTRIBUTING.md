@@ -82,4 +82,4 @@ test: merkle light client cases
 - Issues: https://github.com/Gruver87/dup-protocol/issues
 - Author: [@Gruver87](https://github.com/Gruver87)
 
-Thank you for keeping Absolute Blockchain Ultimate honest — green gates are not public mainnet.
+Thank you for keeping DUP Protocol honest — green gates are not public mainnet.

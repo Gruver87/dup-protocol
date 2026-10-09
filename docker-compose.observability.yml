@@ -1,5 +1,8 @@
 version: '3.8'
 
+# OPTIONAL LAB (2026-10-09) — local Prometheus/Grafana only.
+# Not industrial mesh evidence. Prod path: docker-compose.prod.3node.yml + probe_prod_mesh.
+#
 # Observability stack для локального мониторинга ноды
 # Usage: docker compose -f docker-compose.observability.yml up -d
 # Node must expose :8080/metrics (python main.py or docker compose up)
