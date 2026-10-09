@@ -536,11 +536,29 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         ("scripts/check_harness_probe.py", "check_harness_probe.py missing"),
         ("scripts/check_soak.ps1", "check_soak.ps1 missing"),
         ("scripts/verify_industrial_high_honesty.ps1", "verify_industrial_high_honesty.ps1 missing"),
+        ("scripts/verify_security_honesty.py", "verify_security_honesty.py missing"),
+        ("scripts/verify_security_honesty.ps1", "verify_security_honesty.ps1 missing"),
         ("scripts/libp2p_lab_smoke.py", "libp2p_lab_smoke.py missing"),
         ("scripts/run_all_tests.ps1", "run_all_tests.ps1 missing"),
     ):
         if not (ROOT / rel).is_file():
             errors.append(msg)
+    vsec = (ROOT / "scripts" / "verify_security_honesty.py").read_text(encoding="utf-8")
+    if "def harness_smoke_ok" not in (
+        ROOT / "runtime" / "harness_honesty.py"
+    ).read_text(encoding="utf-8") or "harness_smoke_ok" not in vsec:
+        errors.append(
+            "verify_security_honesty must exercise runtime.harness_honesty.harness_smoke_ok"
+        )
+    hw_core = (ROOT / "scripts" / "health_watch_core.ps1").read_text(encoding="utf-8")
+    if "function Test-HarnessSmokeOk" not in hw_core or "HarnessSmokeOk" not in hw_core:
+        errors.append(
+            "health_watch_core must define Test-HarnessSmokeOk / HarnessSmokeOk "
+            "(peer-match soft-PASS honesty)"
+        )
+    hw_main = (ROOT / "scripts" / "health_watch.ps1").read_text(encoding="utf-8")
+    if "HarnessSmokeOk" not in hw_main:
+        errors.append("health_watch.ps1 must score HarnessSmokeOk (no soft greenwash)")
     full_py = (ROOT / "scripts" / "verify_full_blockchain.py").read_text(encoding="utf-8")
     if "PROD_SMOKE_WALLET_PATH" not in full_py:
         errors.append(

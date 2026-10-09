@@ -163,6 +163,16 @@ while ($true) {
         try { $demoteWarn = [bool]$r.MempoolDemoted } catch { $demoteWarn = $false }
         $softFailed = @($failedList | Where-Object { $_ -in $Script:SoftHarnessChecks })
         $hardFailed = @($failedList | Where-Object { $_ -notin $Script:SoftHarnessChecks })
+        # Peer-match honesty (runtime/harness_honesty): soft p2p_state_consistent
+        # without wire/peer evidence is NOT soft — promote to hard.
+        $smokeOk = $true
+        try {
+            if ($null -ne $r.HarnessSmokeOk) { $smokeOk = [bool]$r.HarnessSmokeOk }
+        } catch { $smokeOk = $true }
+        if ($softFailed.Count -gt 0 -and $hardFailed.Count -eq 0 -and -not $smokeOk) {
+            $hardFailed = @($softFailed)
+            $softFailed = @()
+        }
         # Soft-only flakes (peer_probe_ok / harness_timeout / ready_flap / …) must
         # never become Strict hard-FAIL even when tip_state_aligned is sticky-false
         # under GIL load — mempool48pass1 / libp2p STRICT contract.

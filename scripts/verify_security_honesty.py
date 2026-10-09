@@ -76,6 +76,14 @@ NEEDLES: tuple[tuple[str, tuple[str, ...]], ...] = (
             "verify_testnet_mesh soft-PASS must require state_consistent",
         ),
     ),
+    (
+        "scripts/health_watch_core.ps1",
+        ("function Test-HarnessSmokeOk", "HarnessSmokeOk"),
+    ),
+    (
+        "scripts/health_watch.ps1",
+        ("HarnessSmokeOk",),
+    ),
 )
 
 VOID_PACK = (

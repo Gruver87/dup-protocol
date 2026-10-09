@@ -268,17 +268,23 @@ function Test-NodeHealth {
     $aligned = $true
     $harnessHealthy = $true
     $failed = @()
+    $harnessSmokeOk = $true
+    $wireConsistent = $false
     try {
         $cs = Invoke-RestMethod -Uri $harnessUri -TimeoutSec $harnessSec
         $failed = @($cs.failed_checks)
         $aligned = [bool]$cs.tip_state_aligned
         $harnessHealthy = [bool]$cs.harness_healthy
+        try { $wireConsistent = [bool]$cs.wire_consistent } catch { $wireConsistent = $false }
+        # Mirror runtime/harness_honesty.harness_smoke_ok (peer-match invariant).
+        $harnessSmokeOk = Test-HarnessSmokeOk -Harness $cs
     } catch {
         # Harness HTTP timeout under load ≠ tip fork. Keep tip aligned from
         # /status; mark soft harness_timeout (WARN, not Strict hard-FAIL).
         $failed = @("harness_timeout")
         $aligned = $true
         $harnessHealthy = $false
+        $harnessSmokeOk = $true
     }
     return @{
         Ok = $true
@@ -290,9 +296,51 @@ function Test-NodeHealth {
         MempoolDemoted = (Get-MempoolDemotedFlag -Probe $st -ReadyBody $readyBody)
         Aligned = $aligned
         HarnessHealthy = $harnessHealthy
+        HarnessSmokeOk = $harnessSmokeOk
+        WireConsistent = $wireConsistent
         Failed = $failed
         FullHarness = $FullHarness
     }
+}
+
+function Test-HarnessSmokeOk {
+    # Same invariant as runtime/harness_honesty.py — soft flags never invent peer align.
+    param($Harness)
+    if ($null -eq $Harness) { return $false }
+    try {
+        if ([bool]$Harness.harness_healthy) { return $true }
+    } catch { }
+    $soft = @("tip_state_aligned", "p2p_state_consistent", "peer_probe_ok")
+    $failed = @()
+    try { $failed = @($Harness.failed_checks) } catch { $failed = @() }
+    foreach ($f in $failed) {
+        if ($f -notin $soft) { return $false }
+    }
+    $peers = @()
+    try { $peers = @($Harness.peers) } catch { $peers = @() }
+    $live = ""
+    try { $live = ([string]$Harness.live_state_root).Trim().ToLowerInvariant() } catch { $live = "" }
+    if ($peers.Count -gt 0 -and $live) {
+        $allMatch = $true
+        foreach ($p in $peers) {
+            try {
+                if (-not [bool]$p.match) { $allMatch = $false; break }
+            } catch { $allMatch = $false; break }
+        }
+        if ($allMatch) { return $true }
+    }
+    if ($peers.Count -eq 0) {
+        $onlyP2p = ($failed.Count -gt 0) -and (@($failed | Where-Object { $_ -ne "p2p_state_consistent" }).Count -eq 0)
+        if ($onlyP2p) { return $true }
+    }
+    if (($failed.Count -eq 1) -and ($failed[0] -eq "peer_probe_ok")) {
+        try {
+            if ([bool]$Harness.tip_state_aligned -and ([string]$Harness.peer_probe_error -eq "timeout")) {
+                return $true
+            }
+        } catch { }
+    }
+    return $false
 }
 
 function Invoke-ParallelMeshResnapshot {

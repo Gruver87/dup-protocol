@@ -40,6 +40,7 @@ cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
 .\scripts\verify_project.ps1 -Mode Quick
 .\scripts\verify_project.ps1 -Mode Industrial
 python scripts/industrial_gate.py
+python scripts/verify_security_honesty.py   # security-honesty needles + unit slice
 python scripts/external_audit_tracker.py --list
 .\scripts\export_audit_pack.ps1
 # optional live mesh (already up):

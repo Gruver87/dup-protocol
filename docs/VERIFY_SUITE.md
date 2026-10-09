@@ -49,6 +49,7 @@ python scripts/industrial_gate.py
 ```powershell
 # Front door: docs/FUND_AUDIT_PREP.md
 python scripts/industrial_gate.py
+python scripts/verify_security_honesty.py   # soft-PASS / TLS N/A / VOID pack needles
 .\scripts\verify_project.ps1 -Mode Industrial
 python scripts/external_audit_tracker.py --list
 .\scripts\export_audit_pack.ps1

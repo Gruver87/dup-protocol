@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Security honesty harden wave 3 (no soak)
+
+- `verify_security_honesty.py` / `.ps1` operator check (needles + unit slice).
+- `health_watch`: `Test-HarnessSmokeOk` / `HarnessSmokeOk` — soft
+  `p2p_state_consistent` without peer-match wire evidence is hard-FAIL.
+- Gate + FUND_AUDIT_PREP / VERIFY_SUITE wire-up.
+
 ### Security honesty harden wave 2 (no soak)
 
 - Shared `runtime/harness_honesty.harness_smoke_ok`: peered soft-PASS requires
