@@ -69,7 +69,8 @@ python scripts/external_audit_tracker.py --list
 | `telegram_*.txt` ×4, `schema.sql`, `vm_preview.txt`, `slashing_preview.txt` | Marketing / dead previews (wave 3) |
 | `nft_images/`, `etherscan_schema.sql`, `final_schema.sql`, `run_coverage.ps1`, `rust_blockchain/` stub | Dead assets / orphan crate (wave 4) |
 | `RELEASE_NOTES_v*.md` stay at repo root | Wave needles — do not move to `docs/release_notes/` |
-| `docker-compose.yml` / `.ha.yml` / `.observability.yml` | DEPRECATED / OPTIONAL LAB headers |
+| `docker-compose.yml` / `.observability.yml` | DEPRECATED / OPTIONAL LAB headers |
+| `docker-compose.ha.yml`, `scripts/move_legacy_to_desktop.ps1` | Removed (wave 5); use `docker_prod_3node` |
 | `docs/evidence/runs/latest/README.md` | Pointer-only honesty (not HEAD soak) |
 | Brand pass: DISCLAIMER, CoC, IR/DR, ADR README, RELEASING, PR template | DUP Labs current; Absolute = formerly |
 | `RELEASE_NOTES_v*.md` stay at repo root | Gate needles — see [releases/README.md](releases/README.md) |

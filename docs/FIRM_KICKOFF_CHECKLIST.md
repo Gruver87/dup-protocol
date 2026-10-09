@@ -5,7 +5,7 @@
 **Purpose:** human / org checklist to close the two remaining external-audit tracker items.  
 **This file is not an audit report and not a PASS.**
 
-Pin transport (working tip): **rust-libp2p** on prod 3-node mesh JSON (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` = **TCP+TLS** historical scope. **Long-Range stays off.** Pin libp2p 48h soak **not run** — disclose before firm scopes P2P.
+Pin transport (working tip): **rust-libp2p** on prod 3-node mesh JSON (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` = **TCP+TLS** historical scope. **Long-Range stays off.** Pin libp2p 48h soak **VOID** (2026-10-08 · not PASS · not restarted) — disclose before firm scopes P2P.
 
 ---
 

@@ -39,7 +39,7 @@
 - [x] Multi-node K8s manifests (`deploy/k8s/`)
 - [x] Distributed rate limit (Redis) — `REDIS_RATE_LIMIT=true`
 - [x] Load tests in CI (`scripts/load_test.py`)
-- [x] HA docker-compose (`docker-compose.ha.yml`)
+- [x] Prod 3-node docker mesh (`docker-compose.prod.3node.yml` / `scripts/docker_prod_3node.ps1`)
 
 ## Quick start (prod profile)
 
@@ -59,10 +59,11 @@ Docker:
 docker compose up --build
 ```
 
-HA (3 nodes + Redis):
+Prod 3-node mesh (ADR 0020 libp2p):
 
 ```bash
-docker compose -f docker-compose.ha.yml up --build
+# Windows: .\scripts\docker_prod_3node.ps1
+docker compose -f docker-compose.prod.3node.yml up --build
 ```
 
 Kubernetes:

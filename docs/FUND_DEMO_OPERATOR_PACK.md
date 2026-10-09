@@ -13,7 +13,7 @@ Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-nod
 
 | Layer | Status | Proof |
 |-------|--------|-------|
-| Industrial pin (freeze + working tip) | Show for firm scope | tag `v1.3.1339-tip-v2-industrial` (`0531995`) = **TCP+TLS** sealed evidence; working tip = ADR 0020 libp2p mesh JSON (soak pending) |
+| Industrial pin (freeze + working tip) | Show for firm scope | tag `v1.3.1339-tip-v2-industrial` (`0531995`) = **TCP+TLS** sealed evidence; working tip = ADR 0020 libp2p mesh JSON (soak **VOID** 2026-10-08) |
 | Fail-closed satoshi / RPC / health honesty | Code + units + industrial_gate | Exp→pin merge CLOSED — see [EVIDENCE_MATRIX](EVIDENCE_MATRIX.md) CI row |
 | STRICT 48h scoreboard | Historical packs only | Do not claim soak on current HEAD unless a new pack exists |
 | Showcase / diligence docs | Pin local | [SHOWCASE](SHOWCASE.md) · [FAQ](FAQ.md) · [ELEVATOR_PITCH](ELEVATOR_PITCH.md) · [FUND_READINESS](FUND_READINESS.md) · [VERIFY_SUITE](VERIFY_SUITE.md) |
@@ -70,7 +70,7 @@ python scripts/industrial_gate.py
 |------|-------|
 | External pen-test + L1 audit PDF | Org / Phase 6 |
 | Bridge L1 contracts live | Keep bridge OFF on live mesh |
-| Fresh 48h soak on current HEAD | Operator — ADR 0020 libp2p cutover **not** soak-proven (`pin-libp2p-cutover-pending`) |
+| Fresh 48h soak on current HEAD | Operator — ADR 0020 libp2p cutover soak **VOID** (`pin-libp2p-cutover-pending` · not PASS) |
 | Post-cutover mesh probe | Operator — `probe_prod_mesh.ps1 -Quick` not re-run as pin evidence pack |
 | Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`) | **Not** pin evidence — R&D on [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) only |
 | Long-Range / BLS | Lab-only / off in prod JSON |

@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-05 (ADR 0020 transport note)  
 **Scope:** DUP Protocol industrial pin — domain ports + adapters (ADR **0001–0016**, **0018–0020**; **0013 unused**). Devnet + mainnet-v1 **prep**, not a launched public mainnet.  
-**Industrial pin:** tag [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) (**TCP+TLS** tip-v2 `b_satoshi` 48h soak PASS + Phase 3–4 binder READY). Working-tip prod mesh uses **rust-libp2p** per [ADR 0020](adr/0020-libp2p-industrial-mesh.md) — pin libp2p soak **pending**.  
+**Industrial pin:** tag [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) (**TCP+TLS** tip-v2 `b_satoshi` 48h soak PASS + Phase 3–4 binder READY). Working-tip prod mesh uses **rust-libp2p** per [ADR 0020](adr/0020-libp2p-industrial-mesh.md) — pin libp2p soak **VOID** (2026-10-08 · not PASS).  
 **This pin refuses** `FEATURE_LONG_RANGE` and `SECRET_BACKEND=file` in prod. `feature_libp2p=true` vs TCP+TLS (`feature_libp2p=false`, `p2p_tls_enabled=true`) are **mutually exclusive** mesh profiles (both-on refused).
 
 ---

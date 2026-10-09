@@ -29,7 +29,7 @@
 - ADR 0020 cutover + **Quick** probe: `pin-libp2p-cutover-pending` — **не** 48h soak  
 - Bridge OFF + sprout labs verify + Exp→pin merge honesty — см. [FUND_READINESS.md](FUND_READINESS.md)  
 
-**Pin libp2p 48h soak — отложен** (оператор). STRICT / LR / EVM depth soaks — только на Experimental.
+**Pin libp2p 48h soak — VOID** (host power-off 2026-10-08; не PASS · не перезапущен). STRICT / LR / EVM depth soaks — только на Experimental.
 
 ---
 

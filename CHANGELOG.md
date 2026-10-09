@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Root cruft wave 5 + diligence VOID sync (no soak)
+
+- Delete `docker-compose.ha.yml`, `scripts/move_legacy_to_desktop.ps1`; clear
+  local scratch (`.wave_c_*`, mesh verify dumps, pytest dumps).
+- Diligence pages: pending/deferred → **VOID** (ONE_PAGER_RU, ADR README,
+  ARCHITECTURE, AUDIT_SCOPE, FIRM_KICKOFF, FUND_DEMO_OPERATOR_PACK).
+- INDUSTRIAL_ROADMAP: HA compose → prod 3-node mesh.
+
 ### Root cruft wave 4 + docs VOID sync (no soak)
 
 - Delete `nft_images/` (~147 SVGs), `etherscan_schema.sql`, `final_schema.sql`,
