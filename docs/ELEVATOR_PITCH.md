@@ -16,7 +16,7 @@ We build **DUP Protocol**: an industrial **hybrid L1** where Python orchestrates
 
 Most chain demos invent readiness. We separate:
 
-1. **Industrial pin** (this tree) — freeze tag `v1.3.1339-tip-v2-industrial` with tip-v2 **TCP+TLS** soak [`375d14f`](evidence/runs/375d14f/); working tip uses **ADR 0020 rust-libp2p** (Quick probe packaged; **48h libp2p soak deferred**). External firm audit still pending.  
+1. **Industrial pin** (this tree) — freeze tag `v1.3.1339-tip-v2-industrial` with tip-v2 **TCP+TLS** soak [`375d14f`](evidence/runs/375d14f/); working tip uses **ADR 0020 rust-libp2p** (Quick probe packaged; **48h libp2p soak VOID** 2026-10-08 · not PASS). External firm audit still pending.  
 2. **Experimental** — libp2p depth, Long-Range **lab**, EVM STRICT, mempool Rust; STRICT packs live **only** there — not pin industrial evidence.
 
 Live show: [DEMO_RUNBOOK_PIN.md](DEMO_RUNBOOK_PIN.md) · Ops Console [OPS_CONSOLE.md](OPS_CONSOLE.md). Funds/ПВТ: [ONE_PAGER.md](ONE_PAGER.md) / [ONE_PAGER_RU.md](ONE_PAGER_RU.md), [FAQ.md](FAQ.md), IP/Belarus TM **prep** [TRADEMARK_FILING_PREP_BY.md](TRADEMARK_FILING_PREP_BY.md).

@@ -26,4 +26,4 @@ R&D sibling showcase (not pin evidence):
 | Verify suite | [VERIFY_SUITE.md](VERIFY_SUITE.md) |
 | Brand / IP / Belarus TM prep | [BRAND.md](BRAND.md) · [IP_AND_ATTRIBUTION.md](IP_AND_ATTRIBUTION.md) · [TRADEMARK_FILING_PREP_BY.md](TRADEMARK_FILING_PREP_BY.md) |
 
-Do **not** claim Experimental STRICT packs as pin tip-v2 evidence. Do **not** claim pin libp2p 48h PASS (deferred). Do **not** claim public audited mainnet.
+Do **not** claim Experimental STRICT packs as pin tip-v2 evidence. Do **not** claim pin libp2p 48h PASS (**VOID** 2026-10-08 · not restarted). Do **not** claim public audited mainnet.

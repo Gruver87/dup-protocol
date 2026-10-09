@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Root cruft wave 4 + docs VOID sync (no soak)
+
+- Delete `nft_images/` (~147 SVGs), `etherscan_schema.sql`, `final_schema.sql`,
+  `run_coverage.ps1`, orphan `rust_blockchain/` stub.
+- Front-door docs: pin libp2p soak **deferred → VOID** (FAQ, SHOWCASE,
+  EVIDENCE_MATRIX, ONE_PAGER, VISION, …).
+
 ### Root cruft + README honesty (no soak)
 
 - Delete marketing `telegram_*.txt` (×4), `schema.sql`, `vm_preview.txt`,

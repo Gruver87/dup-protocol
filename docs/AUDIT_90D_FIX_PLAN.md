@@ -28,7 +28,7 @@
 | Honesty / satoshi / RPC / health | **CLOSED** via Exp→pin merge waves — [EVIDENCE_MATRIX](EVIDENCE_MATRIX.md) |
 | Bridge OFF audit | **CLOSED** — `verify_bridge_off_lab.ps1` |
 | Phase-5 sprout labs (offline) | **CLOSED** — `verify_sprout_labs.ps1` |
-| ADR 0020 libp2p mesh JSON + Quick probe | **Packaged** — soak **deferred** |
+| ADR 0020 libp2p mesh JSON + Quick probe | **Packaged** — soak **VOID** (2026-10-08 · not PASS) |
 | External firm audit PDF / pen-test | **Org Phase 6** — [FIRM_KICKOFF_CHECKLIST](FIRM_KICKOFF_CHECKLIST.md) |
 | Fresh pin libp2p 48h soak | **Operator** — prepare then start (do not invent PASS) |
 

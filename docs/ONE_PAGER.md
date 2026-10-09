@@ -53,4 +53,4 @@ Live demo: [DEMO_RUNBOOK_PIN.md](DEMO_RUNBOOK_PIN.md). FAQ: [FAQ.md](FAQ.md).
 
 ## Forbidden
 
-Public audited mainnet · soak without pack id · Quick ≠ soak · pin libp2p 48h PASS (deferred) · prod Long-Range · bridge ON · ERC-721 parity · inventing company email / TM registration · citing Exp STRICT packs as pin evidence.
+Public audited mainnet · soak without pack id · Quick ≠ soak · pin libp2p 48h PASS (**VOID** 2026-10-08) · prod Long-Range · bridge ON · ERC-721 parity · inventing company email / TM registration · citing Exp STRICT packs as pin evidence.

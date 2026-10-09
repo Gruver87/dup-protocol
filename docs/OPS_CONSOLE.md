@@ -58,7 +58,7 @@ Council / Exp-only panels: if present in static assets, treat as **watch-only** 
 
 ## Honesty
 
-Console may name sealed packs — **does not** claim live soak PASS. Quick probe ≠ 48h soak. Tip-v2 TCP+TLS pack ≠ pin libp2p 48h (deferred).
+Console may name sealed packs — **does not** claim live soak PASS. Quick probe ≠ 48h soak. Tip-v2 TCP+TLS pack ≠ pin libp2p 48h (**VOID** 2026-10-08 · not PASS).
 
 ## Operator check
 

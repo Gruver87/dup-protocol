@@ -67,6 +67,7 @@ python scripts/external_audit_tracker.py --list
 | `SOAK_IN_PROGRESS.txt` → `SOAK_STOPPED_VOID.txt` | Dishonest filename |
 | Root marketing `linkedin_*` / `twitter_*` / `social_*` / HTML explorers / `nft_core.py` / obsolete `init_git`/`build_docker` / `ARCHITECTURE_AUDIT.md` | Noise, not industrial evidence (wave 2) |
 | `telegram_*.txt` ×4, `schema.sql`, `vm_preview.txt`, `slashing_preview.txt` | Marketing / dead previews (wave 3) |
+| `nft_images/`, `etherscan_schema.sql`, `final_schema.sql`, `run_coverage.ps1`, `rust_blockchain/` stub | Dead assets / orphan crate (wave 4) |
 | `RELEASE_NOTES_v*.md` stay at repo root | Wave needles — do not move to `docs/release_notes/` |
 | `docker-compose.yml` / `.ha.yml` / `.observability.yml` | DEPRECATED / OPTIONAL LAB headers |
 | `docs/evidence/runs/latest/README.md` | Pointer-only honesty (not HEAD soak) |

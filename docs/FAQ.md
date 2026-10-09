@@ -35,7 +35,7 @@ Only a packaged run under `docs/evidence/runs/<id>/` with report `passed=true` a
 ### What transport do I see in a demo?
 
 - **Pin live demo** ([DEMO_RUNBOOK_PIN.md](DEMO_RUNBOOK_PIN.md)): working-tip prod 3-node mesh JSON is **rust-libp2p** (ADR 0020). Freeze-tag soak evidence is **TCP+TLS** — do not relabel.  
-- **Pin libp2p 48h soak:** **deferred** (Quick probe packaged under [`pin-libp2p-cutover-pending`](evidence/runs/pin-libp2p-cutover-pending/); not 48h PASS).  
+- **Pin libp2p 48h soak:** **VOID** (host power-off 2026-10-08; Quick probe packaged under [`pin-libp2p-cutover-pending`](evidence/runs/pin-libp2p-cutover-pending/); not 48h PASS · not restarted).  
 - **Experimental demo:** separate tree — [Exp DEMO_RUNBOOK](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DEMO_RUNBOOK.md).
 
 ### How is money represented?
