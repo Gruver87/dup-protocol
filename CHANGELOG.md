@@ -10,6 +10,16 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Root cruft + README honesty (no soak)
+
+- Delete marketing `telegram_*.txt` (×4), `schema.sql`, `vm_preview.txt`,
+  `slashing_preview.txt`.
+- Keep `cross_chain_bridge.py` / `node_persistent.py` / `real_world_oracles.py`
+  (compat alias · deprecated entry · `main.py` import).
+- **Do not move** `RELEASE_NOTES_v*.md` — wave needles + `docs/releases/README`.
+- README: pin libp2p soak **VOID** (2026-10-08) · Architecture ADR 0020
+  working-tip · Proven table splits libp2p Working-tip vs Long-Range No.
+
 ### Security honesty harden wave 3 (no soak)
 
 - `verify_security_honesty.py` / `.ps1` operator check (needles + unit slice).

@@ -66,6 +66,8 @@ python scripts/external_audit_tracker.py --list
 | Nested `nft_images/nft_images/`, empty `services`/`db`/`node` | Duplicate / husks (wave 1) |
 | `SOAK_IN_PROGRESS.txt` → `SOAK_STOPPED_VOID.txt` | Dishonest filename |
 | Root marketing `linkedin_*` / `twitter_*` / `social_*` / HTML explorers / `nft_core.py` / obsolete `init_git`/`build_docker` / `ARCHITECTURE_AUDIT.md` | Noise, not industrial evidence (wave 2) |
+| `telegram_*.txt` ×4, `schema.sql`, `vm_preview.txt`, `slashing_preview.txt` | Marketing / dead previews (wave 3) |
+| `RELEASE_NOTES_v*.md` stay at repo root | Wave needles — do not move to `docs/release_notes/` |
 | `docker-compose.yml` / `.ha.yml` / `.observability.yml` | DEPRECATED / OPTIONAL LAB headers |
 | `docs/evidence/runs/latest/README.md` | Pointer-only honesty (not HEAD soak) |
 | Brand pass: DISCLAIMER, CoC, IR/DR, ADR README, RELEASING, PR template | DUP Labs current; Absolute = formerly |

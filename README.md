@@ -21,7 +21,7 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 **Funds / ПВТ (pin):** [FUND_AUDIT_PREP](docs/FUND_AUDIT_PREP.md) · [SHOWCASE](docs/SHOWCASE.md) · [DILIGENCE_BRIEF](docs/DILIGENCE_BRIEF.md) · [ONE_PAGER_RU](docs/ONE_PAGER_RU.md).  
 **R&D sibling pack (not pin evidence):** [Exp SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md).
 
-**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Working-tip pin mesh is **ADR 0020 rust-libp2p**; freeze tag soak is **TCP+TLS**. Experimental soaks ≠ pin tip-v2 evidence. Pin libp2p 48h soak **deferred**.
+**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Working-tip pin mesh is **ADR 0020 rust-libp2p**; freeze tag soak is **TCP+TLS**. Experimental soaks ≠ pin tip-v2 evidence. Pin libp2p 48h soak **VOID** (host power-off 2026-10-08; not PASS · not restarted · restart pending) — see [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](docs/evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt).
 
 ---
 
@@ -80,7 +80,8 @@ Not an investment product. **ABS** = in-repo tokenomics model (221M) — **not**
 | Phase 4 audit binder | **READY** | [phase4-691329c](docs/evidence/runs/phase4-691329c/) |
 | Public mainnet / listed ABS / firm audit PDF | **No** | [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
 | Bridge on live mesh | **OFF** | by design until L1 cutover |
-| rust-libp2p / Long-Range on this pin | **No** | R&D in [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) |
+| rust-libp2p on this pin (ADR 0020) | **Working-tip** · Quick probe PASS | [`pin-libp2p-cutover-pending`](docs/evidence/runs/pin-libp2p-cutover-pending/) · 48h soak **VOID** (not PASS) |
+| Long-Range on this pin | **No** (lab-only) | ADR 0017 incomplete · R&D in [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) |
 
 **Jump:** [Architecture](#architecture) · [Layout](#repo-layout) · [Ops](#operator-cheatsheet) · [Docs](#docs-map) · [Contribute](CONTRIBUTING.md)
 
@@ -95,7 +96,7 @@ flowchart TB
   API --> MET["MetricsExporter · ADR 0015"]
   API --> ORCH["NodeOrchestrator"]
   ORCH --> SM["SecretManager · ADR 0015"]
-  ORCH --> P2P["P2P TCP+TLS · soft-refuse"]
+  ORCH --> P2P["P2P libp2p/Noise · soft-refuse"]
   ORCH --> CONS["LMD-GHOST · TipSafety"]
   ORCH --> BC["Blockchain facade"]
   ORCH --> BR["BridgePort · ADR 0010 · OFF on mesh"]
@@ -116,7 +117,7 @@ flowchart TB
 |-------|------|-------|
 | **Edge** | REST · JSON-RPC · Explorer | QueryFacade caps; no raw DB from handlers |
 | **Orchestration** | `main.py` · consensus policy · secrets · shutdown | TipSafety enforce on prod |
-| **Network** | TCP+TLS P2P · dispatch · catch-up/fork adapters | Soft-refuse; TLS churn can still leave `peer_count=0`. rust-libp2p **refused** on this pin |
+| **Network** | rust-libp2p (ADR 0020) working-tip · TCP+TLS alternate | Soft-refuse; Noise mesh default; TCP+TLS via `docker_prod_3node_p2ptls.ps1` |
 | **Domain** | CatchUp · Fork · StateService · StoragePort | No sockets inside services |
 | **Native** | `native/abs_native/` (PyO3) | Crypto · satoshi roots · Rocks · EVM kernels |
 | **Sprouts** | ADR 0016 profiles | Bridge / L2 / shard **off** industrial mesh |
