@@ -63,7 +63,6 @@ On the **default libp2p** mesh, `python scripts/verify_p2p_tls_mesh.py` returns
 
 ```powershell
 .\scripts\docker_prod_3node_p2ptls.ps1
-.\scripts\probe_p2p_tls_mesh.ps1
 python scripts/verify_p2p_tls_mesh.py --wait 120
 .\scripts\p2p_tls_evidence_suite.ps1
 .\scripts\prod_mesh_resilience_suite.ps1 -P2pTls -SkipDrRehearsal
@@ -74,8 +73,8 @@ Report: `logs/p2p_tls_mesh_verify.json`
 Preflight (static or live):
 
 ```powershell
-.\scripts\prepare_p2p_tls_mesh.ps1
-.\scripts\prepare_p2p_tls_mesh.ps1 -Live -WaitSec 60
+python scripts/p2p_tls_preflight.py
+python scripts/p2p_tls_preflight.py --live --wait 60
 .\scripts\monolith_gate.ps1 -P2pTlsPreflight
 .\scripts\monolith_gate.ps1 -P2pTlsPreflight -P2pTlsLive
 ```

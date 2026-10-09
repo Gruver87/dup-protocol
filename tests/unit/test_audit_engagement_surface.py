@@ -32,5 +32,11 @@ def test_audit_phase_and_engagement_scripts_present():
         assert (ROOT / rel).is_file(), rel
     diligence = (ROOT / "docs" / "DILIGENCE_BRIEF.md").read_text(encoding="utf-8")
     assert "dup-protocol" in diligence
-    assert "libp2p 48h soak deferred" in diligence.lower() or "48h soak deferred" in diligence
+    # Pin libp2p soak disclosure: VOID (2026-10-08) or legacy deferred wording.
+    dlow = diligence.lower()
+    assert (
+        ("void" in dlow and "libp2p" in dlow and "not pass" in dlow)
+        or "libp2p 48h soak deferred" in dlow
+        or "48h soak deferred" in dlow
+    )
     assert "3c801b87" not in diligence  # Exp pack must not be cited as pin evidence

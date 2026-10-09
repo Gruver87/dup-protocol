@@ -10,6 +10,15 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Root cruft wave 9 + engagement VOID test (no soak)
+
+- Delete thin wrappers: `multi_node_smoke.sh`, `quick_restore.ps1`,
+  `start_industrial_devnet.ps1`, `test_noclone_sync.ps1`, `docker_seed_node2_db.sh`,
+  `prepare_p2p_tls_mesh.ps1`, `probe_p2p_tls_mesh.ps1`.
+- Docs → `verify_p2p_tls_mesh` / `p2p_tls_preflight` / `docker_prod_3node`.
+- `test_audit_engagement_surface` accepts VOID diligence; EVIDENCE_MATRIX
+  “Soak still deferred” rows → VOID.
+
 ### Root cruft wave 8 + VOID script honesty (no soak)
 
 - Delete orphan wrappers: `check_everything.ps1`, `check_harness_probe.ps1`,

@@ -56,7 +56,7 @@ Public repo → public package → **no login required** for pull.
 |------|---------|
 | First prod mesh build | `.\scripts\docker_prod_3node.ps1` |
 | Restart, keep RocksDB | `.\scripts\docker_prod_3node.ps1 -SkipBuild -KeepVolumes -NoCloneDb` |
-| Quick restore wrapper | `.\scripts\quick_restore.ps1 -KeepData` |
+| Quick restore (keep volumes) | `.\scripts\docker_prod_3node.ps1 -SkipBuild -KeepVolumes` |
 | Full wipe + rebuild | `docker compose -p abs-prod-mesh3 -f docker-compose.prod.3node.yml down -v` then mesh script |
 
 ## What is NOT included
