@@ -1,7 +1,8 @@
 # Diligence brief — DUP Protocol / DUP Labs (industrial pin)
 
 **Audience:** grant officers, investors, HTP / ПВТ reviewers, technical advisors.  
-**Date:** 2026-10-06 · Language: English (canonical)  
+**Date:** 2026-10-09 · Language: English (canonical)  
+**Front door:** [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md)  
 **Brand:** [BRAND.md](BRAND.md) — **DUP Labs** (org) · **DUP Protocol** (product) · Uladzimir Dabranski (D.U.P.)  
 **This tree:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol) (industrial pin)  
 **R&D sibling:** [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)  
@@ -22,7 +23,7 @@ This page is the **15-minute path for the pin**. Claims map to **on-disk evidenc
 
 | Tree | Role | What you can claim today |
 |------|------|--------------------------|
-| **Industrial pin** (this repo) | Audit-freeze · tag [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) | Historical tip-v2 **TCP+TLS** 48h soak PASS (`375d14f`); ADR 0020 libp2p mesh JSON cutover + Quick probe packaged; **pin libp2p 48h soak deferred** until operator start · **not** public mainnet |
+| **Industrial pin** (this repo) | Audit-freeze · tag [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) | Historical tip-v2 **TCP+TLS** 48h soak PASS (`375d14f`); ADR 0020 libp2p cutover + Quick probe; pin libp2p STRICT **VOID** 2026-10-08 (not PASS, not restarted) · **not** public mainnet |
 | **experimental** | R&D · libp2p depth / Long-Range lab / EVM STRICT packs | Cite only packs under that repo; **never** as pin industrial evidence |
 
 ---
@@ -33,7 +34,7 @@ This page is the **15-minute path for the pin**. Claims map to **on-disk evidenc
 |-------|--------|
 | Local **3-node prod-profile mesh** (chain `778888`) | **Proven** — probe packs on pin; see EVIDENCE_MATRIX |
 | Fail-closed money path (satoshi integers) | **Proven** — units + industrial_gate |
-| ADR 0020 rust-libp2p as working-tip mesh transport | **Code + Quick probe PASS**; **48h soak not yet PASS on pin HEAD** |
+| ADR 0020 rust-libp2p as working-tip mesh transport | **Code + Quick probe PASS**; STRICT attempt **VOID** (power-off); **not PASS on pin HEAD** |
 | Public audited mainnet / listed token / BLS prod | **Not claimed** |
 | External firm security audit PDF | **Pending** — prep: [FIRM_KICKOFF_CHECKLIST.md](FIRM_KICKOFF_CHECKLIST.md) · [EXTERNAL_AUDIT_ENGAGEMENT.md](EXTERNAL_AUDIT_ENGAGEMENT.md) · [FIRM_OUTREACH_LETTER.md](FIRM_OUTREACH_LETTER.md) |
 
@@ -49,19 +50,21 @@ This page is the **15-minute path for the pin**. Claims map to **on-disk evidenc
 ## What is not ready
 
 - Public mainnet / token listing  
-- Pin **libp2p** 48h soak PASS on current HEAD (deferred)  
+- Pin **libp2p** 48h soak PASS on current HEAD (VOID attempt; not restarted)  
 - Firm pen-test + L1/EVM audit PDF on disk  
 - Long-Range in production (`feature_long_range` stays **off**)
 
 ---
 
-## Operator next step (soak)
+## Operator next step
 
-When declaring Exp→pin merge complete enough:
+**Now (no soak):** [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md) · `verify_project -Mode Industrial` · firm engagement docs.
+
+**Later (soak — operator choice only):**
 
 ```powershell
 .\scripts\prepare_48h_soak.ps1
 .\scripts\start_soak_prod_mesh_48h.ps1
 ```
 
-Do **not** claim soak until `hard_fails=0` report exists on disk.
+Do **not** claim soak until a fresh continuous 48h pack with `hard_fails=0` exists on disk. Prior VOID is not PASS.

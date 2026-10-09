@@ -44,13 +44,24 @@ python scripts/industrial_gate.py
 .\scripts\probe_prod_mesh.ps1 -Quick                # only if mesh already up
 ```
 
-## Fund / demo prep
+## Fund / audit prep (no soak)
 
 ```powershell
-# see FUND_DEMO_OPERATOR_PACK.md
+# Front door: docs/FUND_AUDIT_PREP.md
 python scripts/industrial_gate.py
+.\scripts\verify_project.ps1 -Mode Industrial
+python scripts/external_audit_tracker.py --list
+.\scripts\export_audit_pack.ps1
 .\scripts\prepare_48h_soak.ps1   # does NOT start soak
 ```
+
+## Historical / optional smokes (not daily ladder)
+
+| Script | Role |
+|--------|------|
+| `verify_industrial_waves.py` | Large historical wave needle ladder (gate still asserts file) |
+| `verify_v1349_local.py` | EVM CALL-wave kernel smoke (`1.3.N` ≥ 49) — optional |
+| Root `RELEASE_NOTES_v*.md` | Wave diaries; see [releases/README.md](releases/README.md) |
 
 ---
 

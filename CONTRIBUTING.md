@@ -1,6 +1,6 @@
-# Contributing — Absolute Blockchain Ultimate Hybrid
+# Contributing — DUP Protocol (industrial pin)
 
-Thank you. This is a **production-hardened R&D / devnet** stack (local prod-mesh evidence). It is **not** a launched public mainnet.
+Thank you. This is **DUP Protocol** by **DUP Labs** — a production-hardened R&D / private-mesh stack (local prod-mesh evidence). Formerly Absolute Blockchain Ultimate Hybrid. It is **not** a launched public mainnet.
 
 R&D for rust-libp2p / Long-Range / EVM depth lives in [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental). Do **not** port those kernels onto this audit pin.
 

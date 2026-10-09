@@ -280,8 +280,16 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
         errors.append(
             "pin FUND_READINESS must not cite Experimental soak packs as pin evidence"
         )
-    if "libp2p 48h soak is deferred" not in fund and "48h soak is deferred" not in fund:
-        errors.append("pin FUND_READINESS must disclose deferred pin libp2p soak")
+    # Honest disclosure: deferred, or VOID attempt (power-off) with not PASS / not restarted.
+    fund_soak_ok = (
+        "libp2p 48h soak is deferred" in fund
+        or "48h soak is deferred" in fund
+        or ("VOID" in fund and "libp2p" in fund.lower() and "not PASS" in fund)
+    )
+    if not fund_soak_ok:
+        errors.append(
+            "pin FUND_READINESS must disclose deferred/VOID pin libp2p soak (not PASS)"
+        )
     ss_py = (ROOT / "core" / "components" / "state_service.py").read_text(encoding="utf-8")
     reward_chunk = ss_py.split("def apply_block_reward")[1].split("def compute_state_root")[0]
     if "self._total_supply_satoshi()" not in reward_chunk:

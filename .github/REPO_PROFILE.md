@@ -3,13 +3,13 @@
 Apply with:
 
 ```powershell
-gh repo edit Gruver87/dup-protocol --description "Absolute Blockchain Ultimate Hybrid — Python+Rust L1, tip-v2 soak PASS, evidence-first industrial pin. External audit pending. Not a public mainnet."
-gh repo edit Gruver87/dup-protocol --homepage "https://github.com/Gruver87/dup-protocol/blob/master/docs/AUDIT_ENGAGEMENT_BRIEF.md"
+gh repo edit Gruver87/dup-protocol --description "DUP Protocol (DUP Labs) — Python+Rust industrial L1 pin. Tip-v2 TCP+TLS soak historical; ADR 0020 libp2p mesh. External audit pending. Not public mainnet."
+gh repo edit Gruver87/dup-protocol --homepage "https://github.com/Gruver87/dup-protocol/blob/master/docs/FUND_AUDIT_PREP.md"
 # topics (idempotent add):
 @(
-  "absolute-blockchain","blockchain","blockchain-node","layer1","python","rust","pyo3",
-  "p2p","evm","rocksdb","docker","kubernetes","json-rpc","rest-api","devnet",
-  "soak-test","cryptography","web3","hybrid-blockchain","blockchain-development"
+  "dup-protocol","dup-labs","blockchain","blockchain-node","layer1","python","rust","pyo3",
+  "p2p","libp2p","evm","rocksdb","docker","kubernetes","json-rpc","rest-api","devnet",
+  "soak-test","cryptography","web3","hybrid-blockchain"
 ) | ForEach-Object { gh repo edit Gruver87/dup-protocol --add-topic $_ }
 ```
 
@@ -17,8 +17,8 @@ Or paste into **Settings → General → About**.
 
 | Field | Value |
 |-------|-------|
-| **Description** | Absolute Blockchain Ultimate Hybrid — Python+Rust L1, tip-v2 soak PASS, evidence-first industrial pin. External audit pending. Not a public mainnet. |
-| **Website** | https://github.com/Gruver87/dup-protocol/blob/master/docs/VISION.md |
+| **Description** | DUP Protocol (DUP Labs) — Python+Rust industrial L1 pin. Tip-v2 TCP+TLS soak historical; ADR 0020 libp2p. External audit pending. Not public mainnet. |
+| **Website** | https://github.com/Gruver87/dup-protocol/blob/master/docs/FUND_AUDIT_PREP.md |
 | **Social preview** | Upload evergreen `docs/assets/repo-social-preview.png` in **Settings → General · Social preview** |
 | **Skimmer card** | [docs/AT_A_GLANCE.md](../docs/AT_A_GLANCE.md) |
 | **Vision** | [docs/VISION.md](../docs/VISION.md) |
@@ -29,7 +29,8 @@ Or paste into **Settings → General → About**.
 ## Topics
 
 ```
-absolute-blockchain
+dup-protocol
+dup-labs
 blockchain
 blockchain-node
 layer1
@@ -37,6 +38,7 @@ python
 rust
 pyo3
 p2p
+libp2p
 evm
 rocksdb
 docker
@@ -48,7 +50,6 @@ soak-test
 cryptography
 web3
 hybrid-blockchain
-blockchain-development
 ```
 
 > Cap = 20 topics. Prefer searchable stack terms over maturity labels like `industrial`.

@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Fund / audit prep wave (no soak)
+
+- Front door: `docs/FUND_AUDIT_PREP.md` — honest VOID soak + org blockers.
+- Diligence docs + DISCLAIMER / CONTRIBUTING / REPO_PROFILE brand pass.
+- Cruft: nested `nft_images/nft_images/`, empty `services`/`db`/`node` packages;
+  `SOAK_IN_PROGRESS.txt` → `SOAK_STOPPED_VOID.txt`; deprecate `docker-compose.ha.yml`.
+- `docs/releases/README.md` — RELEASE_NOTES stay at root for wave needles.
+
 ### Fix testnet mesh scripts: PowerShell switch splat
 
 - `docker_testnet_mesh3.ps1` / `mesh.ps1` used array splat `@("-Mesh3")`, which

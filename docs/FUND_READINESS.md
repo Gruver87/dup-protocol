@@ -1,7 +1,8 @@
 # Fund / diligence readiness — DUP Protocol industrial pin (honest)
 
 **Audience:** grant officers, investors, HTP / ПВТ reviewers, technical advisors.  
-**Date:** 2026-10-07 · Repo: [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol) · branch `master`  
+**Date:** 2026-10-09 · Repo: [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol) · branch `master`  
+**Front door:** [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md)  
 **Brand:** [BRAND.md](BRAND.md) — **DUP Labs** · **DUP Protocol** · Uladzimir Dabranski (D.U.P.)  
 **Not:** public audited mainnet · not listed token · not Experimental Long-Range / Exp soak packs as pin evidence.  
 **Former folder name:** Absolute_Blockchain_Ultimate_Hybrid (path only).
@@ -17,7 +18,7 @@
 ## What this is
 
 Industrial **private-testnet / firm-engagement** hybrid L1 (Python orchestration + Rust/PyO3 hot path).  
-**Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** soak evidence. **Pin libp2p 48h soak is deferred** until the operator starts it.
+**Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** soak evidence. Pin libp2p STRICT attempt **VOID** (host power-off 2026-10-08); soak **not restarted** / **not PASS**.
 
 ---
 
@@ -40,7 +41,7 @@ Experimental STRICT / Long-Range / EVM depth soak packs live **only** on [`dup-p
 ## What we do **not** claim
 
 - Public mainnet / external firm security audit PDF complete  
-- Pin libp2p 48h soak PASS on current HEAD  
+- Pin libp2p 48h soak PASS on current HEAD (STRICT VOID 2026-10-08; not restarted)  
 - Long-Range production / BLS (`feature_long_range=false` in prod JSON)  
 - Bridge L1 lock/mint contracts live  
 - NIST PQ signature backends (correct `NotImplemented`)  
@@ -71,7 +72,7 @@ ADRs: 0001 tip-safety · 0009 hybrid · 0015 secrets · 0016 profiles · 0017 Lo
 | Bridge OFF defaults + audit gate | Done |
 | Sprout labs verify (oracle/shard/NFT/AI) | Done — `verify_sprout_labs.ps1` |
 | Industrial HIGH honesty / industrial_gate | Done |
-| Fresh 48h soak on current HEAD (libp2p) | **Prep READY** — see [`pin-libp2p-cutover-pending/SOAK_PREP_READY_HEAD.md`](evidence/runs/pin-libp2p-cutover-pending/SOAK_PREP_READY_HEAD.md); soak **not started** / **not PASS** |
+| Fresh 48h soak on current HEAD (libp2p) | **Prep READY** · attempt **VOID** (power-off) — [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt) · **not PASS** · not restarted |
 | External audit / secrets rotate / validator ceremony live | Org Phase 6 |
 
 ---

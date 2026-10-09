@@ -1,5 +1,9 @@
 version: '3.8'
 
+# DEPRECATED (2026-10-09) — staging sketch only.
+# Industrial path: docker-compose.prod.3node.yml + scripts/docker_prod_3node.ps1 (ADR 0020).
+# Do not cite this file as fund/audit mesh evidence.
+#
 # HA profile: 3 nodes + Redis (distributed rate limit)
 # Usage: docker compose -f docker-compose.ha.yml up --build
 
