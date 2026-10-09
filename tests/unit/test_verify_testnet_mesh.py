@@ -108,7 +108,41 @@ def test_two_node_mesh_fails_when_peer_count_low():
     assert any("mesh incomplete" in e for e in errors)
 
 
-def test_three_node_soft_pass_when_peers_ok_but_mesh_healthy_false():
+def test_three_node_soft_pass_when_peers_ok_state_consistent_mesh_healthy_false():
+    """soft-PASS only when state_consistent=true (peers+heights already OK)."""
+    mod = _load()
+    ready = {"status": "ready"}
+    status = {"chain_id": 77777, "height": 10, "peers": 2}
+    harness = {"harness_healthy": True, "tip_state_aligned": True}
+    mesh = {
+        "peer_count": 2,
+        "expected_peers": 1,
+        "mesh_healthy": False,
+        "height_aligned": True,
+        "state_consistent": True,
+    }
+
+    def fake_api(url, timeout=10.0):
+        if "/health/ready" in url:
+            return ready
+        if "/status" in url:
+            return status
+        if "/testnet/mesh" in url:
+            return mesh
+        return harness
+
+    with patch.object(mod, "_api", side_effect=fake_api), patch.object(mod, "_probe_health", return_value=True):
+        errors, warnings, meta = mod.verify_testnet_mesh(
+            validator_urls=list(mod.DEFAULT_MESH3),
+            wait_sec=0,
+        )
+    assert errors == []
+    assert meta["reachable"] == 3
+    assert any("soft-PASS" in w for w in warnings)
+
+
+def test_three_node_fails_when_mesh_healthy_false_and_state_inconsistent():
+    """Do not soft-PASS tip/state divergence."""
     mod = _load()
     ready = {"status": "ready"}
     status = {"chain_id": 77777, "height": 10, "peers": 2}
@@ -131,13 +165,12 @@ def test_three_node_soft_pass_when_peers_ok_but_mesh_healthy_false():
         return harness
 
     with patch.object(mod, "_api", side_effect=fake_api), patch.object(mod, "_probe_health", return_value=True):
-        errors, warnings, meta = mod.verify_testnet_mesh(
+        errors, _warnings, meta = mod.verify_testnet_mesh(
             validator_urls=list(mod.DEFAULT_MESH3),
             wait_sec=0,
         )
-    assert errors == []
     assert meta["reachable"] == 3
-    assert any("soft-PASS" in w for w in warnings)
+    assert any("state_consistent=false" in e for e in errors)
 
 
 def test_mesh3_expects_three_nodes():

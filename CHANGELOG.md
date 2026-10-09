@@ -10,6 +10,15 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Security honesty harden (no soak)
+
+- `verify_testnet_mesh`: soft-PASS only when `state_consistent=true`;
+  `mesh_healthy=false` + `state_consistent=false` is FAIL (no greenwash).
+- `verify_p2p_tls_mesh`: ADR 0020 N/A sets `ready=false` / `tls_ready=false`;
+  `_libp2p_active` requires explicit `feature_libp2p is True`.
+- `industrial_gate`: VOID soak disclosure requires on-disk
+  `SOAK_VOID_HOST_POWEROFF_2026-10-08.txt` + needles for the above.
+
 ### Noise cleanup wave 2 (no soak)
 
 - Remove root marketing posts, dead HTML explorers, `nft_core.py`, obsolete
@@ -36,8 +45,9 @@ Canonical language for this repository is **English**. Older entries below may s
 
 - `build_config`: `TESTNET_EXPECTED_PEERS` survives JSON merge (seed JSON no
   longer hard-pins `testnet_expected_peers: 1` over Mesh3 env `2`).
-- `verify_testnet_mesh`: FAIL only when peer_count/height incomplete; soft-PASS
-  when peers+heights OK but sticky `mesh_healthy=false` / `state_consistent`.
+- `verify_testnet_mesh`: FAIL when peer_count/height incomplete; soft-PASS only
+  when peers+heights OK **and** `state_consistent=true` with sticky
+  `mesh_healthy=false` (see Security honesty harden).
 
 ### Fix testnet Mesh3: always bring up validators + wait ready
 

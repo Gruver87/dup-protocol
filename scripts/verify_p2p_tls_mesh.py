@@ -81,10 +81,11 @@ def check_static_tls_material() -> tuple[list[str], list[str], dict[str, Any]]:
 
 
 def _libp2p_active(status: dict[str, Any]) -> bool:
+    """ADR 0020: require explicit feature_libp2p=true (fail-closed; no default True)."""
     block = status.get("libp2p")
     if not isinstance(block, dict):
         return False
-    return bool(block.get("active")) and bool(block.get("feature_libp2p", True))
+    return bool(block.get("active")) and block.get("feature_libp2p") is True
 
 
 def verify_p2p_tls_mesh(
@@ -128,8 +129,10 @@ def verify_p2p_tls_mesh(
             meta["libp2p_active_nodes"] = libp2p_nodes
             meta["reachable"] = len(reachable)
             meta["timestamp"] = datetime.now(timezone.utc).isoformat()
-            meta["ready"] = True
+            # N/A ≠ TLS ready — exit 0 for ADR 0020, but ready stays false.
+            meta["ready"] = False
             meta["not_applicable"] = True
+            meta["tls_ready"] = False
             warnings.append(_LIBP2P_NA_HINT)
             # Static TLS material is optional for Noise mesh; keep as warnings only.
             if check_static:

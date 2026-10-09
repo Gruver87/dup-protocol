@@ -56,7 +56,7 @@ def test_live_tls_verify_fails_when_not_ready():
 
 
 def test_live_libp2p_mesh_is_not_applicable_for_tls_verify():
-    """ADR 0020 default mesh: Noise active → TLS verify N/A (exit-path ready)."""
+    """ADR 0020 default mesh: Noise active → TLS verify N/A; ready stays false."""
     mod = _load("verify_p2p_tls_mesh", "scripts/verify_p2p_tls_mesh.py")
 
     def fake_api(url, timeout=10.0):
@@ -78,8 +78,18 @@ def test_live_libp2p_mesh_is_not_applicable_for_tls_verify():
         errors, warnings, meta = mod.verify_p2p_tls_mesh(check_static=False, require_tls=True)
     assert errors == []
     assert meta.get("not_applicable") is True
+    assert meta.get("ready") is False
+    assert meta.get("tls_ready") is False
     assert meta.get("transport_mode") == "adr0020_libp2p_noise"
     assert any("ADR 0020" in w for w in warnings)
+
+
+def test_libp2p_active_requires_explicit_feature_flag():
+    """Missing feature_libp2p must not default to True (fail-closed)."""
+    mod = _load("verify_p2p_tls_mesh", "scripts/verify_p2p_tls_mesh.py")
+    assert mod._libp2p_active({"libp2p": {"active": True}}) is False
+    assert mod._libp2p_active({"libp2p": {"active": True, "feature_libp2p": True}}) is True
+    assert mod._libp2p_active({"libp2p": {"active": True, "feature_libp2p": False}}) is False
 
 
 def test_p2p_tls_preflight_static():

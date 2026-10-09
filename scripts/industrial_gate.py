@@ -281,14 +281,48 @@ def _check_p2p_hardening() -> tuple[list[str], list[str]]:
             "pin FUND_READINESS must not cite Experimental soak packs as pin evidence"
         )
     # Honest disclosure: deferred, or VOID attempt (power-off) with not PASS / not restarted.
+    # VOID wording alone is insufficient — require the on-disk VOID evidence file.
+    void_pack = (
+        ROOT
+        / "docs"
+        / "evidence"
+        / "runs"
+        / "pin-libp2p-cutover-pending"
+        / "SOAK_VOID_HOST_POWEROFF_2026-10-08.txt"
+    )
+    fund_void = "VOID" in fund and "libp2p" in fund.lower() and "not PASS" in fund
     fund_soak_ok = (
         "libp2p 48h soak is deferred" in fund
         or "48h soak is deferred" in fund
-        or ("VOID" in fund and "libp2p" in fund.lower() and "not PASS" in fund)
+        or (fund_void and void_pack.is_file())
     )
     if not fund_soak_ok:
         errors.append(
             "pin FUND_READINESS must disclose deferred/VOID pin libp2p soak (not PASS)"
+        )
+    if fund_void and not void_pack.is_file():
+        errors.append(
+            "FUND_READINESS cites VOID soak but missing "
+            "docs/evidence/runs/pin-libp2p-cutover-pending/"
+            "SOAK_VOID_HOST_POWEROFF_2026-10-08.txt"
+        )
+    # Honesty: verify scripts must not greenwash mesh/TLS.
+    vtn = (ROOT / "scripts" / "verify_testnet_mesh.py").read_text(encoding="utf-8")
+    if "state_consistent=false" not in vtn or "if state_consistent:" not in vtn:
+        errors.append(
+            "verify_testnet_mesh soft-PASS must require state_consistent=true "
+            "(else FAIL on state_consistent=false)"
+        )
+    vpt = (ROOT / "scripts" / "verify_p2p_tls_mesh.py").read_text(encoding="utf-8")
+    if 'block.get("feature_libp2p") is True' not in vpt:
+        errors.append(
+            "verify_p2p_tls_mesh _libp2p_active must require feature_libp2p is True "
+            "(no default True)"
+        )
+    if 'meta["ready"] = False' not in vpt or 'meta["not_applicable"] = True' not in vpt:
+        errors.append(
+            "verify_p2p_tls_mesh ADR 0020 N/A path must set ready=False "
+            "(N/A ≠ TLS ready)"
         )
     ss_py = (ROOT / "core" / "components" / "state_service.py").read_text(encoding="utf-8")
     reward_chunk = ss_py.split("def apply_block_reward")[1].split("def compute_state_root")[0]

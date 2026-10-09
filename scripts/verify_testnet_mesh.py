@@ -136,11 +136,13 @@ def verify_testnet_mesh(
         leader = reachable[0]
         try:
             mesh = _api(f"{leader}/testnet/mesh", timeout=12)
+            state_consistent = bool(mesh.get("state_consistent"))
             meta_mesh = {
                 "peer_count": mesh.get("peer_count"),
                 "expected_peers": mesh.get("expected_peers"),
                 "mesh_healthy": mesh.get("mesh_healthy"),
                 "height_aligned": mesh.get("height_aligned"),
+                "state_consistent": state_consistent,
             }
             min_peers = len(urls) - 1
             peer_count = int(mesh.get("peer_count") or 0)
@@ -154,14 +156,24 @@ def verify_testnet_mesh(
                         f"(need >={min_peers} peers for {len(urls)}-node mesh)"
                     )
                 elif not mesh.get("mesh_healthy"):
-                    # Peers + heights OK; sticky state_consistent / stale expected
-                    # must not paint FAIL when the live mesh is already synced.
-                    warnings.append(
-                        f"seed mesh_healthy=false soft-PASS "
-                        f"peer_count={peer_count} expected_cfg={mesh.get('expected_peers')} "
-                        f"state_consistent={mesh.get('state_consistent')} "
-                        f"height_aligned={height_aligned}"
-                    )
+                    # Soft-PASS only when peers+heights OK *and* state roots agree.
+                    # mesh_healthy=false with state_consistent=false is FAIL
+                    # (do not greenwash tip/state divergence).
+                    if state_consistent:
+                        warnings.append(
+                            f"seed mesh_healthy=false soft-PASS "
+                            f"peer_count={peer_count} "
+                            f"expected_cfg={mesh.get('expected_peers')} "
+                            f"state_consistent=true "
+                            f"height_aligned={height_aligned}"
+                        )
+                    else:
+                        errors.append(
+                            f"seed mesh_healthy=false and state_consistent=false "
+                            f"peer_count={peer_count} "
+                            f"expected_cfg={mesh.get('expected_peers')} "
+                            f"height_aligned={height_aligned}"
+                        )
             elif len(reachable) == 1:
                 warnings.append("solo seed — start validator profile for mesh demo")
         except (urllib.error.URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError) as exc:
