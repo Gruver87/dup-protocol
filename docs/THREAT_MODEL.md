@@ -52,7 +52,7 @@ Default prod 3-node mesh JSON after ADR 0020: **libp2p** (TLS off). Ceremony / `
 - `finality_quorum_live` remains false until real QC mesh proof.  
 - EVM is a **subset**, not a full Ethereum client.  
 - pyo3 0.22 held with scoped RUSTSEC ignores until 0.29 migration (PR #7).  
-- Historical Jul float 48h soak pre-dates tip-v2; **tip-v2 48h soak PASS** Aug 5–7 2026 (`docs/evidence/runs/375d14f/`) on **TCP+TLS** freeze evidence. **Pin libp2p mesh soak/probe after ADR 0020: not completed.**
+- Historical Jul float 48h soak pre-dates tip-v2; **tip-v2 48h soak PASS** Aug 5–7 2026 (`docs/evidence/runs/375d14f/`) on **TCP+TLS** freeze evidence. **Pin libp2p after ADR 0020:** Quick probe PASS packaged; **48h soak VOID** (2026-10-08 · not PASS).
 
 ## References
 

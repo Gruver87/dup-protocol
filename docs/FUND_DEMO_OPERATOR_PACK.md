@@ -5,7 +5,7 @@
 **Repo:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)  
 **Not:** public audited mainnet · not firm pen-test PASS · not a new 48h soak claim.
 
-Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020: `feature_libp2p=true`, `p2p_tls_enabled=false`). **TCP+TLS** remains the alternate profile (`node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** evidence only. Pin libp2p soak/probe **not completed** — do not claim PASS.
+Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020: `feature_libp2p=true`, `p2p_tls_enabled=false`). **TCP+TLS** remains the alternate profile (`node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** evidence only. Pin libp2p **Quick probe PASS** packaged; **48h soak VOID** (2026-10-08 · not PASS · not restarted) — do not claim soak PASS.
 
 ---
 

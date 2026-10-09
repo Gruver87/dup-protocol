@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Root cruft wave 6 + VOID residual sync (no soak)
+
+- Docs: MAINNET_GAP, THREAT_MODEL, FUND_DEMO opener, ADR 0019/0020,
+  INDUSTRIAL_HARDEN_RUNBOOK, README “restart pending” wording.
+- Delete orphan `scripts/check_blockchain_full.ps1`, `scripts/check_project.ps1`
+  (superseded by `verify_project` / `check_all` / `test_blockchain_full`).
+
 ### Root cruft wave 5 + diligence VOID sync (no soak)
 
 - Delete `docker-compose.ha.yml`, `scripts/move_legacy_to_desktop.ps1`; clear

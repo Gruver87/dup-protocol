@@ -21,7 +21,7 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 **Funds / ПВТ (pin):** [FUND_AUDIT_PREP](docs/FUND_AUDIT_PREP.md) · [SHOWCASE](docs/SHOWCASE.md) · [DILIGENCE_BRIEF](docs/DILIGENCE_BRIEF.md) · [ONE_PAGER_RU](docs/ONE_PAGER_RU.md).  
 **R&D sibling pack (not pin evidence):** [Exp SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md).
 
-**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Working-tip pin mesh is **ADR 0020 rust-libp2p**; freeze tag soak is **TCP+TLS**. Experimental soaks ≠ pin tip-v2 evidence. Pin libp2p 48h soak **VOID** (host power-off 2026-10-08; not PASS · not restarted · restart pending) — see [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](docs/evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt).
+**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Working-tip pin mesh is **ADR 0020 rust-libp2p**; freeze tag soak is **TCP+TLS**. Experimental soaks ≠ pin tip-v2 evidence. Pin libp2p 48h soak **VOID** (host power-off 2026-10-08; not PASS · not restarted; operator may rerun STRICT later) — see [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](docs/evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt).
 
 ---
 

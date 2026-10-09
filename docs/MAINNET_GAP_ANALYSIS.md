@@ -115,7 +115,7 @@ Operator sequence: [MAINNET_CUTOVER.md](MAINNET_CUTOVER.md).
 | Storage | RocksDB prod + backup/restore; **reorg purges EVM/tx-prop indexes** (v1.2.43); aux.db scope documented |
 | State root | Prod refuse tip header rewrite (`allow_state_root_rewrite=false`, v1.2.79) |
 | Tests | ✅ CI: `industrial_gate.py`, prod boot E2E, `verify_p2p_ci --mode prod-smoke` |
-| libp2p / Long-Range | **ADR 0020:** pin prod **mesh** JSON uses `feature_libp2p=true` (rust-libp2p); alternate TCP+TLS via `node.prod.json` / ceremony. **Long-Range** stays off (`feature_long_range=false`). Pin libp2p soak **pending** — Experimental Long-Range/libp2p lab soaks are **not** pin evidence |
+| libp2p / Long-Range | **ADR 0020:** pin prod **mesh** JSON uses `feature_libp2p=true` (rust-libp2p); alternate TCP+TLS via `node.prod.json` / ceremony. **Long-Range** stays off (`feature_long_range=false`). Pin libp2p soak **VOID** (2026-10-08 · not PASS) — Experimental Long-Range/libp2p lab soaks are **not** pin evidence |
 
 ---
 

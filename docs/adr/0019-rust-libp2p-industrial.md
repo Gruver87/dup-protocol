@@ -629,4 +629,5 @@ feature `libp2p`), exposed to Python through the existing
 - Industrial JSON freeze (`feature_libp2p=false`) is **superseded on the pin
   prod mesh** by [ADR 0020](0020-libp2p-industrial-mesh.md) (working tip).
   Freeze tag `v1.3.1339-tip-v2-industrial` remains TCP+TLS evidence. Pin libp2p
-  soak pending. Experimental TCP+TLS soak `0a7932c4` is not libp2p evidence.
+  soak **VOID** (2026-10-08 · not PASS). Experimental TCP+TLS soak `0a7932c4`
+  is not libp2p evidence.

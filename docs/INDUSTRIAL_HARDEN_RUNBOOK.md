@@ -67,4 +67,4 @@ Do not claim mainnet-ready until external tracker complete + public TLS evidence
 ## Non-goals
 
 Sharding on prod tip · `finality_quorum_live` marketing · bridge enablement · new FEATURE_*  
-Long-Range on prod (`feature_long_range=false`) · pin libp2p mesh cutover (ADR 0020) **without** completed 48h soak pack (`pin-libp2p-cutover-pending`)  
+Long-Range on prod (`feature_long_range=false`) · claiming pin libp2p 48h soak PASS while pack is **VOID** (`pin-libp2p-cutover-pending` · 2026-10-08)  
