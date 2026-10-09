@@ -496,7 +496,7 @@ def main() -> int:
             "this script does not start soak",
             "this script does not rebuild Docker",
             "live mesh Python may be older than host until the next bake",
-            "pin libp2p 48h soak still DEFERRED (docs/evidence/runs/pin-libp2p-cutover-pending/)",
+            "pin libp2p 48h soak VOID 2026-10-08 (docs/evidence/runs/pin-libp2p-cutover-pending/)",
             "do not cite Experimental soaks as pin evidence",
             "--hard does not require a 48h soak PASS (read-only honesty only)",
             "cargo test rust_bridge is CLI crate smoke (0 #[test] modules) — not lock/L1 verification",

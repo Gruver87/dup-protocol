@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Root cruft wave 8 + VOID script honesty (no soak)
+
+- Delete orphan wrappers: `check_everything.ps1`, `check_harness_probe.ps1`,
+  `docker_noclone_sync.ps1`, `docker_prod_full_network.ps1` (keep
+  `backup_scheduled.ps1` as ops utility).
+- `verify_full_blockchain` DEFERRED → VOID; EVIDENCE_MATRIX Rocks row VOID.
+
 ### Root cruft wave 7 + script honesty VOID (no soak)
 
 - Delete orphan wrappers: `test_full_project.ps1`, `full_audit.ps1`,

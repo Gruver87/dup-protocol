@@ -223,7 +223,7 @@ def main() -> int:
         else:
             print("OK: industrial_gate (org-warnings may still print)")
 
-    _banner("4) soak honesty (read-only, soak not started)")
+    _banner("4) soak honesty (read-only; this script does not start soak; pin 48h VOID)")
     soak = soak_honesty()
     _print_soak(soak["pin_48h"], "48h pin")
     _print_soak(soak["strict_5h"], "5h STRICT")
