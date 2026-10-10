@@ -132,7 +132,7 @@ Goal: move deterministic, CPU-bound, and consensus-critical code to **Rust/PyO3*
 
 ### Priority 8 — Operational tooling ✅
 
-- [x] Full test entry: `scripts/test_all.ps1` / `test_all.sh`
+- [x] Full test entry: `scripts/test_all.ps1` / `scripts/test_blockchain_full.ps1`
 - [x] Production stack gate: `scripts/verify_prod_stack.py`
 - [x] Live prod smoke: `scripts/prod_smoke.py`
 - [x] Release gate: `scripts/release_gate.ps1`

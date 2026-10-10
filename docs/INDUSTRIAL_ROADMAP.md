@@ -89,6 +89,6 @@ docker compose -f docker-compose.observability.yml up -d
 - [x] K8s relayer deployment (`deploy/k8s/relayer-deployment.yaml`)
 - [x] K8s relayer uses HTTP L1 queue sync (`BRIDGE_L1_QUEUE_HTTP` + `/bridge/oracle/l1-queue-sync`)
 - [x] Live prod smoke gate (`scripts/prod_smoke.py`)
-- [x] One-shot full test entry: `scripts/test_all.ps1` / `test_all.sh`
+- [x] One-shot full test entry: `scripts/test_all.ps1` / `scripts/test_blockchain_full.ps1`
 - [x] Production stack gate: `scripts/verify_prod_stack.py`
 - [x] Multi-node P2P smoke: `python scripts/verify_p2p_ci.py --mode auto`

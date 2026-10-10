@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Root cruft wave 11 (no soak)
+
+- Delete thin `test_all.sh`, `industrial_gate.ps1` (use `python scripts/industrial_gate.py`),
+  legacy `run_all_tests.py`, one-off `fix_legacy_encoding.py`.
+- Keep `cleanup_disk.ps1`, `print_firm_handoff.ps1`, `verify_v1349_local.py`
+  (ops / firm / optional kernel smoke).
+
 ### Root cruft wave 10 + matrix VOID sync (no soak)
 
 - Delete `check_hybrid_full.{ps1,sh}`, `create_release.ps1`, `init_env.ps1`,
