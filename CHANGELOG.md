@@ -10,6 +10,14 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Root cruft wave 12 (no soak)
+
+- Delete `prod_check.ps1` / `staging_check.ps1` (unwired JSON preflight alias),
+  `verify_evm_rpc_honesty.ps1` (thin pytest slice), `run_legacy_tests.py`
+  (no callers after `run_all_tests.py` removal).
+- Keep `mesh_recover.ps1`, `reset_genesis.ps1`, `mainnet_*_gate` / cutover
+  checklists (docs still point at them).
+
 ### Root cruft wave 11 (no soak)
 
 - Delete thin `test_all.sh`, `industrial_gate.ps1` (use `python scripts/industrial_gate.py`),
