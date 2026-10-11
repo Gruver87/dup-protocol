@@ -10,6 +10,13 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Root cruft wave 13 (no soak)
+
+- Delete unwired wrappers: `verify_persist_fail_closed.ps1`,
+  `verify_native_f64_hygiene.ps1`, `verify_adr0021_wire_satoshi.ps1`,
+  `genesis_ceremony.ps1` (docs use `genesis_ceremony.py`),
+  `bridge_l1_cutover.sh` (docs use `.py` / `.ps1`).
+
 ### Root cruft wave 12 (no soak)
 
 - Delete `prod_check.ps1` / `staging_check.ps1` (unwired JSON preflight alias),
