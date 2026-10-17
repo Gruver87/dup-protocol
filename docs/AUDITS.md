@@ -34,7 +34,7 @@ Related: [SECURITY.md](../SECURITY.md) · [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_
 
 **Front door:** [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md) (2026-10-09).
 
-**ADR 0020:** working-tip prod 3-node mesh JSON on this pin is **rust-libp2p** (`feature_libp2p=true`). Freeze tag `v1.3.1339-tip-v2-industrial` remains **TCP+TLS** sealed evidence. **Post-cutover Quick probe PASS** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/`. Pin libp2p STRICT attempt **VOID** (host power-off 2026-10-08) — not PASS, not restarted.
+**ADR 0020:** working-tip prod 3-node mesh JSON on this pin is **rust-libp2p** (`feature_libp2p=true`). Freeze tag `v1.3.1339-tip-v2-industrial` remains **TCP+TLS** sealed evidence. **Post-cutover Quick probe PASS** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/`. Pin libp2p STRICT attempt **VOID** (host power-off 2026-10-08) — not PASS; STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 PASS (passed=true, hard_fails=0, mesh_warn=0, 48.0007h; pack pin-libp2p-strict-48h; not mainnet; tag not cut).
 
 Experimental owns Long-Range R&D and completed libp2p soaks on **its** tree (**B1 PASS** there) — **do not** cite `3c801b87`, `lp2pstrict1`, or `0a7932c4` as pin libp2p proof. Honesty Exp→pin merge is **CLOSED** (units + `industrial_gate`; **not** pin libp2p soak). Working tip: `git rev-parse --short HEAD`. On **this** pin, prefer:
 

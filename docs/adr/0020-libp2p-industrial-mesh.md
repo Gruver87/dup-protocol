@@ -1,6 +1,6 @@
 # ADR 0020 — libp2p industrial mesh cutover (pin)
 
-- **Status:** Accepted (pin industrial mesh cutover; Quick probe PASS packaged; 48h mesh soak on pin **VOID** 2026-10-08 · not PASS)
+- **Status:** Accepted (pin industrial mesh cutover; Quick probe PASS packaged; 2026-10-08 soak **VOID** not PASS; STRICT 2026-10-15–17 **PASS** in `pin-libp2p-strict-48h`, tag not cut)
 - **Date:** 2026-08-22 (Experimental); rebound to pin 2026-10-05
 - **Deciders:** DUP Labs maintainers
 - **Supersedes (this tree):** ADR 0018 §5 and ADR 0019 industrial JSON freeze
@@ -40,7 +40,7 @@ pack is **Experimental** evidence; it is not pin evidence.
    cutover (`passed=true`, `hard_fails=0`, `hours_elapsed>=48`), packaged under
    `docs/evidence/runs/<image>/`. Quick probe PASS is packaged under
    `pin-libp2p-cutover-pending/`; STRICT attempt **VOID** (host power-off
-   2026-10-08 — not PASS · not restarted). Do not cite `3c801b87` or
+   2026-10-08 — not PASS · STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 PASS (passed=true, hard_fails=0, mesh_warn=0, 48.0007h; pack pin-libp2p-strict-48h; not mainnet; tag not cut)). Do not cite `3c801b87` or
    `0a7932c4` as pin libp2p soak.
 5. Session crypto on the mesh is **Noise**. Native mTLS overlay
    (`docker-compose.prod.3node.p2ptls.yml`) is not the default for this mesh.

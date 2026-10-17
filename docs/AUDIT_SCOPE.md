@@ -6,7 +6,7 @@
 **Chain under review:** prod-profile `778888` (Docker 3-node mesh / future mainnet-v1)  
 **Date:** 2026-10-05 (ADR 0020 transport note; freeze tag unchanged)  
 **Release pin:** tag **`v1.3.1339-tip-v2-industrial`** (`0531995`; **TCP+TLS** historical evidence) · working tip mesh = **rust-libp2p** per [ADR 0020](adr/0020-libp2p-industrial-mesh.md) (pin libp2p soak **VOID** 2026-10-08)  
-**Phase status:** Phase 2 tip-v2 48h PASS (**TCP+TLS**, `375d14f`) · Phase 3 ops dry-run PASS · Phase 4 audit binder READY · Exp→pin honesty CLOSED (units+gate) · ADR 0020 mesh cutover + Quick probe (**48h soak VOID** · not PASS) — external firm engagement pending
+**Phase status:** Phase 2 tip-v2 48h PASS (**TCP+TLS**, `375d14f`) · Phase 3 ops dry-run PASS · Phase 4 audit binder READY · Exp→pin honesty CLOSED (units+gate) · ADR 0020 mesh cutover + Quick probe · pin libp2p STRICT 2026-10-15–17 **PASS** (`pin-libp2p-strict-48h`; 2026-10-08 VOID is not PASS; not mainnet) — external firm engagement pending
 
 ## In scope
 

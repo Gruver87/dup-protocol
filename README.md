@@ -21,7 +21,7 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 **Funds / ПВТ (pin):** [FUND_AUDIT_PREP](docs/FUND_AUDIT_PREP.md) · [SHOWCASE](docs/SHOWCASE.md) · [DILIGENCE_BRIEF](docs/DILIGENCE_BRIEF.md) · [ONE_PAGER_RU](docs/ONE_PAGER_RU.md).  
 **R&D sibling pack (not pin evidence):** [Exp SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md).
 
-**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Working-tip pin mesh is **ADR 0020 rust-libp2p**; freeze tag soak is **TCP+TLS**. Experimental soaks ≠ pin tip-v2 evidence. Pin libp2p 48h soak **VOID** (host power-off 2026-10-08; not PASS · not restarted; operator may rerun STRICT later) — see [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](docs/evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt).
+**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Working-tip pin mesh is **ADR 0020 rust-libp2p**; freeze tag soak is **TCP+TLS**. Experimental soaks ≠ pin tip-v2 evidence. Pin libp2p 48h soak **VOID** (host power-off 2026-10-08; not PASS · STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 PASS (passed=true, hard_fails=0, mesh_warn=0, 48.0007h; pack pin-libp2p-strict-48h; not mainnet; tag not cut); operator may rerun STRICT later) — see [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](docs/evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt).
 
 ---
 
@@ -80,7 +80,7 @@ Not an investment product. **ABS** = in-repo tokenomics model (221M) — **not**
 | Phase 4 audit binder | **READY** | [phase4-691329c](docs/evidence/runs/phase4-691329c/) |
 | Public mainnet / listed ABS / firm audit PDF | **No** | [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
 | Bridge on live mesh | **OFF** | by design until L1 cutover |
-| rust-libp2p on this pin (ADR 0020) | **Working-tip** · Quick probe PASS | [`pin-libp2p-cutover-pending`](docs/evidence/runs/pin-libp2p-cutover-pending/) · 48h soak **VOID** (not PASS) |
+| rust-libp2p on this pin (ADR 0020) | **Working-tip** · Quick probe PASS · STRICT 48h **PASS** 2026-10-15–17 | [`pin-libp2p-strict-48h`](docs/evidence/runs/pin-libp2p-strict-48h/) · not mainnet · tag not cut |
 | Long-Range on this pin | **No** (lab-only) | ADR 0017 incomplete · R&D in [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) |
 
 **Jump:** [Architecture](#architecture) · [Layout](#repo-layout) · [Ops](#operator-cheatsheet) · [Docs](#docs-map) · [Contribute](CONTRIBUTING.md)

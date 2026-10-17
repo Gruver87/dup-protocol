@@ -18,7 +18,7 @@
 ## What this is
 
 Industrial **private-testnet / firm-engagement** hybrid L1 (Python orchestration + Rust/PyO3 hot path).  
-**Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** soak evidence. Pin libp2p STRICT attempt **VOID** (host power-off 2026-10-08); soak **not restarted** / **not PASS**.
+**Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** soak evidence. Pin libp2p STRICT attempt **VOID** (host power-off 2026-10-08); soak **STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 PASS (passed=true, hard_fails=0, mesh_warn=0, 48.0007h; pack pin-libp2p-strict-48h; not mainnet; tag not cut)**.
 
 ---
 
@@ -40,8 +40,9 @@ Experimental STRICT / Long-Range / EVM depth soak packs live **only** on [`dup-p
 
 ## What we do **not** claim
 
-- Public mainnet / external firm security audit PDF complete  
-- Pin libp2p 48h soak PASS on current HEAD (STRICT VOID 2026-10-08; not restarted)  
+- Public mainnet / external firm security audit PDF complete
+- The 2026-10-08 VOID window and the 2026-10-11 short window as soak PASS
+- Tag `v1.3.1340-libp2p-industrial-mesh` (not cut)  
 - Long-Range production / BLS (`feature_long_range=false` in prod JSON)  
 - Bridge L1 lock/mint contracts live  
 - NIST PQ signature backends (correct `NotImplemented`)  
@@ -72,7 +73,7 @@ ADRs: 0001 tip-safety · 0009 hybrid · 0015 secrets · 0016 profiles · 0017 Lo
 | Bridge OFF defaults + audit gate | Done |
 | Sprout labs verify (oracle/shard/NFT/AI) | Done — `verify_sprout_labs.ps1` |
 | Industrial HIGH honesty / industrial_gate | Done |
-| Fresh 48h soak on current HEAD (libp2p) | **Prep READY** · attempt **VOID** (power-off) — [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt) · **not PASS** · not restarted |
+| Fresh 48h soak on current HEAD (libp2p) | **PASS** 2026-10-15–17 (`hard_fails=0`, [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/)). 2026-10-08 **VOID** (not PASS) — [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt). 2026-10-11 short window not PASS. Not mainnet. Tag not cut. |
 | External audit / secrets rotate / validator ceremony live | Org Phase 6 |
 
 ---

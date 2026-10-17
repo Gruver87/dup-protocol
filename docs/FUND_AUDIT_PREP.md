@@ -15,7 +15,7 @@ Longer maps: [FUND_READINESS.md](FUND_READINESS.md) · [DILIGENCE_BRIEF.md](DILI
 | Question | Answer |
 |----------|--------|
 | Industrial private mesh proven? | **Yes** — tip-v2 TCP+TLS freeze soak (`375d14f` / tag `v1.3.1339-tip-v2-industrial`); ADR 0020 libp2p cutover + Quick probe packaged |
-| Pin libp2p 48h soak PASS on HEAD? | **No** — prep READY · attempt VOID · not restarted |
+| Pin libp2p 48h soak PASS on HEAD? | **Yes for the 2026-10-15–17 STRICT window** (`passed=true`, `hard_fails=0`, `mesh_warn=0`, 48.0007h, pack `pin-libp2p-strict-48h`). 2026-10-08 VOID and 2026-10-11 short window are not PASS. Not mainnet. Tag not cut. Recorded git `c1c281f` was dirty. |
 | External firm PDF? | **No** — tracker **6/8** (2 firm-owned open) |
 | Public mainnet / listed token? | **Not claimed** |
 | Ready for technical diligence meeting? | **Yes** — private-mesh + evidence-first |

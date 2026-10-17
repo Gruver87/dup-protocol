@@ -38,6 +38,23 @@ Write-Host "  log=$LogFile report=$ReportFile" -ForegroundColor DarkGray
 & (Join-Path $ScriptDir "stop_soak_monitors.ps1") -Force
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+$null = docker info 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "FAIL: Docker daemon is not running (typical after host power-off)." -ForegroundColor Red
+    Write-Host "  Start Docker Desktop, wait until it is ready, then rerun this script." -ForegroundColor Yellow
+    Write-Host "  Previous STRICT window is VOID (2026-10-08). Do not resume that log." -ForegroundColor Yellow
+    exit 1
+}
+
+$priorLog = Join-Path $Root ($LogFile -replace '/', '\')
+if (Test-Path $priorLog) {
+    $priorDone = Select-String -Path $priorLog -Pattern "health_watch done" -Quiet -ErrorAction SilentlyContinue
+    if (-not $priorDone) {
+        Write-Host "NOTE: $LogFile has no health_watch done. A new soak truncates it (fresh window, not a resume)." -ForegroundColor Yellow
+        Write-Host "  VOID archive (if present): logs/soak_48h_libp2p_strict_VOID_poweroff_2026-10-08.log" -ForegroundColor DarkGray
+    }
+}
+
 if (-not $SkipPreflight) {
     if ($SkipRebuild) {
         & (Join-Path $ScriptDir "docker_prod_3node.ps1") -SkipBuild -KeepVolumes

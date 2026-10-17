@@ -133,7 +133,11 @@ def soak_honesty() -> dict[str, Any]:
         "note": (
             "48h PASS requires this tree's soak_report with passed=true and "
             "hard_fails=0. Do not cite Experimental soaks as pin evidence. "
-            "Pin libp2p 48h soak is VOID (2026-10-08 · not PASS · not restarted)."
+            "Pin libp2p 2026-10-08 soak is VOID (not PASS). "
+            "STRICT 2026-10-11 stopped short after 44.2h (not PASS). "
+            "STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 is PASS "
+            "(passed=true, hard_fails=0, mesh_warn=0, 48.0007h, "
+            "docs/evidence/runs/pin-libp2p-strict-48h). Not mainnet. Tag not cut."
         ),
     }
 

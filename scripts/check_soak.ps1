@@ -51,7 +51,7 @@ if (-not $log) {
         (Join-Path $Root "logs\soak_5h_strict.log")
     )
     $logs = @(Get-ChildItem -Path (Join-Path $Root "logs\soak_*h*.log") -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -notmatch '\.bak' } |
+        Where-Object { $_.Name -notmatch '\.bak' -and $_.Name -notmatch 'VOID|stalled|prep' } |
         Sort-Object LastWriteTime -Descending)
     if ($logs) { $log = $logs[0].FullName }
     else {
@@ -76,15 +76,16 @@ if (-not $reportFile) {
         $candidate = "logs/soak_report_$stem.json"
         if (Test-Path (Join-Path $Root ($candidate -replace '/', '\'))) {
             $reportFile = $candidate
-        } else {
+        } elseif ($stem -eq "48h" -or $stem -eq "48h_prod_mesh") {
             $reportFile = "logs/soak_report_48h.json"
         }
-    } else {
+    } elseif (-not ($log -and ([System.IO.Path]::GetFileName($log) -match 'VOID'))) {
         $reportFile = "logs/soak_report_48h.json"
     }
 }
 
-# When soak_active.json is gone, recover STRICT/hours/interval from the report.
+# When soak_active.json is gone, recover STRICT/hours/interval from the report
+# or from the health_watch start line. A dead STRICT log is not the default scorer.
 if (-not $active -and $reportFile) {
     $earlyReport = Join-Path $Root ($reportFile -replace '/', '\')
     if (Test-Path $earlyReport) {
@@ -118,6 +119,15 @@ if (-not $log) {
 $lines = @(Get-Content $log -Encoding UTF8 -ErrorAction SilentlyContinue)
 $ts = '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
 $startLine = ($lines | Select-String -Pattern "$ts health_watch start" | Select-Object -Last 1)
+if (-not $active -and $startLine -and $startLine.Line -match 'interval=(\d+)s') {
+    $intervalSec = [int]$Matches[1]
+}
+if (-not $active -and $startLine -and ($startLine.Line -match 'full_every=6' -or $startLine.Line -match 'full_every=always')) {
+    $strict = $true
+}
+if (-not $hoursRequested -and $log -and ([System.IO.Path]::GetFileName($log) -match '48h')) {
+    $hoursRequested = 48
+}
 $lastMesh = ($lines | Select-String -Pattern "$ts OK mesh aligned" | Select-Object -Last 1)
 $lastFail = ($lines | Select-String -Pattern "$ts FAIL" | Select-Object -Last 1)
 $done = ($lines | Select-String -Pattern "$ts health_watch done" | Select-Object -Last 1)
@@ -142,10 +152,15 @@ $state = "UNKNOWN"
 $color = "Gray"
 $exitCode = 0
 $staleSec = [Math]::Max(180, ([int]$intervalSec * 2) + 60)
-if ($done) {
-    $reportPath = Join-Path $Root ($reportFile -replace '/', '\')
+$voidArchive = $log -and ([System.IO.Path]::GetFileName($log) -match 'VOID')
+if ($voidArchive) {
+    $state = "VOID"
+    $color = "Red"
+    $exitCode = 1
+} elseif ($done) {
+    $reportPath = if ($reportFile) { Join-Path $Root ($reportFile -replace '/', '\') } else { $null }
     $passed = $null
-    if (Test-Path $reportPath) {
+    if ($reportPath -and (Test-Path $reportPath)) {
         try { $passed = (Get-Content $reportPath -Raw | ConvertFrom-Json).passed } catch { }
     }
     if ($passed -eq $true) {
@@ -170,6 +185,10 @@ if ($done) {
 } elseif (Test-Path $activePath) {
     $state = "DEAD"
     $color = "Red"
+    $exitCode = 1
+} elseif (-not $done) {
+    $state = "INCOMPLETE"
+    $color = "Yellow"
     $exitCode = 1
 } else {
     $state = "STOPPED"
@@ -199,14 +218,20 @@ Write-KV "interval_sec" $intervalSec
 Write-KV "stale_after_sec" $staleSec
 Write-KV "log_age_sec" $ageSec
 Write-KV "mesh_ok_cycles" $meshOk
+if ($startLine -and $lastMesh -and $startLine.Line -match '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})' -and $lastMesh.Line -match '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})') {
+    try {
+        $sampleH = [Math]::Round(([datetime]::ParseExact($Matches[1], 'yyyy-MM-dd HH:mm:ss', $null) - [datetime]::ParseExact($startLine.Line.Substring(0, 19), 'yyyy-MM-dd HH:mm:ss', $null)).TotalHours, 2)
+        Write-KV "sample_h" "$sampleH (last mesh line, not the wall clock)"
+    } catch { }
+}
 Write-KV "fail_lines" $failCount $(if ($failCount -gt 0) { "Yellow" } else { "Gray" })
 if ($startLine) { Write-KV "started" $startLine.Line.Trim() }
 if ($lastMesh) { Write-KV "latest_mesh" $lastMesh.Line.Trim() "Green" }
 if ($lastFail -and $failCount -gt 0) { Write-KV "last_fail" $lastFail.Line.Trim() "Yellow" }
 if ($done) { Write-KV "done" $done.Line.Trim() }
 
-$reportPath = Join-Path $Root ($reportFile -replace '/', '\')
-if (Test-Path $reportPath) {
+$reportPath = if ($reportFile) { Join-Path $Root ($reportFile -replace '/', '\') } else { $null }
+if ($reportPath -and (Test-Path $reportPath)) {
     try {
         $rep = Get-Content $reportPath -Raw | ConvertFrom-Json
         Write-KV "report" "$reportFile passed=$($rep.passed) hours=$($rep.hours_elapsed)/$($rep.hours_requested)"
@@ -250,6 +275,10 @@ if (-not $Quiet) {
     Write-Host "  tail:     Get-Content $log -Tail 30" -ForegroundColor DarkGray
     Write-Host "  stop:     .\scripts\stop_soak_monitors.ps1 -Force" -ForegroundColor DarkGray
     Write-Host "  note:     STRICT PASS is not mainnet; 48h claim only if hours~48 and passed=true" -ForegroundColor DarkGray
+    if ($state -eq "STOPPED" -or $state -eq "DEAD" -or $state -eq "VOID") {
+        Write-Host "  fresh:    .\scripts\start_soak_prod_mesh_48h_strict.ps1 -SkipRebuild" -ForegroundColor Yellow
+        Write-Host "            Docker Desktop must be running. Do not resume the 2026-10-08 VOID window." -ForegroundColor Yellow
+    }
     Write-Host "  mempool:  .\scripts\start_mempool_validation_soak.ps1 -Hours 48" -ForegroundColor DarkGray
 }
 

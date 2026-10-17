@@ -5,7 +5,7 @@
 **Repo:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)  
 **Not:** public audited mainnet · not firm pen-test PASS · not a new 48h soak claim.
 
-Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020: `feature_libp2p=true`, `p2p_tls_enabled=false`). **TCP+TLS** remains the alternate profile (`node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** evidence only. Pin libp2p **Quick probe PASS** packaged; **48h soak VOID** (2026-10-08 · not PASS · not restarted) — do not claim soak PASS.
+Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020: `feature_libp2p=true`, `p2p_tls_enabled=false`). **TCP+TLS** remains the alternate profile (`node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** evidence only. Pin libp2p **Quick probe PASS** packaged; **48h soak VOID** (2026-10-08 · not PASS · STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 PASS (passed=true, hard_fails=0, mesh_warn=0, 48.0007h; pack pin-libp2p-strict-48h; not mainnet; tag not cut)) — do not claim soak PASS.
 
 ---
 
@@ -70,7 +70,7 @@ python scripts/industrial_gate.py
 |------|-------|
 | External pen-test + L1 audit PDF | Org / Phase 6 |
 | Bridge L1 contracts live | Keep bridge OFF on live mesh |
-| Fresh 48h soak on current HEAD | Operator — ADR 0020 libp2p cutover soak **VOID** (`pin-libp2p-cutover-pending` · not PASS) |
+| Fresh 48h soak on current HEAD | STRICT 2026-10-15–17 **PASS** (`pin-libp2p-strict-48h`). 2026-10-08 attempt stays **VOID** (not PASS). Tag not cut. |
 | Post-cutover mesh probe | Operator — `probe_prod_mesh.ps1 -Quick` not re-run as pin evidence pack |
 | Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`) | **Not** pin evidence — R&D on [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) only |
 | Long-Range / BLS | Lab-only / off in prod JSON |

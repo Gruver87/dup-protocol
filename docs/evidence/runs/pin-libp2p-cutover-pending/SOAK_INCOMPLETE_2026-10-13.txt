@@ -1,0 +1,6 @@
+STRICT libp2p soak 2026-10-11 10:39+03 through 2026-10-13 06:51+03 is NOT PASS.
+
+Log: logs/soak_48h_libp2p_strict.log
+Elapsed samples: 44.2h (11 Oct 10:39 through 13 Oct 06:51). Wall clock later reached 48h while the monitor process was still alive and the log was already stale (check_soak: RUNNING_STALE_LOG, log_age_sec=13824, fail_lines=0). After the process exited, the same log had no health_watch done line and no report.
+This is not the 2026-10-08 power-off VOID and it is not a mesh misalignment.
+Do not cite it as passed=true or hard_fails=0.

@@ -10,6 +10,31 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Pin libp2p STRICT 48h PASS (2026-10-15 → 2026-10-17)
+
+- Report `passed=true`, `strict=true`, `hard_fail_lines=0`, `mesh_warn_lines=0`,
+  `hours_elapsed=48.0007`. Pack
+  `docs/evidence/runs/pin-libp2p-strict-48h/`. Not public mainnet.
+  Tag `v1.3.1340-libp2p-industrial-mesh` is not cut. Recorded git
+  `c1c281f` was dirty at start; image `sha256:be576392…`.
+- The 2026-10-08 power-off window stays **VOID**. The 2026-10-11 window
+  stays short of 48h and is not PASS.
+
+### Soak window 2026-10-11 (stopped short, not PASS)
+
+- Docs no longer say the pin libp2p soak was not restarted. The 2026-10-08
+  power-off attempt stays **VOID**. STRICT started 2026-10-11 10:39+03 and the
+  log stops 2026-10-13 06:51+03 after 44.2h. Every sampled line is OK. There is
+  no `soak_report_48h_libp2p_strict.json`. That window is not PASS.
+
+### Soak status after VOID power-off (no soak)
+
+- `soak_status.ps1` / `check_soak.ps1` ignore VOID/stalled/prep archives and
+  no longer pair a libp2p log with historical `logs/soak_report_48h.json`
+  (`passed=true`, Jul TCP+TLS). Fresh start hint is
+  `start_soak_prod_mesh_48h_strict.ps1`.
+- STRICT starter refuses to launch when the Docker daemon is down.
+
 ### Root cruft wave 13 (no soak)
 
 - Delete unwired wrappers: `verify_persist_fail_closed.ps1`,

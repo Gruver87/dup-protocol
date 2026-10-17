@@ -375,9 +375,14 @@ function Invoke-ParallelMeshResnapshot {
             return @{ Port = [int]$Port; Height = -1; Head = ""; Ok = $false }
         } -ArgumentList $p, $timeoutSec
     }
-    Wait-Job $jobs | Out-Null
+    Wait-Job $jobs -Timeout ($timeoutSec + 20) | Out-Null
     $rows = @()
     foreach ($j in $jobs) {
+        if ($j.State -eq "Running") {
+            Stop-Job $j -Force -ErrorAction SilentlyContinue
+            Remove-Job $j -Force -ErrorAction SilentlyContinue
+            continue
+        }
         $row = Receive-Job $j
         Remove-Job $j -Force -ErrorAction SilentlyContinue
         if ($row) { $rows += $row }
@@ -521,9 +526,16 @@ function Invoke-ParallelNodeHealth {
             [string]$ScriptDir
         )
     }
-    Wait-Job $jobs | Out-Null
+    $waitSec = if ($FullHarness) { 180 } else { 90 }
+    Wait-Job $jobs -Timeout $waitSec | Out-Null
     $results = @()
     foreach ($j in $jobs) {
+        if ($j.State -eq "Running") {
+            Stop-Job $j -Force -ErrorAction SilentlyContinue
+            Remove-Job $j -Force -ErrorAction SilentlyContinue
+            $results += [PSCustomObject]@{ Ok = $false; Port = 0; Error = "probe hung past ${waitSec}s" }
+            continue
+        }
         $raw = Receive-Job $j
         Remove-Job $j -Force -ErrorAction SilentlyContinue
         if (-not $raw) { continue }

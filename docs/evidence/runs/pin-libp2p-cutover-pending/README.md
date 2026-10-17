@@ -1,7 +1,8 @@
 ﻿# Pin libp2p industrial mesh — cutover evidence (`pin-libp2p-cutover-pending`)
 
 **Kind:** ADR 0020 cutover  
-**Status:** **Quick probe PASS packaged** · **48h STRICT attempt VOID** (host power-off 2026-10-08 — see [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](SOAK_VOID_HOST_POWEROFF_2026-10-08.txt)) · soak **STOPPED** · **NOT PASS**  
+**Status:** **Quick probe PASS packaged** · **48h STRICT attempt VOID** (host power-off 2026-10-08 — see [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](SOAK_VOID_HOST_POWEROFF_2026-10-08.txt)) · that attempt **STOPPED** · **NOT PASS**  
+**Later windows:** 2026-10-11 stopped short after 44.2h (**not PASS**). The PASS window is a different pack: [`pin-libp2p-strict-48h`](../pin-libp2p-strict-48h/) (2026-10-15 20:27+03 through 2026-10-17 20:28+03, `passed=true`, `hard_fails=0`). This folder stays the VOID/Quick-probe pack.  
 **Chain:** prod-profile `778888` · rust-libp2p (`feature_libp2p=true`, `p2p_tls_enabled=false`)
 
 ## Honesty
@@ -41,10 +42,6 @@ Only claim PASS when report has `passed=true` and `hard_fails=0` (STRICT: `mesh_
 | `strict_preflight_only_prep_head.log` | STRICT starter `-PreflightOnly` |
 | `verify_sprout_labs_prep_head.json` | Sprout labs PASS |
 
-## Still missing for industrial soak claim
+## 48h claim
 
-| File | Purpose |
-|------|---------|
-| `soak_report*.json` | `passed=true`, `hard_fails=0` |
-| `soak_monitor.log` / STRICT log | 48h run log |
-| `manifest.json` | commit + sha256 bindings after soak |
+The PASS report and log are in [`pin-libp2p-strict-48h`](../pin-libp2p-strict-48h/). This folder does not contain that report. Tag `v1.3.1340-libp2p-industrial-mesh` is not cut. `manifest.json` for a release stamp is still absent.

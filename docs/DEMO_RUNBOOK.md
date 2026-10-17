@@ -8,4 +8,4 @@
 Experimental (libp2p R&D) live demo lives on a **different** tree:  
 [Exp DEMO_RUNBOOK](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DEMO_RUNBOOK.md) — do not treat as pin soak evidence.
 
-Quick probe ≠ 48h soak. Tip-v2 TCP+TLS pack `375d14f` ≠ pin libp2p 48h (**VOID** 2026-10-08 · not PASS).
+Quick probe ≠ 48h soak. Tip-v2 TCP+TLS pack `375d14f` ≠ the 2026-10-08 pin libp2p VOID. STRICT 2026-10-15–17 **PASS** is `pin-libp2p-strict-48h` (not mainnet).

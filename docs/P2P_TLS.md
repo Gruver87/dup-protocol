@@ -83,7 +83,7 @@ python scripts/p2p_tls_preflight.py --live --wait 60
 
 - **ADR 0020 libp2p mesh (default):** `.\scripts\prepare_48h_soak.ps1` with
   `--require-libp2p` (see soak prep scripts). Pin libp2p 48h soak is **VOID**
-  (2026-10-08 · not PASS · not restarted); Quick probe PASS is packaged.
+  (2026-10-08 · not PASS · STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 PASS (passed=true, hard_fails=0, mesh_warn=0, 48.0007h; pack pin-libp2p-strict-48h; not mainnet; tag not cut)); Quick probe PASS is packaged.
 - **TCP+TLS alternate:** `.\scripts\prepare_48h_soak.ps1 -RequireP2pTls` on the
   p2ptls profile only.
 

@@ -11,6 +11,7 @@ Set-Location $Root
 
 $activePath = Join-Path $Root "logs/soak_active.json"
 $log = $null
+$usingActive = $false
 if (Test-Path $activePath) {
     try {
         $active = Get-Content $activePath -Raw | ConvertFrom-Json
@@ -20,33 +21,41 @@ if (Test-Path $activePath) {
             if ($active.report_file) {
                 $ReportFile = $active.report_file
             }
+            $usingActive = $true
             Write-Host "Active soak (logs/soak_active.json)" -ForegroundColor Cyan
             Write-Host "  started: $($active.started_at) hours=$($active.hours)" -ForegroundColor DarkGray
         }
     } catch { }
 }
 
+# Archives (VOID power-off, stalled, prep) are not the live window.
+# Do not resume them and do not pair them with historical soak_report_48h.json.
+$archiveName = 'VOID|stalled|prep'
 if (-not $log) {
     $prefer48 = Join-Path $Root "logs/soak_48h.log"
     if (-not (Test-Path $prefer48)) {
         $prefer48 = Join-Path $Root "logs/soak_48h_prod_mesh.log"
     }
+    $allLogs = @(Get-ChildItem -Path (Join-Path $Root $LogGlob) -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending)
+    $liveLogs = @($allLogs | Where-Object { $_.Name -notmatch $archiveName -and $_.Name -notmatch '\.bak' })
     if (Test-Path $prefer48) {
         $log = $prefer48
+    } elseif ($liveLogs.Count -gt 0) {
+        if ($allLogs.Count -gt 1) {
+            Write-Host "WARN: multiple soak logs; showing newest non-archive. Fresh libp2p STRICT: .\scripts\start_soak_prod_mesh_48h_strict.ps1 -SkipRebuild" -ForegroundColor Yellow
+            $allLogs | Select-Object -First 8 | ForEach-Object { Write-Host "  - $($_.Name)" -ForegroundColor DarkGray }
+        }
+        $log = $liveLogs[0].FullName
+    } elseif ($allLogs.Count -gt 0) {
+        $log = $allLogs[0].FullName
     } else {
-        $logs = Get-ChildItem -Path (Join-Path $Root $LogGlob) -ErrorAction SilentlyContinue |
-            Sort-Object LastWriteTime -Descending
-        if (-not $logs) {
-            Write-Host "No soak log matching $LogGlob" -ForegroundColor Yellow
-            exit 1
-        }
-        if ($logs.Count -gt 1) {
-            Write-Host "WARN: multiple soak logs - run .\scripts\stop_soak_monitors.ps1 -Force then restart_soak_prod_mesh.ps1" -ForegroundColor Yellow
-            $logs | ForEach-Object { Write-Host "  - $($_.Name)" -ForegroundColor DarkGray }
-        }
-        $log = $logs[0].FullName
+        Write-Host "No soak log matching $LogGlob" -ForegroundColor Yellow
+        exit 1
     }
 }
+$logName = [System.IO.Path]::GetFileName($log)
+$voidArchive = $logName -match 'VOID'
 
 $lines = Get-Content $log -Encoding UTF8 -ErrorAction SilentlyContinue
 $ts = '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}'
@@ -68,20 +77,44 @@ if ($lastFail -and $failCount -gt 0) { Write-Host "  last_fail: $($lastFail.Line
 Write-Host "  mesh_ok_cycles=$meshOk fail_lines=$failCount" -ForegroundColor DarkGray
 Write-Host "  monitor: $(if ($alive) { 'ALIVE pid=' + (($monitors | ForEach-Object { $_.ProcessId }) -join ',') } else { 'none' })" -ForegroundColor $(if ($alive) { 'Green' } else { 'Red' })
 
-if ($done) {
+if ($voidArchive) {
+    Write-Host "  state: VOID (host power-off archive - not PASS, do not resume)" -ForegroundColor Red
+    Write-Host "  fresh: .\scripts\start_soak_prod_mesh_48h_strict.ps1 -SkipRebuild" -ForegroundColor Yellow
+} elseif ($done) {
     Write-Host "  state: FINISHED" -ForegroundColor Green
 } elseif ($alive) {
     Write-Host "  state: IN_PROGRESS" -ForegroundColor Yellow
 } else {
     Write-Host "  state: DEAD (monitor gone before health_watch done)" -ForegroundColor Red
+    Write-Host "  fresh: .\scripts\start_soak_prod_mesh_48h_strict.ps1 -SkipRebuild (Docker Desktop must be running)" -ForegroundColor Yellow
 }
 
-$reportPath = Join-Path $Root ($ReportFile -replace '/', '\')
-if (Test-Path $reportPath) {
+# Default ReportFile is the historical Jul TCP+TLS pack. Never attach it to a libp2p or VOID log.
+$reportPath = $null
+$reportLabel = $null
+if ($usingActive -and $ReportFile -and -not $voidArchive) {
+    $reportLabel = $ReportFile
+    $reportPath = Join-Path $Root ($ReportFile -replace '/', '\')
+} elseif (-not $voidArchive -and ($logName -eq "soak_48h.log" -or $logName -eq "soak_48h_prod_mesh.log")) {
+    $reportLabel = "logs/soak_report_48h.json"
+    $reportPath = Join-Path $Root "logs\soak_report_48h.json"
+} elseif (-not $voidArchive -and ($logName -match '^soak_(.+)\.log$')) {
+    $derived = "logs/soak_report_$($Matches[1]).json"
+    $derivedPath = Join-Path $Root ($derived -replace '/', '\')
+    if (Test-Path $derivedPath) {
+        $reportLabel = $derived
+        $reportPath = $derivedPath
+    } else {
+        Write-Host "  report: none for this log (logs/soak_report_48h.json is a different historical window, not PASS here)" -ForegroundColor Yellow
+    }
+}
+if ($reportPath -and (Test-Path $reportPath)) {
     try {
         $rep = Get-Content $reportPath -Raw | ConvertFrom-Json
-        Write-Host "  report: $ReportFile hours=$($rep.hours_requested) passed=$($rep.passed)" -ForegroundColor DarkGray
+        Write-Host "  report: $reportLabel hours=$($rep.hours_requested) passed=$($rep.passed)" -ForegroundColor DarkGray
     } catch { }
+} elseif ($voidArchive) {
+    Write-Host "  report: none (VOID is not PASS; logs/soak_report_48h.json passed=true is unrelated Jul TCP+TLS)" -ForegroundColor Yellow
 }
 
 exit 0

@@ -46,7 +46,7 @@ One-screen card: [AT_A_GLANCE](AT_A_GLANCE.md) · full ledger: [EVIDENCE_MATRIX]
 | Listed ABS token / investment product | **No** — in-repo tokenomics model only |
 | External firm L1 / penetration audit PDF | **Pending** |
 | Bridge ON on live mesh | **OFF** by design |
-| rust-libp2p on this pin (ADR 0020) | **Working-tip** · Quick probe PASS · 48h soak **VOID** |
+| rust-libp2p on this pin (ADR 0020) | **Working-tip** · Quick probe PASS · 2026-10-08 soak **VOID** (not PASS) · STRICT 2026-10-15–17 **PASS** (`hard_fails=0`, pack `pin-libp2p-strict-48h`, not mainnet, tag not cut) |
 | Long-Range on this pin | **No** (lab-only) — see Experimental |
 | Oracles / sharding as prod mesh features | **No** — lab profiles only; flags stay off on `778888` |
 
