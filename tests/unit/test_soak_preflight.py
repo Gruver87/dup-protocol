@@ -68,7 +68,22 @@ def test_soak_preflight_accepts_require_wire_probe(monkeypatch):
     assert errors
     assert meta.get("require_wire_probe") is True
     assert meta.get("require_libp2p") is True
-    assert "start_soak_prod_mesh_48h" in str(meta.get("start_command") or "")
+    assert "start_soak_prod_mesh_48h_strict.ps1" in str(meta.get("start_command") or "")
+    assert "IntervalSec 60" in str(meta.get("start_command") or "")
+    assert meta.get("interval_sec") == 60
+
+
+def test_soak_preflight_refuses_300s_interval(monkeypatch):
+    mod = _load("soak_preflight", "scripts/soak_preflight.py")
+
+    def _fail_urlopen(*_args, **_kwargs):
+        raise urllib.error.URLError("connection refused")
+
+    monkeypatch.setattr("urllib.request.urlopen", _fail_urlopen)
+    errors, _warnings, meta = mod.run_soak_preflight(hours=48, interval_sec=300)
+    assert any("must be 60s" in err for err in errors)
+    assert meta.get("ready") is False
+    assert "IntervalSec 60" in str(meta.get("start_command") or "")
 
 
 def test_soak_preflight_require_wire_uses_full_harness():

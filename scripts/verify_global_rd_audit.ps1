@@ -285,7 +285,7 @@ if ($fail -eq 0) {
     }
 }
 Write-Host ("  report: " + $reportPath) -ForegroundColor DarkGray
-Write-Host "  soak (ONLY if you order it): .\scripts\start_soak_prod_mesh_48h.ps1" -ForegroundColor DarkGray
+Write-Host "  soak (ONLY if you order it): .\scripts\start_soak_prod_mesh_48h_strict.ps1" -ForegroundColor DarkGray
 Write-Host ("=" * 72) -ForegroundColor Cyan
 
 if ($fail -gt 0) { exit 1 }

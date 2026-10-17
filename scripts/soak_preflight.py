@@ -57,7 +57,7 @@ def _git_dirty() -> bool:
 def run_soak_preflight(
     *,
     hours: int = 48,
-    interval_sec: int = 300,
+    interval_sec: int = 60,
     require_p2p_tls: bool = False,
     require_wire_probe: bool = False,
     require_libp2p: bool = False,
@@ -77,6 +77,10 @@ def run_soak_preflight(
 
     errors: list[str] = []
     warnings: list[str] = []
+    if int(interval_sec) != 60:
+        errors.append(
+            f"pin STRICT soak interval must be 60s, got {interval_sec}"
+        )
     urls = list(PROD_MESH_URLS)
     nodes: list[dict] = []
 
@@ -283,8 +287,7 @@ def run_soak_preflight(
 
     tag = _git_tag()
     start_cmd = (
-        f".\\scripts\\start_soak_prod_mesh_48h.ps1 -Hours {hours} "
-        f"-IntervalSec {interval_sec}"
+        f".\\scripts\\start_soak_prod_mesh_48h_strict.ps1 -Hours {hours} -IntervalSec 60"
     )
     meta = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -301,6 +304,7 @@ def run_soak_preflight(
         ),
         "note": (
             "Industrial pin 48h prep (ADR 0020 libp2p mesh default). "
+            "Next start is STRICT (interval 60). "
             "Not a soak PASS claim. Run preflight again immediately before starting soak."
         ),
         "require_p2p_tls": require_p2p_tls,
@@ -326,7 +330,7 @@ def write_report(errors: list[str], warnings: list[str], meta: dict) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Prod mesh soak preflight (no soak start)")
     parser.add_argument("--hours", type=int, default=48, help="Planned soak duration")
-    parser.add_argument("--interval-sec", type=int, default=300, help="Planned poll interval")
+    parser.add_argument("--interval-sec", type=int, default=60, help="Planned poll interval (STRICT pin is 60)")
     parser.add_argument(
         "--require-p2p-tls",
         action="store_true",

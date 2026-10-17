@@ -116,7 +116,7 @@ if (-not $log) {
     Write-KV "state" "NO_LOG" "Yellow"
     Write-KV "monitor" $(if ($alive) { "ALIVE pid=$pidList" } else { "none" })
     if (-not $Quiet) {
-        Write-Host "  start: .\scripts\start_soak_prod_mesh_48h.ps1" -ForegroundColor DarkGray
+        Write-Host "  start: .\scripts\start_soak_prod_mesh_48h_strict.ps1" -ForegroundColor DarkGray
     }
     exit 1
 }
@@ -281,8 +281,7 @@ if (-not $Quiet) {
     Write-Host "  stop:     .\scripts\stop_soak_monitors.ps1 -Force" -ForegroundColor DarkGray
     Write-Host "  note:     STRICT PASS is not mainnet; 48h claim only if hours~48 and passed=true" -ForegroundColor DarkGray
     if ($state -eq "STOPPED" -or $state -eq "DEAD" -or $state -eq "VOID") {
-        Write-Host "  fresh:    .\scripts\start_soak_prod_mesh_48h_strict.ps1 -SkipRebuild" -ForegroundColor Yellow
-        Write-Host "            Docker Desktop must be running. Do not resume the 2026-10-08 VOID window." -ForegroundColor Yellow
+        Write-Host "  note: do not start another soak. PASS pack is docs/evidence/runs/pin-libp2p-strict-48h" -ForegroundColor Yellow
     }
     Write-Host "  mempool:  .\scripts\start_mempool_validation_soak.ps1 -Hours 48" -ForegroundColor DarkGray
 }

@@ -29,6 +29,7 @@ def test_prepare_48h_full_preflight_surface():
         "--require-wire-probe",
         "--require-libp2p",
         "COMMITTED_STATE_ROOT_OK",
+        "start_soak_prod_mesh_48h_strict.ps1",
     ):
         assert needle in prep, needle
 
@@ -46,7 +47,7 @@ def test_soak_status_alive_and_glob():
     assert "ALIVE pid=" in src
     assert "DEAD (monitor gone" in src
     assert "VOID" in src
-    assert "start_soak_prod_mesh_48h_strict.ps1" in src
+    assert "do not start another soak" in src
     core = (ROOT / "scripts" / "health_watch_core.ps1").read_text(encoding="utf-8")
     assert "probe hung past" in core
     assert "Wait-Job $jobs -Timeout" in core
@@ -54,11 +55,19 @@ def test_soak_status_alive_and_glob():
     assert 'state = "INCOMPLETE"' in check
     assert "full_every=6" in check
     assert "sample_h" in check
-    assert "pin-libp2p-strict-48h" in check
+    assert "do not start another soak" in check
     check = (ROOT / "scripts" / "check_soak.ps1").read_text(encoding="utf-8")
     assert "VOID|stalled|prep" in check
     start = (ROOT / "scripts" / "start_soak_prod_mesh_48h_strict.ps1").read_text(encoding="utf-8")
     assert "Docker daemon is not running" in start
+
+
+def test_prod_mesh_industrial_refuses_nonstrict_soak():
+    src = (ROOT / "scripts" / "prod_mesh_industrial.ps1").read_text(encoding="utf-8")
+    assert "AllowNonStrictSoak" in src
+    assert "REFUSE: -RunSoak" in src
+    assert "start_soak_prod_mesh_48h_strict.ps1" in src
+    src.encode("ascii")
 
 
 def test_min_soak_hours_prefers_pin_libp2p_pack():

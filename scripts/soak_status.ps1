@@ -43,7 +43,7 @@ if (-not $log) {
         $log = $prefer48
     } elseif ($liveLogs.Count -gt 0) {
         if ($allLogs.Count -gt 1) {
-            Write-Host "WARN: multiple soak logs; showing newest non-archive. Fresh libp2p STRICT: .\scripts\start_soak_prod_mesh_48h_strict.ps1 -SkipRebuild" -ForegroundColor Yellow
+            Write-Host "WARN: multiple soak logs; showing newest non-archive. Do not start another soak." -ForegroundColor Yellow
             $allLogs | Select-Object -First 8 | ForEach-Object { Write-Host "  - $($_.Name)" -ForegroundColor DarkGray }
         }
         $log = $liveLogs[0].FullName
@@ -79,14 +79,17 @@ Write-Host "  monitor: $(if ($alive) { 'ALIVE pid=' + (($monitors | ForEach-Obje
 
 if ($voidArchive) {
     Write-Host "  state: VOID (host power-off archive - not PASS, do not resume)" -ForegroundColor Red
-    Write-Host "  fresh: .\scripts\start_soak_prod_mesh_48h_strict.ps1 -SkipRebuild" -ForegroundColor Yellow
+    Write-Host "  note: do not start another soak. PASS is docs/evidence/runs/pin-libp2p-strict-48h" -ForegroundColor Yellow
 } elseif ($done) {
     Write-Host "  state: FINISHED" -ForegroundColor Green
+    if ($logName -eq "soak_48h_libp2p_strict.log") {
+        Write-Host "  note: do not start another soak. PASS pack pin-libp2p-strict-48h" -ForegroundColor Green
+    }
 } elseif ($alive) {
     Write-Host "  state: IN_PROGRESS" -ForegroundColor Yellow
 } else {
     Write-Host "  state: DEAD (monitor gone before health_watch done)" -ForegroundColor Red
-    Write-Host "  fresh: .\scripts\start_soak_prod_mesh_48h_strict.ps1 -SkipRebuild (Docker Desktop must be running)" -ForegroundColor Yellow
+    Write-Host "  note: do not start another soak unless ordered. PASS pack is pin-libp2p-strict-48h" -ForegroundColor Yellow
 }
 
 # Default ReportFile is the historical Jul TCP+TLS pack. Never attach it to a libp2p or VOID log.

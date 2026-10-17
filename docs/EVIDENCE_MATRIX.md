@@ -205,7 +205,7 @@ Bridge remains **disabled** on prod mesh until audited L1 contracts ship. Use th
 3. `python scripts/prod_signed_tx_smoke.py`
 4. `python scripts/prod_evm_smoke.py` — deploy + `eth_getStorageAt` on all prod RPC ports
 5. `.\scripts\prod_evidence_suite.ps1` — health + failover + signed tx + EVM (optional one-shot)
-6. `.\scripts\soak_monitor.ps1 -ProdMesh -Hours 48 -IntervalSec 300`
+6. `.\scripts\start_soak_prod_mesh_48h_strict.ps1` (interval 60). Do not use `soak_monitor.ps1 -IntervalSec 300` as this proof. The 2026-10-15–17 pack is `pin-libp2p-strict-48h`.
 7. `.\scripts\testnet_readiness.ps1 -ProdMesh -MinSoakHours 48`
 8. External audit tracker → third-party review
 9. `python scripts/bridge_off_audit_gate.py` — Bridge OFF checklist (10 controls)

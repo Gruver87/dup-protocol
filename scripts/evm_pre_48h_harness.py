@@ -127,7 +127,7 @@ def main() -> int:
     print(f"OK: EVM pre-48h harness PASS ({scope})")
     print("NOT: 48h soak started; not mainnet; not BLS; not Hybrid")
     if not args.skip_mesh:
-        print("Next (manual): .\\scripts\\prepare_48h_soak.ps1 then start_soak_prod_mesh_48h.ps1")
+        print("Next (manual): .\\scripts\\prepare_48h_soak.ps1 then start_soak_prod_mesh_48h_strict.ps1")
     return 0
 
 

@@ -1,6 +1,6 @@
 ﻿# Pin libp2p 48h soak PREP READY — tip 61114f36434ee413267eea3e06a57cee44f79102
 
-**Status:** PREFLIGHT **READY** · soak **NOT started** · **NOT PASS**
+**Status:** PREFLIGHT **READY** on 2026-10-07 · soak was **not** started by this stamp · the later STRICT window **PASS** is [`pin-libp2p-strict-48h`](../pin-libp2p-strict-48h/) · do not start another soak from the commands below
 **Date:** 2026-10-07
 **Chain:** 778888 · rust-libp2p (eature_libp2p=true, p2p_tls_enabled=false, eature_long_range=false)
 **Image:** `sha256:be576392c01f2ba22bebebef1e4e486b7106ae373ebbbd3dedf1be5265bfa908`

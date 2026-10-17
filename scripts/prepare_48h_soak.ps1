@@ -2,7 +2,7 @@
 # ADR 0020: default mesh is rust-libp2p (Noise). TLS only for alternate TCP+TLS profile.
 param(
     [int]$Hours = 48,
-    [int]$IntervalSec = 300,
+    [int]$IntervalSec = 60,
     [int]$MinerHarnessSamples = 5,
     [int]$MinFreeGb = 15,
     [switch]$RequireP2pTls,
@@ -186,8 +186,8 @@ $prep = @{
     git_sha = $gitSha
     git_dirty = $gitDirty
     image_id = $imageId
-    note = "Industrial pin 48h prep (ADR 0020). Not a soak PASS. Do not rebuild Docker until soak ends."
-    start_command = ".\scripts\start_soak_prod_mesh_48h.ps1 -Hours $Hours -IntervalSec $IntervalSec"
+    note = "Industrial pin 48h prep (ADR 0020). Next start is STRICT libp2p. Not a soak PASS. Do not rebuild Docker until soak ends."
+    start_command = ".\scripts\start_soak_prod_mesh_48h_strict.ps1 -Hours $Hours -IntervalSec 60"
 }
 New-Item -ItemType Directory -Force -Path (Join-Path $Root "logs") | Out-Null
 $prepPath = Join-Path $Root "logs/soak_48h_prep.json"

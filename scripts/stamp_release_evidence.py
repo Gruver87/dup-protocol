@@ -61,8 +61,8 @@ def main() -> int:
     parser.add_argument("--git-tag", default="", help="Release tag (default: git describe)")
     parser.add_argument(
         "--soak-report",
-        default="logs/soak_report_48h.json",
-        help="Soak report to reference (must exist for soak stamp)",
+        default="docs/evidence/runs/pin-libp2p-strict-48h/soak_report_48h_libp2p_strict.json",
+        help="Soak report to reference (default: pin libp2p STRICT pack; TCP reports need an explicit path)",
     )
     parser.add_argument("--skip-soak", action="store_true", help="Do not record soak stamp")
     parser.add_argument(
@@ -142,7 +142,7 @@ def main() -> int:
                 return 1
             print(f"WARN: {msg}")
         else:
-            soak = json.loads(soak_path.read_text(encoding="utf-8"))
+            soak = json.loads(soak_path.read_text(encoding="utf-8-sig"))
             passed = bool(soak.get("passed"))
             hrs = float(soak.get("hours_requested", 0) or 0)
             if args.require_soak_hours > 0:

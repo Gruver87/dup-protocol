@@ -19,7 +19,10 @@ if ($ProdMesh) { $Ports = @(18180, 18181, 18182) }
 if ($TestnetSeed) { $Ports = @(19080) }
 
 if (-not $SoakReport) {
-    if ($MinSoakHours -ge 48 -and (Test-Path (Join-Path $Root "logs/soak_report_48h.json"))) {
+    $libp2pPack = "docs/evidence/runs/pin-libp2p-strict-48h/soak_report_48h_libp2p_strict.json"
+    if ($ProdMesh -and $MinSoakHours -ge 48 -and (Test-Path (Join-Path $Root ($libp2pPack -replace '/', '\')))) {
+        $SoakReport = $libp2pPack
+    } elseif ($MinSoakHours -ge 48 -and (Test-Path (Join-Path $Root "logs/soak_report_48h.json"))) {
         $SoakReport = "logs/soak_report_48h.json"
     } else {
         $SoakReport = "logs/soak_report.json"

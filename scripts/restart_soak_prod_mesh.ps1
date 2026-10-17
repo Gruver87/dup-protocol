@@ -5,13 +5,21 @@ param(
     [string]$LogFile = "logs/industrial_tipv2_soak_48h_rerun.log",
     [string]$ReportFile = "logs/soak_report_tipv2_48h_rerun.json",
     [switch]$Foreground,
-    [switch]$NoStopExisting
+    [switch]$NoStopExisting,
+    [switch]$AllowHistoricalTcp
 )
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = Split-Path -Parent $ScriptDir
 Set-Location $Root
+
+if (-not $AllowHistoricalTcp) {
+    Write-Host "REFUSE: restart_soak_prod_mesh.ps1 is the historical tip-v2 path (interval 300)." -ForegroundColor Red
+    Write-Host "Pin libp2p STRICT is .\scripts\start_soak_prod_mesh_48h_strict.ps1 (interval 60)." -ForegroundColor Yellow
+    Write-Host "Pass -AllowHistoricalTcp only to rerun that old TCP report path." -ForegroundColor Yellow
+    exit 1
+}
 
 $logDir = Split-Path -Parent $LogFile
 if ($logDir -and -not (Test-Path $logDir)) {

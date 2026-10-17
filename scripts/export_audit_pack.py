@@ -187,15 +187,17 @@ def export_audit_pack(
     float48 = ROOT / "logs" / "soak_report_48h.json"
     soak_pass = False
     soak_note = "48h soak not claimed PASS until a soak_report*.json has passed=true"
-    for candidate in (tipv2_evidence, tipv2, float48):
+    # Working-tip libp2p pack first. TCP packs stay historical fallbacks.
+    for candidate in (libp2p_evidence, tipv2_evidence, tipv2, float48):
         if not candidate.is_file():
             continue
         try:
-            body = json.loads(candidate.read_text(encoding="utf-8"))
+            body = json.loads(candidate.read_text(encoding="utf-8-sig"))
             if bool(body.get("passed")) and float(body.get("hours_requested", 0) or 0) >= 48:
                 soak_pass = True
+                kind = "libp2p STRICT" if candidate == libp2p_evidence else "historical TCP+TLS"
                 soak_note = (
-                    f"48h soak PASS referenced: {candidate.as_posix()} "
+                    f"48h soak PASS referenced ({kind}): {candidate.as_posix()} "
                     f"(hours_elapsed={body.get('hours_elapsed')})"
                 )
                 break

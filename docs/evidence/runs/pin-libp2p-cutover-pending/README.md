@@ -16,18 +16,11 @@
 - Do **not** cite Experimental libp2p soaks as pin evidence
 - Freeze tag `v1.3.1339-tip-v2-industrial` / TCP+TLS tip-v2 packs remain **historical**
 
-## Operator: fresh start later (not auto)
+## Operator
 
-```powershell
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
-# Sleep=Never on AC for full 48h. Do NOT rebuild Docker until soak ends.
-.\scripts\prepare_48h_soak.ps1
-.\scripts\start_soak_prod_mesh_48h_strict.ps1 -SkipRebuild
-```
+Do not start another soak. The continuous STRICT window already finished PASS in [`pin-libp2p-strict-48h`](../pin-libp2p-strict-48h/). This folder is the Quick probe and the 2026-10-08 VOID attempt.
 
-Only claim PASS when report has `passed=true` and `hard_fails=0` (STRICT: `mesh_warn=0`) on a **continuous** run.
-
-**Suggested release tag (after soak PASS + commit):** `v1.3.1340-libp2p-industrial-mesh`
+Tag `v1.3.1340-libp2p-industrial-mesh` is not cut. `manifest.json` for a release stamp is still absent.
 
 ## Prep stamp (this wave)
 

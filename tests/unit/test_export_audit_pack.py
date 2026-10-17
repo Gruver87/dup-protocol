@@ -42,6 +42,9 @@ def test_export_audit_pack_manifest_shape(tmp_path):
     body = json.loads(libp2p.read_text(encoding="utf-8-sig"))
     assert body["passed"] is True
     assert body["strict"] is True
+    assert manifest["soak_pass"] is True
+    assert "pin-libp2p-strict-48h" in manifest["soak_note"]
+    assert "libp2p STRICT" in manifest["soak_note"]
 
 
 def test_set_item_done_evidence_fields(tmp_path):

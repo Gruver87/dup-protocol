@@ -1,10 +1,11 @@
-# Industrial prod mesh gate: health → failover → signed tx → optional soak.
+# Industrial prod mesh gate: health -> failover -> signed tx -> optional soak.
 param(
     [switch]$SkipFailover,
     [switch]$SkipTx,
     [switch]$RunSoak,
     [int]$SoakHours = 24,
-    [int]$SoakIntervalSec = 300
+    [int]$SoakIntervalSec = 300,
+    [switch]$AllowNonStrictSoak
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,13 +40,20 @@ if (-not $SkipTx) {
 }
 
 if ($RunSoak) {
+    if (-not $AllowNonStrictSoak) {
+        Write-Host "REFUSE: -RunSoak starts soak_monitor at interval $SoakIntervalSec without -Strict." -ForegroundColor Red
+        Write-Host "Pin libp2p STRICT is .\scripts\start_soak_prod_mesh_48h_strict.ps1 (interval 60)." -ForegroundColor Yellow
+        Write-Host "Pass -AllowNonStrictSoak only for the old non-strict monitor." -ForegroundColor Yellow
+        exit 1
+    }
     Write-Host "`n=== soak monitor (${SoakHours}h) ===" -ForegroundColor Cyan
     Write-Host "  Running in foreground; use Ctrl+C to stop early." -ForegroundColor DarkGray
+    Write-Host "  This is not the STRICT 48h pack." -ForegroundColor Yellow
     & (Join-Path $ScriptDir "soak_monitor.ps1") -ProdMesh -Hours $SoakHours -IntervalSec $SoakIntervalSec
     if (-not $?) { exit 1 }
     exit 0
 }
 
 Write-Host "`nOK: industrial prod mesh gate passed" -ForegroundColor Green
-Write-Host "  Overnight soak: .\scripts\prod_mesh_industrial.ps1 -RunSoak -SoakHours 24 -SkipFailover -SkipTx" -ForegroundColor DarkGray
+Write-Host "  48h STRICT, only if ordered: .\scripts\start_soak_prod_mesh_48h_strict.ps1" -ForegroundColor DarkGray
 exit 0

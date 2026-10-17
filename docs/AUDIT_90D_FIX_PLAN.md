@@ -39,7 +39,7 @@ Detailed A–H remediation history for Experimental mid-2026 lives on the Exp tr
 ## Next 90 days (org / operator)
 
 1. Keep CI + `industrial_gate` green on `master`  
-2. When merge declared complete: `prepare_48h_soak.ps1` → `start_soak_prod_mesh_48h.ps1` → pack only if `hard_fails=0`  
+2. Pin libp2p STRICT 48h is PASS (`pin-libp2p-strict-48h`). A new window, only if ordered, is `prepare_48h_soak.ps1` then `start_soak_prod_mesh_48h_strict.ps1`. The non-strict starter stays on disk and is not that bar.  
 3. Firm outreach + NDA / scope — [EXTERNAL_AUDIT_ENGAGEMENT.md](EXTERNAL_AUDIT_ENGAGEMENT.md)  
 4. Do **not** arm Long-Range or bridge on prod 778888 mesh JSON  
 

@@ -150,5 +150,5 @@ if ($SkipMesh) {
 }
 Write-Host "RESULT: PASS pre-soak checks" -ForegroundColor Green
 Write-Host "  To start soak ONLY when you order it:" -ForegroundColor DarkGray
-Write-Host "  .\scripts\start_soak_prod_mesh_48h.ps1" -ForegroundColor DarkGray
+Write-Host "  .\scripts\start_soak_prod_mesh_48h_strict.ps1" -ForegroundColor DarkGray
 exit 0

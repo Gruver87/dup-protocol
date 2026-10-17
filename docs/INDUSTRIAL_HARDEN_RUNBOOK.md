@@ -21,7 +21,13 @@ python scripts/package_mesh_evidence.py --out docs/evidence/runs/<sha> `
 
 Stop: soak `passed=true`, matching tip roots, encoding v2 active on all three nodes.
 
-**Status (2026-08-07):** Phase 2 tip-v2 **48h PASS** — `logs/soak_report_tipv2_48h_rerun.json` + evidence `docs/evidence/runs/375d14f/` (`passed=true`, fail=0, mesh_warn=0, 48.00h). Prior Aug 2–4 FAIL remains historical only.
+**Status (2026-08-07):** Phase 2 tip-v2 **48h PASS** — `logs/soak_report_tipv2_48h_rerun.json` + evidence `docs/evidence/runs/375d14f/` (`passed=true`, fail=0, mesh_warn=0, 48.00h). Prior Aug 2–4 FAIL remains historical only. That block above is the TCP+TLS procedure that produced `375d14f`. It is not the next start.
+
+**Current libp2p window (2026-10-17):** STRICT PASS is `docs/evidence/runs/pin-libp2p-strict-48h/` (`interval=60`, `hard_fails=0`). Another window, only if ordered:
+
+```powershell
+.\scripts\start_soak_prod_mesh_48h_strict.ps1
+```
 
 ## Phase 3 — Ops cutover dry-run
 
@@ -67,4 +73,4 @@ Do not claim mainnet-ready until external tracker complete + public TLS evidence
 ## Non-goals
 
 Sharding on prod tip · `finality_quorum_live` marketing · bridge enablement · new FEATURE_*  
-Long-Range on prod (`feature_long_range=false`) · claiming pin libp2p 48h soak PASS while pack is **VOID** (`pin-libp2p-cutover-pending` · 2026-10-08)  
+Long-Range on prod (`feature_long_range=false`) · calling the 2026-10-08 VOID or the 2026-10-11 short window a libp2p PASS. The PASS pack is `pin-libp2p-strict-48h` (interval 60, tag not cut).  
