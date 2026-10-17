@@ -48,6 +48,10 @@ def test_soak_status_alive_and_glob():
     assert "DEAD (monitor gone" in src
     assert "VOID" in src
     assert "do not start another soak" in src
+    assert "PACK_PASS" in src
+    assert 'Join-Path $Root "logs/soak_48h.log"' not in src
+    assert "allLogs[0]" not in src
+    assert 'ReportFile = ""' in src
     core = (ROOT / "scripts" / "health_watch_core.ps1").read_text(encoding="utf-8")
     assert "probe hung past" in core
     assert "Wait-Job $jobs -Timeout" in core
@@ -56,10 +60,22 @@ def test_soak_status_alive_and_glob():
     assert "full_every=6" in check
     assert "sample_h" in check
     assert "do not start another soak" in check
-    check = (ROOT / "scripts" / "check_soak.ps1").read_text(encoding="utf-8")
-    assert "VOID|stalled|prep" in check
+    assert "PACK_PASS" in check
+    assert 'FINISHED_PASS' in check
+    assert "mempool_validation" in check
+    assert "using newest non-archive" in check
+    assert 'elseif (-not ($log -and' not in check
+    assert "VOID|stalled|prep|INCOMPLETE" in src
+    assert "VOID|stalled|prep|INCOMPLETE" in check
     start = (ROOT / "scripts" / "start_soak_prod_mesh_48h_strict.ps1").read_text(encoding="utf-8")
     assert "Docker daemon is not running" in start
+
+
+def test_prod_mesh_readiness_does_not_borrow_july_soak():
+    src = (ROOT / "scripts" / "testnet_readiness.ps1").read_text(encoding="utf-8")
+    assert "if ($ProdMesh -and $MinSoakHours -ge 48)" in src
+    assert "soak_report_48h_libp2p_strict.json" in src
+    src.encode("ascii")
 
 
 def test_prod_mesh_industrial_refuses_nonstrict_soak():

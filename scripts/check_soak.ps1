@@ -42,22 +42,15 @@ if ($active) {
 }
 
 if (-not $log) {
-    $preferred = @(
-        (Join-Path $Root "logs\soak_mempool_validation_48h.log"),
-        (Join-Path $Root "logs\soak_2h_pre48h_maxload.log"),
-        (Join-Path $Root "logs\soak_48h_long_range_lab.log"),
-        (Join-Path $Root "logs\soak_2h_long_range_lab.log"),
-        (Join-Path $Root "logs\soak_48h_experimental.log"),
-        (Join-Path $Root "logs\soak_5h_strict.log")
-    )
     $logs = @(Get-ChildItem -Path (Join-Path $Root "logs\soak_*h*.log") -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -notmatch '\.bak' -and $_.Name -notmatch 'VOID|stalled|prep' } |
+        Where-Object { $_.Name -notmatch '\.bak' -and $_.Name -notmatch 'VOID|stalled|prep|INCOMPLETE' } |
         Sort-Object LastWriteTime -Descending)
-    if ($logs) { $log = $logs[0].FullName }
-    else {
-        foreach ($p in $preferred) {
-            if (Test-Path $p) { $log = $p; break }
+    if ($logs) {
+        if ($logs.Count -gt 1 -and -not $Quiet) {
+            Write-Host "WARN: multiple soak logs; using newest non-archive. Do not start another soak." -ForegroundColor Yellow
+            $logs | Select-Object -First 8 | ForEach-Object { Write-Host "  - $($_.Name)" -ForegroundColor DarkGray }
         }
+        $log = $logs[0].FullName
     }
 }
 
@@ -84,8 +77,6 @@ if (-not $reportFile) {
         } elseif ($stem -eq "48h" -or $stem -eq "48h_prod_mesh") {
             $reportFile = "logs/soak_report_48h.json"
         }
-    } elseif (-not ($log -and ([System.IO.Path]::GetFileName($log) -match 'VOID'))) {
-        $reportFile = "logs/soak_report_48h.json"
     }
 }
 
@@ -113,6 +104,22 @@ if (-not $Quiet) {
 }
 
 if (-not $log) {
+    $pack = "docs/evidence/runs/pin-libp2p-strict-48h/soak_report_48h_libp2p_strict.json"
+    $packPath = Join-Path $Root ($pack -replace '/', '\')
+    if (Test-Path $packPath) {
+        try {
+            $packed = Get-Content $packPath -Raw | ConvertFrom-Json
+            if ($packed.passed -eq $true) {
+                Write-KV "state" "PACK_PASS" "Green"
+                Write-KV "monitor" $(if ($alive) { "ALIVE pid=$pidList" } else { "none" })
+                Write-KV "report" "$pack passed=$($packed.passed) hours=$($packed.hours_elapsed)/$($packed.hours_requested)"
+                if (-not $Quiet) {
+                    Write-Host "  note: do not start another soak. Live log is absent; this pack is the PASS." -ForegroundColor Yellow
+                }
+                exit 0
+            }
+        } catch { }
+    }
     Write-KV "state" "NO_LOG" "Yellow"
     Write-KV "monitor" $(if ($alive) { "ALIVE pid=$pidList" } else { "none" })
     if (-not $Quiet) {
@@ -280,10 +287,12 @@ if (-not $Quiet) {
     Write-Host "  tail:     Get-Content $log -Tail 30" -ForegroundColor DarkGray
     Write-Host "  stop:     .\scripts\stop_soak_monitors.ps1 -Force" -ForegroundColor DarkGray
     Write-Host "  note:     STRICT PASS is not mainnet; 48h claim only if hours~48 and passed=true" -ForegroundColor DarkGray
-    if ($state -eq "STOPPED" -or $state -eq "DEAD" -or $state -eq "VOID") {
+    if ($state -eq "FINISHED_PASS" -or $state -eq "STOPPED" -or $state -eq "DEAD" -or $state -eq "VOID") {
         Write-Host "  note: do not start another soak. PASS pack is docs/evidence/runs/pin-libp2p-strict-48h" -ForegroundColor Yellow
     }
-    Write-Host "  mempool:  .\scripts\start_mempool_validation_soak.ps1 -Hours 48" -ForegroundColor DarkGray
+    if ($log -and ($log -match 'mempool_validation')) {
+        Write-Host "  mempool:  .\scripts\start_mempool_validation_soak.ps1 -Hours 48" -ForegroundColor DarkGray
+    }
 }
 
 exit $exitCode

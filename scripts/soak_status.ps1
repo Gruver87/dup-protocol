@@ -2,7 +2,7 @@
 # Prefer logs/soak_active.json so 5h STRICT and 48h soaks both show.
 param(
     [string]$LogGlob = "logs/soak_*h*.log",
-    [string]$ReportFile = "logs/soak_report_48h.json"
+    [string]$ReportFile = ""
 )
 
 $ErrorActionPreference = "Continue"
@@ -12,13 +12,14 @@ Set-Location $Root
 $activePath = Join-Path $Root "logs/soak_active.json"
 $log = $null
 $usingActive = $false
+$explicitReport = $PSBoundParameters.ContainsKey("ReportFile")
 if (Test-Path $activePath) {
     try {
         $active = Get-Content $activePath -Raw | ConvertFrom-Json
         $candidate = Join-Path $Root ($active.log_file -replace '/', '\')
         if (Test-Path $candidate) {
             $log = $candidate
-            if ($active.report_file) {
+            if ($active.report_file -and -not $explicitReport) {
                 $ReportFile = $active.report_file
             }
             $usingActive = $true
@@ -28,28 +29,33 @@ if (Test-Path $activePath) {
     } catch { }
 }
 
-# Archives (VOID power-off, stalled, prep) are not the live window.
+# Archives (VOID, stalled, prep, INCOMPLETE) are not the live window.
 # Do not resume them and do not pair them with historical soak_report_48h.json.
-$archiveName = 'VOID|stalled|prep'
+$archiveName = 'VOID|stalled|prep|INCOMPLETE'
 if (-not $log) {
-    $prefer48 = Join-Path $Root "logs/soak_48h.log"
-    if (-not (Test-Path $prefer48)) {
-        $prefer48 = Join-Path $Root "logs/soak_48h_prod_mesh.log"
-    }
     $allLogs = @(Get-ChildItem -Path (Join-Path $Root $LogGlob) -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending)
     $liveLogs = @($allLogs | Where-Object { $_.Name -notmatch $archiveName -and $_.Name -notmatch '\.bak' })
-    if (Test-Path $prefer48) {
-        $log = $prefer48
-    } elseif ($liveLogs.Count -gt 0) {
-        if ($allLogs.Count -gt 1) {
+    if ($liveLogs.Count -gt 0) {
+        if ($liveLogs.Count -gt 1) {
             Write-Host "WARN: multiple soak logs; showing newest non-archive. Do not start another soak." -ForegroundColor Yellow
-            $allLogs | Select-Object -First 8 | ForEach-Object { Write-Host "  - $($_.Name)" -ForegroundColor DarkGray }
+            $liveLogs | Select-Object -First 8 | ForEach-Object { Write-Host "  - $($_.Name)" -ForegroundColor DarkGray }
         }
         $log = $liveLogs[0].FullName
-    } elseif ($allLogs.Count -gt 0) {
-        $log = $allLogs[0].FullName
     } else {
+        $pack = "docs/evidence/runs/pin-libp2p-strict-48h/soak_report_48h_libp2p_strict.json"
+        $packPath = Join-Path $Root ($pack -replace '/', '\')
+        if (Test-Path $packPath) {
+            try {
+                $packed = Get-Content $packPath -Raw | ConvertFrom-Json
+                if ($packed.passed -eq $true) {
+                    Write-Host "state: PACK_PASS" -ForegroundColor Green
+                    Write-Host "  report: $pack hours=$($packed.hours_requested) passed=$($packed.passed)" -ForegroundColor DarkGray
+                    Write-Host "  note: do not start another soak. Live log is absent; this pack is the PASS." -ForegroundColor Yellow
+                    exit 0
+                }
+            } catch { }
+        }
         Write-Host "No soak log matching $LogGlob" -ForegroundColor Yellow
         exit 1
     }
@@ -92,10 +98,11 @@ if ($voidArchive) {
     Write-Host "  note: do not start another soak unless ordered. PASS pack is pin-libp2p-strict-48h" -ForegroundColor Yellow
 }
 
-# Default ReportFile is the historical Jul TCP+TLS pack. Never attach it to a libp2p or VOID log.
+# A report is attached from -ReportFile, soak_active.json, or the log stem.
+# logs/soak_report_48h.json belongs only to soak_48h.log / soak_48h_prod_mesh.log.
 $reportPath = $null
 $reportLabel = $null
-if ($usingActive -and $ReportFile -and -not $voidArchive) {
+if ($ReportFile -and -not $voidArchive) {
     $reportLabel = $ReportFile
     $reportPath = Join-Path $Root ($ReportFile -replace '/', '\')
 } elseif (-not $voidArchive -and ($logName -eq "soak_48h.log" -or $logName -eq "soak_48h_prod_mesh.log")) {
