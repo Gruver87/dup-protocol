@@ -15,7 +15,7 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 [![Security checks](https://github.com/Gruver87/dup-protocol/actions/workflows/security-audit.yml/badge.svg?branch=master)](https://github.com/Gruver87/dup-protocol/actions/workflows/security-audit.yml)
 [![Community health](https://img.shields.io/badge/community%20health-100%25-brightgreen)](https://github.com/Gruver87/dup-protocol#docs-map)
 
-> **Industrial pin:** [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) · tip-v2 48h soak **PASS** · Phase 3–4 ops/audit binder **READY** · external firm audit **still pending**  
+> **Industrial pin:** [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) is historical **TCP+TLS** tip-v2 48h **PASS** ([`375d14f`](docs/evidence/runs/375d14f/)). Working-tip **rust-libp2p** STRICT 48h **PASS** is [`pin-libp2p-strict-48h`](docs/evidence/runs/pin-libp2p-strict-48h/) (tag not cut). Phase 3–4 binder **READY**. External firm audit **still pending**.  
 > **Showcase:** [SHOWCASE](docs/SHOWCASE.md) · [FAQ](docs/FAQ.md) · [ONE_PAGER](docs/ONE_PAGER.md) / [RU](docs/ONE_PAGER_RU.md) · pin demo → [DEMO_RUNBOOK_PIN](docs/DEMO_RUNBOOK_PIN.md) · [FUND_AUDIT_PREP](docs/FUND_AUDIT_PREP.md) · [FUND_READINESS](docs/FUND_READINESS.md) · [VISION](docs/VISION.md) · [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md)
 
 **Funds / ПВТ (pin):** [FUND_AUDIT_PREP](docs/FUND_AUDIT_PREP.md) · [SHOWCASE](docs/SHOWCASE.md) · [DILIGENCE_BRIEF](docs/DILIGENCE_BRIEF.md) · [ONE_PAGER_RU](docs/ONE_PAGER_RU.md).  
@@ -152,11 +152,11 @@ Makefile             make build | verify | verify-industrial | mesh-up
 | Action | Windows | Linux / macOS |
 |--------|---------|---------------|
 | **Verify whole project** | `.\scripts\verify_project.ps1` | `make verify` |
-| Industrial (tip-v2 48h evidence) | `.\scripts\verify_project.ps1 -Mode Industrial` | `make verify-industrial` |
+| Industrial (48h evidence) | `.\scripts\verify_project.ps1 -Mode Industrial` | `make verify-industrial` |
 | Legacy self-check | `.\scripts\check_all.ps1` | `make test-quick` |
 | Start mesh | `.\scripts\docker_prod_3node.ps1 -SkipBuild -KeepVolumes` | `make mesh-up` |
 | Probe | `.\scripts\probe_prod_mesh.ps1` | same via `pwsh` |
-| Soak 48h | `.\scripts\soak_monitor.ps1 -ProdMesh -Hours 48` | same |
+| Libp2p 48h PASS | pack [`pin-libp2p-strict-48h`](docs/evidence/runs/pin-libp2p-strict-48h/) — do not start a soak | same |
 | Industrial gate only | `python scripts/industrial_gate.py --min-soak-hours 48` | same |
 | Audit zip | `.\scripts\export_audit_pack.ps1` | same |
 
@@ -166,7 +166,7 @@ Makefile             make build | verify | verify-industrial | mesh-up
 | `docker_devnet_*.ps1` | 77777 | Lab mesh |
 | `docker_prod_3node` / `make mesh-up` | **778888** | Prod-profile; bridge **OFF** |
 
-Do **not** mix local `main.py` with Docker on the same host ports.
+Do **not** mix local `main.py` with Docker on the same host ports. `verify-industrial` and `--min-soak-hours 48` read `pin-libp2p-strict-48h` first. `375d14f` is the TCP+TLS fallback. Neither command starts a soak.
 
 | Node | Explorer |
 |------|----------|

@@ -63,7 +63,7 @@ def main() -> int:
             "PASS is not public mainnet",
             "external firm audit PDF still required for 'audited'",
             "bridge must stay OFF on live mesh without audited L1 cutover",
-            "industrial mode checks packaged tip-v2 soak evidence (operator-local)",
+            "industrial mode reads pin-libp2p-strict-48h when present; 375d14f is the TCP+TLS fallback",
         ],
     }
 

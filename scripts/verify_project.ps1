@@ -33,7 +33,7 @@ if ($Help) {
     Write-Host ""
     Write-Host "  Quick         waves + industrial_gate (daily)"
     Write-Host "  Standard      full offline gate (prod/pytest)"
-    Write-Host "  Industrial    Standard + tip-v2 soak evidence + bridge OFF"
+    Write-Host "  Industrial    Standard + packaged 48h soak (libp2p pack, else tip-v2) + bridge OFF"
     Write-Host "  Max           Industrial + Live HTTP + isolated P2P CI"
     Write-Host ""
     Write-Host "Examples:"
@@ -89,7 +89,7 @@ $report = [ordered]@{
         "PASS is not public mainnet"
         "external firm audit PDF still required for audited claim"
         "bridge must stay OFF on live mesh without audited L1 cutover"
-        "Industrial mode checks packaged tip-v2 soak evidence (operator-local)"
+        "Industrial mode reads pin-libp2p-strict-48h when present; 375d14f is the TCP+TLS fallback"
     )
 }
 

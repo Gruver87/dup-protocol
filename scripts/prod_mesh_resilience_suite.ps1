@@ -111,5 +111,5 @@ python (Join-Path $ScriptDir "record_evidence_run.py") `
 
 Write-Host "`nOK: prod mesh resilience suite passed" -ForegroundColor Green
 Write-Host "  Full evidence: .\scripts\prod_evidence_suite.ps1" -ForegroundColor DarkGray
-Write-Host "  48h soak (later): .\scripts\restart_soak_prod_mesh.ps1 -Hours 48" -ForegroundColor DarkGray
+Write-Host "  Libp2p 48h PASS is docs/evidence/runs/pin-libp2p-strict-48h. Do not start a soak." -ForegroundColor DarkGray
 exit 0

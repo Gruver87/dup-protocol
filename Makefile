@@ -20,7 +20,7 @@ help:
 	@echo "  make test-quick          Industrial waves verify (scripts/verify_industrial_waves.py)"
 	@echo "  make test-gate           Industrial gate only (scripts/industrial_gate.py)"
 	@echo "  make verify              Unified project check (quick)"
-	@echo "  make verify-industrial   Unified check + tip-v2 48h soak evidence"
+	@echo "  make verify-industrial   Unified check + libp2p 48h pack (TCP 375d14f fallback)"
 	@echo "  make mesh-up             3-node prod Docker mesh (scripts/docker_prod_3node.sh)"
 	@echo ""
 	@echo "Windows: .\\scripts\\verify_project.ps1  (Quick / Standard / Industrial / Max)"

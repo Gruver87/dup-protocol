@@ -6430,9 +6430,9 @@ def run_industrial_gate(
             key=lambda p: p.stat().st_mtime if p.is_file() else 0,
             reverse=True,
         )
-        # Prefer packaged tip-v2 PASS (in-repo) over gitignored logs/ copies.
         # Current pin libp2p STRICT pack wins when it is on disk.
         # 375d14f stays the TCP+TLS historical fallback (freeze tag).
+        # Gitignored logs/ copies come after the packaged reports.
         soak_candidates = [
             ROOT
             / "docs"

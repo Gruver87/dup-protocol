@@ -70,6 +70,34 @@ def test_prod_mesh_industrial_refuses_nonstrict_soak():
     src.encode("ascii")
 
 
+def test_verify_project_names_libp2p_soak_pack():
+    root = ROOT
+    py = (root / "scripts" / "verify_project.py").read_text(encoding="utf-8")
+    ps1 = (root / "scripts" / "verify_project.ps1").read_text(encoding="utf-8")
+    for src in (py, ps1):
+        assert "pin-libp2p-strict-48h" in src
+        assert "375d14f" in src
+    ps1.encode("ascii")
+    make = (root / "Makefile").read_text(encoding="utf-8")
+    assert "libp2p 48h pack" in make
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert "soak_monitor.ps1 -ProdMesh -Hours 48" not in readme
+    assert "pin-libp2p-strict-48h" in readme
+
+
+def test_operator_suites_do_not_offer_tcp_soak_restart():
+    for name in (
+        "prod_evidence_suite.ps1",
+        "prod_mesh_resilience_suite.ps1",
+        "mainnet_cutover_checklist.ps1",
+    ):
+        src = (ROOT / "scripts" / name).read_text(encoding="utf-8")
+        assert "restart_soak_prod_mesh.ps1 -Hours 48" not in src
+        assert "pin-libp2p-strict-48h" in src
+        assert "Do not start a soak" in src
+        src.encode("ascii")
+
+
 def test_min_soak_hours_prefers_pin_libp2p_pack():
     src = (ROOT / "scripts" / "industrial_gate.py").read_text(encoding="utf-8")
     block = src.split("soak_candidates = [", 1)[1].split("]", 1)[0]

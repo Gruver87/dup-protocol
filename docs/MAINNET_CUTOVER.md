@@ -64,17 +64,25 @@ python scripts/record_evidence_run.py --name prod_evm_smoke --result PASS --arti
 
 ---
 
-## Phase 4 — Soak (24–48h)
+## Phase 4 — Soak (recorded)
+
+Do not start a soak from this page. The packs already on disk:
+
+- July float tip: `logs/soak_report_48h.json` (2026-07-19→21)
+- TCP+TLS tip-v2: `docs/evidence/runs/375d14f/`
+- rust-libp2p STRICT: `docs/evidence/runs/pin-libp2p-strict-48h/` (`hard_fails=0`, interval 60). Tag `v1.3.1340` is not cut.
+
+`.\scripts\restart_soak_prod_mesh.ps1` is the old tip-v2 restarter (interval 300). It exits unless `-AllowHistoricalTcp`. That flag is not the libp2p PASS.
+
+Read-only checks:
 
 ```powershell
-.\scripts\stop_soak_monitors.ps1 -Force
-.\scripts\restart_soak_prod_mesh.ps1 -Hours 48
 .\scripts\soak_status.ps1
 .\scripts\testnet_readiness.ps1 -ProdMesh -MinSoakHours 48
-python scripts/industrial_gate.py --min-soak-hours 48 --ceremony-dir data/ceremony_keys
+python scripts/industrial_gate.py --min-soak-hours 48
 ```
 
-Report file: `logs/soak_report_48h.json` (48h run; legacy `soak_report.json` is the earlier 7h pass).
+`--min-soak-hours 48` reads `pin-libp2p-strict-48h` first. `375d14f` is the TCP+TLS fallback. `testnet_readiness.ps1 -ProdMesh` uses the libp2p pack for the 48h file. None of these commands start a soak.
 
 ---
 

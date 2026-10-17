@@ -19,6 +19,7 @@ Canonical language for this repository is **English**. Older entries below may s
   `c1c281f` was dirty at start; image `sha256:be576392…`.
 - Firm front door (`FUND_AUDIT_PREP`, `FUND_DEMO_OPERATOR_PACK`, `DILIGENCE_BRIEF`, one-pagers, engagement brief) names the 2026-10-15–17 pack as the libp2p PASS. `industrial_gate.py --min-soak-hours`, `check_blockchain.py`, the audit-pack manifest, and `stamp_release_evidence.py` read that pack. Prod-mesh `testnet_readiness.ps1 -ProdMesh` does too. Prep hints now name `start_soak_prod_mesh_48h_strict.ps1`. The non-strict starter stays on disk. The gitignored TCP `logs/soak_report_48h.json` is not the libp2p claim. Another soak is only for a clean-commit image bind.
 - Prep now records interval 60. A 300s plan is refused. `restart_soak_prod_mesh.ps1` does not start unless `-AllowHistoricalTcp`.
+- Operator cheatsheets no longer start `soak_monitor` or the TCP restarter. `verify_project` industrial mode names the libp2p pack first.
 - The 2026-10-08 power-off window stays **VOID**. The 2026-10-11 window
   stays short of 48h and is not PASS.
 

@@ -75,5 +75,5 @@ if (-not $BridgeCutover) {
 Write-Host ""
 Write-Host "OK: mainnet cutover checklist passed" -ForegroundColor Green
 Write-Host "  Next: .\scripts\prod_evidence_suite.ps1 -RecordEvidence" -ForegroundColor DarkGray
-Write-Host "  Soak: .\scripts\restart_soak_prod_mesh.ps1 -Hours 48" -ForegroundColor DarkGray
+Write-Host "  Libp2p 48h PASS is docs/evidence/runs/pin-libp2p-strict-48h. Do not start a soak." -ForegroundColor DarkGray
 exit 0
