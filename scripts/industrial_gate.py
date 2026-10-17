@@ -2023,10 +2023,41 @@ def _check_fail_loud_surfaces() -> tuple[list[str], list[str]]:
             errors.append("consensus/adapter must log via logger (no print)")
         if 'logger.warning(f"[Consensus] FAIL: engine slash' not in adapter_py_log:
             errors.append("consensus/adapter must warning-log engine slash failures")
-        if 'from consensus.long_range' in adapter_py_log:
+        if "weak_subjectivity_honesty_snapshot" not in adapter_py_log:
             errors.append(
-                "pin consensus/adapter must not import Long-Range weak_subjectivity runtime"
+                "pin consensus/adapter must report Long-Range honesty via "
+                "weak_subjectivity_honesty_snapshot (ADR 0017; prod stays unarmed)"
             )
+        lr_runtime = ROOT / "consensus" / "long_range" / "runtime.py"
+        if not lr_runtime.is_file():
+            errors.append("ADR 0017 consensus/long_range/runtime.py missing on pin")
+        else:
+            lr_txt = lr_runtime.read_text(encoding="utf-8")
+            if "def long_range_feature_armed" not in lr_txt:
+                errors.append("ADR 0017 runtime must expose long_range_feature_armed")
+            if 'mode in ("prod", "staging")' not in lr_txt:
+                errors.append("ADR 0017 runtime must hard-off prod and staging")
+        lab_json = ROOT / "node.long_range.lab.json"
+        if not lab_json.is_file():
+            errors.append("ADR 0017 lab profile node.long_range.lab.json missing")
+        else:
+            try:
+                lab_cfg = json.loads(lab_json.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                errors.append(f"node.long_range.lab.json unreadable: {exc}")
+            else:
+                if str(lab_cfg.get("deployment_mode", "")).lower() != "dev":
+                    errors.append("Long-Range lab profile must be deployment_mode=dev")
+                if int(lab_cfg.get("chain_id", 0) or 0) == 778888:
+                    errors.append("Long-Range lab profile must not use chain_id 778888")
+                if lab_cfg.get("feature_long_range") is not True:
+                    errors.append("Long-Range lab profile must set feature_long_range=true")
+                if lab_cfg.get("feature_libp2p") is not False:
+                    errors.append("Long-Range lab profile must keep feature_libp2p=false")
+                if lab_cfg.get("bridge_enabled") is not False:
+                    errors.append("Long-Range lab profile must keep bridge_enabled=false")
+        if not (ROOT / "features" / "council_nft.py").is_file():
+            errors.append("features/council_nft.py missing (NFT transfer gate)")
         clone_py = (ROOT / "storage" / "chain_clone.py").read_text(encoding="utf-8")
         if "Fail-closed: when RocksEngine is available" not in clone_py:
             errors.append("chain_clone must fail-closed on Rocks checkpoint when native present")

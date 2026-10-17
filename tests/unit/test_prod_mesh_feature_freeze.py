@@ -101,3 +101,15 @@ def test_prod_config_defaults_libp2p_long_range_off() -> None:
     cfg = Config()
     assert cfg.feature_libp2p is False
     assert cfg.feature_long_range is False
+
+
+def test_long_range_lab_profile_is_not_prod_mesh() -> None:
+    data = json.loads((ROOT / "node.long_range.lab.json").read_text(encoding="utf-8"))
+    assert data["deployment_mode"] == "dev"
+    assert int(data["chain_id"]) != 778888
+    assert data["feature_long_range"] is True
+    assert data["feature_libp2p"] is False
+    assert data["bridge_enabled"] is False
+    assert (ROOT / "features" / "council_nft.py").is_file()
+    gate = (ROOT / "scripts" / "industrial_gate.py").read_text(encoding="utf-8")
+    assert "Long-Range lab profile must not use chain_id 778888" in gate

@@ -21,9 +21,8 @@ def test_p2p_package_shims_to_legacy():
     assert "failed peer=" in body
 
 
-def test_consensus_adapter_logger_no_print_no_lr():
+def test_consensus_adapter_logger_no_print_ws_honesty():
     src = Path("consensus/adapter.py").read_text(encoding="utf-8")
     assert "print(" not in src
     assert 'logger.warning(f"[Consensus] FAIL: engine slash' in src
-    assert "from consensus.long_range" not in src
-    assert '"long_range_defense": False' in src
+    assert "weak_subjectivity_honesty_snapshot" in src

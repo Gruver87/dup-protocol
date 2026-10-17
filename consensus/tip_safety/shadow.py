@@ -22,6 +22,13 @@ _LOG = logging.getLogger("abs.tip_safety.shadow")
 _GENESIS_HASH = "0" * 64
 
 
+def _optional_ws_service(config: Any | None = None) -> Optional[Any]:
+    """Attach ADR 0017 WS gate when lab/dev Long-Range is armed."""
+    from consensus.long_range.runtime import build_ws_service
+
+    return build_ws_service(config)
+
+
 def block_ref_from_mapping(data: Mapping[str, Any]) -> BlockRef:
     """Build a ``BlockRef`` from a block dict / announce body.
 
@@ -235,6 +242,7 @@ class TipSafetyShadowObserver:
     __slots__ = (
         "_enabled",
         "_enforce",
+        "_config",
         "_lock",
         "_service",
         "_last_decision",
@@ -250,9 +258,15 @@ class TipSafetyShadowObserver:
         "last_local_forge_height",
     )
 
-    def __init__(self, enabled: bool = False, enforce: bool = False) -> None:
+    def __init__(
+        self,
+        enabled: bool = False,
+        enforce: bool = False,
+        config: Any | None = None,
+    ) -> None:
         self._enforce = bool(enforce)
         self._enabled = bool(enabled) or self._enforce
+        self._config = config
         self._lock = threading.RLock()
         self._service: Optional[TipSafetyService] = None
         self._last_decision: Optional[ApplyDecision] = None
@@ -340,14 +354,26 @@ class TipSafetyShadowObserver:
                 max_blocks = int(os.environ.get("TIP_ANCESTRY_WINDOW_MAX", "256") or 256)
             except (TypeError, ValueError):
                 max_blocks = 256
+            ws = _optional_ws_service(self._config)
+            stop_hash = None
+            if ws is not None:
+                try:
+                    anchor = ws.get_anchor()
+                    if anchor is not None:
+                        stop_hash = str(anchor.block_hash)
+                except Exception:
+                    stop_hash = None
             with self._lock:
                 self._service = TipSafetyService(
-                    state, ancestry_max_blocks=max(1, max_blocks)
+                    state,
+                    ancestry_max_blocks=max(1, max_blocks),
+                    ws_service=ws,
                 )
                 # Tip-only seed is not enough for bounded-window parent walks.
                 n = backfill_ancestry_from_chain(
                     self._service.ancestry,
                     blockchain,
+                    stop_hash=stop_hash,
                 )
                 if n > 1:
                     _LOG.debug("tip_safety ancestry backfill recorded=%s", n)

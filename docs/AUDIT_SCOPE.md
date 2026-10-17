@@ -28,7 +28,7 @@
 | NFT / app staging | Profile C; not L1 trust path |
 | Public mainnet ops / legal / listing | Organizational, not code audit of this tree |
 | Full Ethereum client compatibility | EVM subset only |
-| Tip proof / Long-Range | Not claimed — Long-Range R&D in [dup-protocol-experimental](https://github.com/Gruver87/dup-protocol-experimental); `feature_long_range=false` on pin prod |
+| Tip proof / Long-Range | Lab layer on pin ([ADR 0017](adr/0017-long-range-lab.md)); `feature_long_range=false` on prod/staging. Not BLS. Not a pin soak. Experimental packs are not pin proof |
 | Experimental-only libp2p soak evidence | Not pin proof — e.g. `3c801b87` / `lp2pstrict1` on Experimental. Pin VOID window stays in `pin-libp2p-cutover-pending`. Pin PASS is `pin-libp2p-strict-48h` |
 
 ## Deliverables expected from auditor

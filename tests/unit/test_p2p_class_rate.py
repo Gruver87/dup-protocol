@@ -156,7 +156,8 @@ def test_needles():
     assert "def _class_rate_ok" in p2p
     assert "def _rate_limit_class_limit" in p2p
     assert "rate_limit_class_exceeded" in p2p
-    assert "ws_checkpoint" not in p2p  # Long-Range gossip must not be ported to pin
+    assert "MSG_WS_CHECKPOINT" in p2p
+    assert "long_range_feature_armed" in p2p
     cfg = (ROOT / "runtime" / "config.py").read_text(encoding="utf-8")
     assert "p2p_attest_messages_per_sec" in cfg
     reject = (ROOT / "network" / "transport" / "reject.py").read_text(encoding="utf-8")

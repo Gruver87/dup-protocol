@@ -1,0 +1,101 @@
+# ADR 0017 — Long-Range lab 3-node mesh (separate project / volumes / ports).
+# Never bootstrap to abs-prod-mesh or reuse industrial prod Rocks volumes.
+# Do NOT mount docker prod mesh JSON. Timed 2h/48h via start_soak_long_range_lab.ps1.
+#
+#   docker compose -p abs-lr-lab -f docker-compose.long_range.lab.yml up -d --build
+#   docker compose -p abs-lr-lab -f docker-compose.long_range.lab.yml down -v
+#
+# Ports: HTTP 29080-29082, RPC 29545-29547, P2P 26000-26002 (isolated from prod mesh).
+
+x-lr-env: &lr-env
+  DEPLOYMENT_MODE: "dev"
+  FEATURE_LONG_RANGE: "true"
+  FEATURE_LIBP2P: "false"
+  FEATURE_ORACLES: "false"
+  FEATURE_SHARDING: "false"
+  BRIDGE_ENABLED: "false"
+  TIP_SAFETY_ENFORCE: "true"
+  TIP_SAFETY_SHADOW: "true"
+  ABS_WS_COMMITTEE_REQUIRED: "true"
+  # Sibling of pubkeys on the RO committee mount (miner roll-forward signs here).
+  ABS_WS_COMMITTEE_SECRETS_FILE: /app/data/long_range_lab_committee/secrets.json
+  # Keep tip−anchor small so ancestry backfill / walks stay cheap mid-soak.
+  ABS_WS_ROLL_GAP: "512"
+  ABS_WS_ROLL_CONFIRM: "16"
+  ABS_WS_ROLL_INTERVAL_SEC: "120"
+  # 48h tip growth (~15s/block) exceeds default AncestryWindow=256 (~1h).
+  # Keep tip→WS walks possible; contiguous tip+1 also inherits past-anchor.
+  TIP_ANCESTRY_WINDOW_MAX: "16384"
+
+services:
+  lr0:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: abs-lr-0
+    command: ["python", "main.py", "--config", "node.long_range.lab.json"]
+    ports:
+      - "29080:8080"
+      - "29545:8545"
+      - "26000:5000"
+    environment:
+      <<: *lr-env
+      DATA_DIR: /app/data/long_range_lab0
+      ABS_WS_CHECKPOINT_PATH: /app/data/long_range_lab0/ws_checkpoint.json
+      ABS_WS_COMMITTEE_PUBKEYS_FILE: /app/data/long_range_lab_committee/pubkeys.json
+    volumes:
+      - ./data/long_range_lab0:/app/data/long_range_lab0
+      - ./data/long_range_lab_committee:/app/data/long_range_lab_committee:ro
+    mem_limit: 2048m
+    restart: unless-stopped
+    networks: [abs-lr-lab]
+
+  lr1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: abs-lr-1
+    command: ["python", "main.py", "--config", "node.long_range.lab1.json"]
+    ports:
+      - "29081:8080"
+      - "29546:8545"
+      - "26001:5000"
+    environment:
+      <<: *lr-env
+      DATA_DIR: /app/data/long_range_lab1
+      ABS_WS_CHECKPOINT_PATH: /app/data/long_range_lab1/ws_checkpoint.json
+      ABS_WS_COMMITTEE_PUBKEYS_FILE: /app/data/long_range_lab_committee/pubkeys.json
+    volumes:
+      - ./data/long_range_lab1:/app/data/long_range_lab1
+      - ./data/long_range_lab_committee:/app/data/long_range_lab_committee:ro
+    mem_limit: 2048m
+    restart: unless-stopped
+    networks: [abs-lr-lab]
+    depends_on: [lr0]
+
+  lr2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: abs-lr-2
+    command: ["python", "main.py", "--config", "node.long_range.lab2.json"]
+    ports:
+      - "29082:8080"
+      - "29547:8545"
+      - "26002:5000"
+    environment:
+      <<: *lr-env
+      DATA_DIR: /app/data/long_range_lab2
+      ABS_WS_CHECKPOINT_PATH: /app/data/long_range_lab2/ws_checkpoint.json
+      ABS_WS_COMMITTEE_PUBKEYS_FILE: /app/data/long_range_lab_committee/pubkeys.json
+    volumes:
+      - ./data/long_range_lab2:/app/data/long_range_lab2
+      - ./data/long_range_lab_committee:/app/data/long_range_lab_committee:ro
+    mem_limit: 2048m
+    restart: unless-stopped
+    networks: [abs-lr-lab]
+    depends_on: [lr0]
+
+networks:
+  abs-lr-lab:
+    name: abs-lr-lab

@@ -27,6 +27,7 @@ from network.p2p_dispatch.constants import (
     MSG_PING,
     MSG_PONG,
     MSG_SHARD_MIGRATION,
+    MSG_WS_CHECKPOINT,
     MSG_STATE_ROOT_REQUEST,
     MSG_STATE_ROOT_RESPONSE,
     MSG_STATUS,
@@ -167,6 +168,7 @@ def build_default_registry(
             (MSG_CROSS_SHARD_TX, h.handle_cross_shard_tx),
             (MSG_CROSS_SHARD_ACK, h.handle_cross_shard_ack),
             (MSG_SHARD_MIGRATION, h.handle_shard_migration),
+            (MSG_WS_CHECKPOINT, h.handle_ws_checkpoint),
         ]
     )
     return registry

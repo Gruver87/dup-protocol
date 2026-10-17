@@ -959,6 +959,11 @@ class Config:
                 self.rate_limit_rpm = 120
             if self.cors_origins == ["*"]:
                 self.cors_origins = env_list("CORS_ORIGINS", [])
+            # ADR 0017: env cannot arm Long-Range on prod.
+            self.feature_long_range = False
+
+        if str(self.deployment_mode or "").strip().lower() == "staging":
+            self.feature_long_range = False
 
         return self
 
@@ -1051,11 +1056,12 @@ class Config:
             errors.append("prod deployment forbids bridge_mode=fake")
         if self.is_production and self.bridge_dev_adapter_enabled:
             errors.append("prod deployment forbids BRIDGE_DEV_ADAPTER_ENABLED")
-        # ADR 0017: Long-Range stays lab-only / refuse in this pin until complete on disk.
-        if self.feature_long_range:
+        # ADR 0017: the lab layer is on this pin. Prod and staging cannot arm it.
+        mode = str(self.deployment_mode or "").strip().lower()
+        if self.feature_long_range and (self.is_production or mode == "staging"):
             errors.append(
-                "FEATURE_LONG_RANGE is not implemented for pin production "
-                "(lab-only until ADR 0017 complete; use Gruver87/dup-protocol-experimental)"
+                "FEATURE_LONG_RANGE is lab/dev only on this pin "
+                "(ADR 0017; prod and staging stay hard-off; not BLS)"
             )
         if self.is_production:
             backend = str(self.secret_backend or "env").strip().lower()

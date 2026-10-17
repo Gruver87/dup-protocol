@@ -85,7 +85,7 @@ def test_prod_validate_refuses_libp2p_with_p2p_tls():
     assert any("feature_libp2p" in e and "p2p_tls_enabled" in e for e in errs), errs
 
 
-def test_dev_validate_allows_libp2p_but_refuses_long_range():
+def test_dev_validate_allows_libp2p_and_lab_long_range():
     cfg = Config()
     assert cfg.deployment_mode != "prod"
     cfg.feature_libp2p = True
@@ -95,7 +95,7 @@ def test_dev_validate_allows_libp2p_but_refuses_long_range():
     cfg.feature_libp2p = False
     cfg.feature_long_range = True
     errs = cfg.validate()
-    assert any("FEATURE_LONG_RANGE" in e and "not implemented" in e for e in errs)
+    assert not any("FEATURE_LONG_RANGE" in e for e in errs), errs
 
 
 def test_env_libp2p_true_accepted_long_range_true_still_refused(monkeypatch):
@@ -106,10 +106,10 @@ def test_env_libp2p_true_accepted_long_range_true_still_refused(monkeypatch):
     cfg.deployment_mode = "prod"
     cfg.apply_env()
     assert cfg.feature_libp2p is True
-    assert cfg.feature_long_range is True
+    assert cfg.feature_long_range is False
     errs = cfg.validate()
     assert not any("feature_libp2p" in e.lower() for e in errs), errs
-    assert any("FEATURE_LONG_RANGE" in e for e in errs)
+    assert not any("FEATURE_LONG_RANGE" in e for e in errs)
 
 
 def test_prod_validate_refuses_file_and_null_secret_backend():

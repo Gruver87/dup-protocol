@@ -36,6 +36,16 @@ Detailed A–H remediation history for Experimental mid-2026 lives on the Exp tr
 
 ---
 
+## Layer bring-up (after the Exp port, 2026-10-17)
+
+Code for libp2p, EVM, mempool validation, Long-Range, and the council NFT gate is on this pin. Bring-up does not flip prod JSON and does not start a soak.
+
+1. **Lock** — prod `778888` keeps `feature_long_range=false`, `feature_nft=false`, bridge OFF. Long-Range lab profile stays `deployment_mode=dev`, chain `77779`. Gate refuses a lab file that uses `778888`.
+2. **Long-Range lab only** — `python scripts/verify_long_range_host.py` runs the three offline labs and checks prod JSON. Committee keys, when needed later, come from `gen_long_range_lab_committee.py` into gitignored `data/`. No soak until the operator orders a pin lab window. BLS is not in this step.
+3. **Council** — `features/council_nft.py` serves the existing NFT transfer refuse. `python scripts/nft_lab.py` is the offline check (`feature_nft` stays false; staging `:19080` is skipped when closed). No staging mint.
+4. **Prod mesh unchanged** — libp2p STRICT pack `pin-libp2p-strict-48h` stays the mesh proof. Another 48h only for a clean-commit image bind.
+5. **Org** — pen-test and firm PDF. Not a code flag.
+
 ## Next 90 days (org / operator)
 
 1. Keep CI + `industrial_gate` green on `master`  

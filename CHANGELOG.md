@@ -10,6 +10,18 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Council NFT gate and Long-Range host labs
+
+- `features/council_nft.py` is on the pin so `features/nft.py` can refuse a council transfer instead of failing closed on a missing module. `feature_nft` stays false on chain `778888`. ADR 0022 is lab governance, not L1 security.
+- Host labs `long_range_p2p_lab.py` and `long_range_gossip_lab.py` exercise the pin Long-Range layer. No soak is started.
+
+### Long-Range lab layer on the pin (ADR 0017)
+
+- `consensus/long_range/` is on this pin (Ed25519 WS anchor, gossip, roll-forward).
+  Prod and staging stay `feature_long_range=false`. Dev may arm
+  `node.long_range.lab.json` (chain `77779`). Not BLS. Not a pin soak.
+  Experimental `lr48pass1` / `lrstrict1` are not pin evidence.
+
 ### Pin libp2p STRICT 48h PASS (2026-10-15 → 2026-10-17)
 
 - Report `passed=true`, `strict=true`, `hard_fail_lines=0`, `mesh_warn_lines=0`,
@@ -22,6 +34,9 @@ Canonical language for this repository is **English**. Older entries below may s
 - Operator cheatsheets no longer start `soak_monitor` or the TCP restarter. `verify_project` industrial mode names the libp2p pack first.
 - The 2026-10-08 power-off window stays **VOID**. The 2026-10-11 window
   stays short of 48h and is not PASS.
+- `docs/evidence/README.md` and `docs/evidence/runs/latest/README.md` name
+  `pin-libp2p-strict-48h` as the current soak package. The July TCP report
+  stays a historical input.
 
 ### Soak window 2026-10-11 (stopped short, not PASS)
 

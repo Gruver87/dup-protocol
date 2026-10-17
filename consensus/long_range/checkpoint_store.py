@@ -1,0 +1,145 @@
+"""Bounded store of WS checkpoint certificates (ADR 0017 wave-6/8)."""
+
+from __future__ import annotations
+
+import json
+import os
+from collections import deque
+from pathlib import Path
+from typing import Deque, List, Optional, Union
+
+from consensus.long_range.checkpoint import CheckpointCertificate
+from consensus.long_range.service import WeakSubjectivityService
+
+
+class CheckpointStore:
+    """Keep the latest certificate plus a short rotation history."""
+
+    def __init__(self, *, max_history: int = 8) -> None:
+        if int(max_history) < 1:
+            raise ValueError("max_history must be >= 1")
+        self._max = int(max_history)
+        self._items: Deque[CheckpointCertificate] = deque(maxlen=self._max)
+
+    def push(self, cert: CheckpointCertificate) -> None:
+        if not cert.verify_digest():
+            raise ValueError("checkpoint digest invalid")
+        # Avoid duplicate tip digests
+        if self._items and self._items[-1].digest == cert.digest:
+            return
+        self._items.append(cert)
+
+    def adopt_peer_certificate(self, cert: CheckpointCertificate) -> str:
+        """Merge peer cert when anchor is not regressive (wave-14 gossip)."""
+        from consensus.long_range.gossip import adopt_peer_certificate
+
+        return adopt_peer_certificate(self, cert)
+
+    def latest(self) -> Optional[CheckpointCertificate]:
+        return self._items[-1] if self._items else None
+
+    def history(self) -> List[CheckpointCertificate]:
+        return list(self._items)
+
+    def apply_latest(self, svc: WeakSubjectivityService) -> bool:
+        """Set ``svc`` anchor from the newest certificate (wave-7)."""
+        cert = self.latest()
+        if cert is None:
+            return False
+        svc.set_anchor(cert.anchor)
+        return True
+
+    def save(self, path: Union[str, Path]) -> Path:
+        """Persist history as JSON (atomic replace)."""
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "max_history": self._max,
+            "items": [dict(c.to_dict()) for c in self._items],
+        }
+        tmp = p.with_name(p.name + ".tmp")
+        tmp.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        os.replace(tmp, p)
+        return p
+
+    @classmethod
+    def load(cls, path: Union[str, Path]) -> "CheckpointStore":
+        """Load store from JSON; fail-closed on digest mismatch."""
+        raw = json.loads(Path(path).read_text(encoding="utf-8"))
+        max_h = int(raw.get("max_history") or 8)
+        store = cls(max_history=max_h)
+        for item in raw.get("items") or []:
+            store.push(CheckpointCertificate.from_dict(item))
+        return store
+
+    @classmethod
+    def load_or_empty(cls, path: Union[str, Path, None]) -> "CheckpointStore":
+        """Missing path/file → empty store (caller must fail-closed on no_anchor)."""
+        if path is None or not str(path).strip():
+            return cls()
+        p = Path(path)
+        if not p.is_file():
+            return cls()
+        return cls.load(p)
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+
+def bind_persisted_ws(
+    *,
+    path: Union[str, Path, None] = None,
+    env_height: str = "",
+    env_hash: str = "",
+) -> WeakSubjectivityService:
+    """Load WS anchor from disk; seed from env only when the persist file is missing.
+
+    Empty store and empty env → service with no anchor (tip-import must refuse).
+    An existing file with no usable certificate must not re-seed from leftover
+    env (wiping ``items`` must not lower the checkpoint).
+
+    When ``ABS_WS_COMMITTEE_REQUIRED`` is set, a digest-valid but
+    committee-invalid latest cert is refused (fail-closed empty anchor).
+    """
+    svc = WeakSubjectivityService()
+    persist = Path(path) if path and str(path).strip() else None
+    store = CheckpointStore.load_or_empty(persist)
+    latest = store.latest()
+    if latest is not None:
+        try:
+            from consensus.long_range.committee import CommitteeConfig, committee_required
+
+            committee = CommitteeConfig.from_env()
+            if committee is not None or committee_required():
+                if not latest.verify_committee(committee):
+                    # Do not arm a floor peers cannot gossip / verify.
+                    return svc
+        except ValueError:
+            # Broken local committee mount → empty (fail-closed), not forged arm.
+            return svc
+        svc.set_anchor(latest.anchor)
+        return svc
+    if persist is not None and persist.is_file():
+        return svc
+    h_raw = str(env_height or "").strip()
+    hash_raw = str(env_hash or "").strip()
+    if not h_raw or not hash_raw:
+        return svc
+    cert = CheckpointCertificate.issue(
+        height=int(h_raw), block_hash=hash_raw, issuer="env"
+    )
+    # Env seed without committee is allowed only when committee is not required.
+    try:
+        from consensus.long_range.committee import CommitteeConfig, committee_required
+
+        committee = CommitteeConfig.from_env()
+        if committee is not None or committee_required():
+            if not cert.verify_committee(committee):
+                return svc
+    except ValueError:
+        return svc
+    store.push(cert)
+    svc.set_anchor(cert.anchor)
+    if persist is not None:
+        store.save(persist)
+    return svc
