@@ -127,12 +127,11 @@ def test_adapter_connect_multiaddr() -> None:
                     multiaddr="/ip4/127.0.0.1/tcp/39998/p2p/peer-b",
                 )
         else:
-            h = ad.connect(
-                PeerEndpoint(host="127.0.0.1", port=1),
-                multiaddr="/ip4/10.0.0.2/tcp/4002/p2p/peer-b",
-            )
-            assert h["multiaddr"] == "/ip4/10.0.0.2/tcp/4002/p2p/peer-b"
-            assert h["peer_id"] == "peer-b"
+            with pytest.raises(TransportCapabilityError, match="--features libp2p"):
+                ad.connect(
+                    PeerEndpoint(host="127.0.0.1", port=1),
+                    multiaddr="/ip4/10.0.0.2/tcp/4002/p2p/peer-b",
+                )
     finally:
         ad.close()
 
@@ -177,9 +176,8 @@ def test_identify_and_dial_discovered() -> None:
             with pytest.raises(TransportCapabilityError):
                 dialer.dial_discovered(reg, "b")
         else:
-            h = dialer.dial_discovered(reg, "b")
-            assert h["kind"] == "libp2p"
-            assert "4502" in h["handle"]["multiaddr"]
+            with pytest.raises(TransportCapabilityError, match="--features libp2p"):
+                dialer.dial_discovered(reg, "b")
     finally:
         dialer.libp2p.close()
 

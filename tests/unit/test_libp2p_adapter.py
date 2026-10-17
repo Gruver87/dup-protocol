@@ -28,10 +28,9 @@ def test_adapter_enabled_capability() -> None:
     assert st["available"] is True
     assert st["transport"] == "libp2p"
     if not ad.rust_backend:
-        h = ad.connect(PeerEndpoint(host="127.0.0.1", port=4001))
-        assert h["transport"] == "libp2p"
-        assert h["connected"] is False
-        assert h["backend"] == "stub"
+        # CI builds abs_native without --features libp2p. No stub handle.
+        with pytest.raises(TransportCapabilityError, match="--features libp2p"):
+            ad.connect(PeerEndpoint(host="127.0.0.1", port=4001))
     else:
         # Real rust backend: dial without listener must fail closed.
         with pytest.raises(TransportCapabilityError):
@@ -40,7 +39,11 @@ def test_adapter_enabled_capability() -> None:
 
 
 def test_prod_allows_libp2p_refuses_long_range(monkeypatch) -> None:
-    """Pin policy: env is not silently coerced; validate() refuses long_range (ADR 0017)."""
+    """Pin policy: prod apply_env keeps libp2p and clamps Long-Range off (ADR 0017).
+
+    A field left True without apply_env still fails validate(); that path is
+    test_prod_validate_allows_libp2p_but_refuses_long_range.
+    """
     monkeypatch.setenv("DEPLOYMENT_MODE", "prod")
     monkeypatch.setenv("FEATURE_LIBP2P", "true")
     monkeypatch.setenv("FEATURE_LONG_RANGE", "true")
@@ -49,9 +52,10 @@ def test_prod_allows_libp2p_refuses_long_range(monkeypatch) -> None:
     cfg.deployment_mode = "prod"
     cfg.apply_env()
     assert cfg.feature_libp2p is True
+    assert cfg.feature_long_range is False
     errs = cfg.validate()
     assert not any("feature_libp2p" in e.lower() for e in errs), errs
-    assert any("FEATURE_LONG_RANGE" in e for e in errs), errs
+    assert not any("FEATURE_LONG_RANGE" in e for e in errs), errs
 
 
 def test_libp2p_close_logs_failure(caplog) -> None:

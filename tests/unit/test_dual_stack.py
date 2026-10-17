@@ -26,9 +26,8 @@ def test_feature_selects_libp2p() -> None:
             d.dial(PeerEndpoint(host="127.0.0.1", port=39999))
         d.libp2p.close()
     else:
-        out = d.dial(PeerEndpoint(host="127.0.0.1", port=4001))
-        assert out["kind"] == "libp2p"
-        assert out["handle"]["phase"] == 1
+        with pytest.raises(TransportCapabilityError, match="--features libp2p"):
+            d.dial(PeerEndpoint(host="127.0.0.1", port=4001))
 
 
 def test_capability_status_honesty() -> None:

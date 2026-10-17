@@ -10,6 +10,11 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### CI: no stub libp2p dial, patched quinn-proto and rustls
+
+- Unit tests no longer expect a phase-1 stub handle when `abs_native` is built without `--features libp2p`. Dial fails closed.
+- `quinn-proto` 0.11.16 → 0.11.18 and `rustls` 0.23.45 → 0.23.46 (RUSTSEC-2026-0338/0339/0340/0341/0342 and 0346–0349).
+
 ### Council NFT gate and Long-Range host labs
 
 - `features/council_nft.py` is on the pin so `features/nft.py` can refuse a council transfer instead of failing closed on a missing module. `feature_nft` stays false on chain `778888`. ADR 0022 is lab governance, not L1 security.
