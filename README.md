@@ -21,7 +21,7 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 **Funds / ПВТ (pin):** [FUND_AUDIT_PREP](docs/FUND_AUDIT_PREP.md) · [SHOWCASE](docs/SHOWCASE.md) · [DILIGENCE_BRIEF](docs/DILIGENCE_BRIEF.md) · [ONE_PAGER_RU](docs/ONE_PAGER_RU.md).  
 **R&D sibling pack (not pin evidence):** [Exp SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md).
 
-**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Working-tip pin mesh is **ADR 0020 rust-libp2p**; freeze tag soak is **TCP+TLS**. Experimental soaks ≠ pin tip-v2 evidence. Pin libp2p 48h soak **VOID** (host power-off 2026-10-08; not PASS · STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 PASS (passed=true, hard_fails=0, mesh_warn=0, 48.0007h; pack pin-libp2p-strict-48h; not mainnet; tag not cut); operator may rerun STRICT later) — see [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](docs/evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt).
+**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Working-tip pin mesh is **ADR 0020 rust-libp2p**; freeze tag soak is **TCP+TLS**. Experimental soaks are not pin evidence. Pin libp2p STRICT 2026-10-15–17 is **PASS** (`hard_fails=0`, pack [`pin-libp2p-strict-48h`](docs/evidence/runs/pin-libp2p-strict-48h/), not mainnet, tag not cut). The 2026-10-08 window is **VOID** and the 2026-10-11 window stopped short after 44.2h (not PASS). Another soak is not required.
 
 ---
 
@@ -30,7 +30,7 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 | Audience | Start here |
 |----------|------------|
 | **External auditors / firms** | [AUDIT_ENGAGEMENT_BRIEF](docs/AUDIT_ENGAGEMENT_BRIEF.md) → [AUDIT_SCOPE](docs/AUDIT_SCOPE.md) → [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md) → `.\scripts\export_audit_pack.ps1` |
-| **Grant officers / diligence / ПВТ** | [FUND_AUDIT_PREP](docs/FUND_AUDIT_PREP.md) · [SHOWCASE](docs/SHOWCASE.md) · [FAQ](docs/FAQ.md) · [FUND_READINESS](docs/FUND_READINESS.md) · tip-v2 [375d14f](docs/evidence/runs/375d14f/) · [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
+| **Grant officers / diligence / ПВТ** | [FUND_AUDIT_PREP](docs/FUND_AUDIT_PREP.md) · [SHOWCASE](docs/SHOWCASE.md) · [FAQ](docs/FAQ.md) · [FUND_READINESS](docs/FUND_READINESS.md) · tip-v2 [375d14f](docs/evidence/runs/375d14f/) · libp2p [pin-libp2p-strict-48h](docs/evidence/runs/pin-libp2p-strict-48h/) · [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
 | **Architects / principals** | [VISION](docs/VISION.md) → [AT_A_GLANCE](docs/AT_A_GLANCE.md) → mermaid below → [docs/adr/](docs/adr/) (0001–0016) |
 | **Operators** | [Start in 60 seconds](#start-in-60-seconds) · `.\scripts\verify_project.ps1` · dual pin+Exp `.\scripts\verify_dup_both.ps1 -Mode Standard` · prod mesh `.\scripts\docker_prod_3node.ps1` |
 
@@ -257,4 +257,4 @@ Open source allows viewing, testing, and forking. It does **not** mean the work 
 ---
 
 *Author: ULADZIMIR DABRANSKI (D.U.P.) · Owner: [Gruver87](https://github.com/Gruver87) · Default branch: `master`*  
-*Last update: **2026-10-01** — brand **DUP Labs / DUP Protocol** · repo [`dup-protocol`](https://github.com/Gruver87/dup-protocol) · sibling R&D Phases 1–5 + STRICT closed · pin stays TCP+TLS / `feature_*` off · tag `v1.3.1339-tip-v2-industrial` unchanged. External firm audit still pending. Not a launched public mainnet.*
+*Last update: **2026-10-17** — working-tip mesh is **rust-libp2p** (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` stays **TCP+TLS**. Libp2p STRICT pack `pin-libp2p-strict-48h` is PASS; tag `v1.3.1340` is not cut. `feature_long_range` stays off. External firm audit still pending. Not a launched public mainnet.*
