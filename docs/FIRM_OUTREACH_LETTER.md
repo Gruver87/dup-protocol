@@ -17,8 +17,8 @@ We are **DUP Labs** (product **DUP Protocol**), seeking a **scoped external secu
 
 - **Primary tree:** https://github.com/Gruver87/dup-protocol  
 - **Freeze tag:** `v1.3.1339-tip-v2-industrial`  
-- **Chain:** prod-profile `778888`, 3-node Docker mesh, tip encoding v2 (`b_satoshi`), RocksDB, native crypto required, **bridge OFF**  
-- **In scope:** tip-safety / import refuse, satoshi money path, P2P mesh honesty, API/RPC auth, RocksDB + DR scripts, `abs_native` hot path  
+- **Chain:** prod-profile `778888`, 3-node Docker mesh, tip encoding v2 (`b_satoshi`), RocksDB, native crypto required, **bridge OFF**. Working-tip transport is rust-libp2p (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` is historical TCP+TLS.
+- **In scope:** tip-safety / import refuse, satoshi money path, libp2p mesh honesty, API/RPC auth, RocksDB + DR scripts, `abs_native` hot path. Libp2p STRICT pack: `docs/evidence/runs/pin-libp2p-strict-48h/` (not mainnet; tag `v1.3.1340` not cut).
 - **Out of scope (explicit):** bridge ON, prod Long-Range, full geth parity, public mainnet ops, ZK “real circuits”
 
 Optional R&D appendix (label as Experimental, not pin):  
@@ -28,13 +28,13 @@ https://github.com/Gruver87/dup-protocol-experimental — tip at kickoff: `[past
 
 | Doc | URL |
 |-----|-----|
-| Engagement letter | https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/EXTERNAL_AUDIT_ENGAGEMENT.md |
-| Firm one-pager | https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/AUDIT_ENGAGEMENT_BRIEF.md |
-| Human kickoff checklist | https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/FIRM_KICKOFF_CHECKLIST.md |
-| Diligence brief | https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DILIGENCE_BRIEF.md |
-| Threat model | https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/THREAT_MODEL.md |
-| Honest gaps | https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/MAINNET_GAP_ANALYSIS.md |
-| Prep pack | https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/evidence/runs/phase6prep1/README.md |
+| Engagement letter | https://github.com/Gruver87/dup-protocol/blob/master/docs/EXTERNAL_AUDIT_ENGAGEMENT.md |
+| Firm one-pager | https://github.com/Gruver87/dup-protocol/blob/master/docs/AUDIT_ENGAGEMENT_BRIEF.md |
+| Human kickoff checklist | https://github.com/Gruver87/dup-protocol/blob/master/docs/FIRM_KICKOFF_CHECKLIST.md |
+| Diligence brief | https://github.com/Gruver87/dup-protocol/blob/master/docs/DILIGENCE_BRIEF.md |
+| Threat model | https://github.com/Gruver87/dup-protocol/blob/master/docs/THREAT_MODEL.md |
+| Honest gaps | https://github.com/Gruver87/dup-protocol/blob/master/docs/MAINNET_GAP_ANALYSIS.md |
+| Libp2p STRICT pack | https://github.com/Gruver87/dup-protocol/blob/master/docs/evidence/runs/pin-libp2p-strict-48h/README.md |
 
 Pin engagement brief (same product, freeze tree):  
 https://github.com/Gruver87/dup-protocol/blob/master/docs/AUDIT_ENGAGEMENT_BRIEF.md

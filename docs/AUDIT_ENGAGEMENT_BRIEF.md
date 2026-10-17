@@ -8,7 +8,7 @@
 **Pin commit:** `git rev-list -n 1 v1.3.1339-tip-v2-industrial`  
 **Date:** 2026-10-05 (pack path + kickoff stub; freeze tag unchanged)  
 **Owner:** Gruver87 (Uladzimir Dabranski / D.U.P.)  
-**Funds / ПВТ front door (Experimental):** [SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md)  
+**Funds / ПВТ front door (this pin):** [SHOWCASE](SHOWCASE.md) · [FUND_AUDIT_PREP](FUND_AUDIT_PREP.md)  
 **Human kickoff:** [FIRM_KICKOFF_CHECKLIST.md](FIRM_KICKOFF_CHECKLIST.md)
 
 ---
@@ -23,7 +23,7 @@ Full scope letter: [AUDIT_SCOPE.md](AUDIT_SCOPE.md) · threat model: [THREAT_MOD
 
 1. Consensus tip path (import, tip-safety enforce, Path A catch-up, fork reconcile)  
 2. State / money (satoshi storage + tip v2 apply / fees / gas / reward)  
-3. P2P TLS/mTLS mesh honesty (rate limits, soft-refuse, state_root solicit)  
+3. Working-tip P2P is rust-libp2p (ADR 0020: Noise/Yamux, `feature_libp2p=true`, `p2p_tls_enabled=false`). TCP+TLS/mTLS is the freeze-tag and the alternate profile. Rate limits, soft-refuse, state_root solicit stay in scope.  
 4. API / RPC (JWT admin, API keys, mempool-only contract deploy in prod)  
 5. RocksDB prod path + DR rehearsal scripts  
 6. `abs_native` hot-path crypto (`ABS_REQUIRE_NATIVE_CRYPTO`)  
@@ -36,7 +36,7 @@ Full scope letter: [AUDIT_SCOPE.md](AUDIT_SCOPE.md) · threat model: [THREAT_MOD
 | Bridge ON / L1 lock-mint | Disabled until separate cutover |
 | Sharding / L2 / ZK / PQ / Lightning / Plasma / WASM | R&D; FEATURE_* off on prod |
 | Full Ethereum client compatibility | EVM subset only |
-| Tip proof / Long-Range / libp2p rewrite | Not claimed — R&D in [Gruver87/dup-protocol-experimental](https://github.com/Gruver87/dup-protocol-experimental) |
+| Tip proof / Long-Range | Not claimed — R&D in [Gruver87/dup-protocol-experimental](https://github.com/Gruver87/dup-protocol-experimental). `feature_long_range=false` on this pin |
 | Public mainnet ops / listing / legal | Organizational |
 | `finality_quorum_live=true` marketing | Quorum not live-proven |
 | Experimental R&D fork | Separate repo; **not** this audit pin |
@@ -48,7 +48,8 @@ Full scope letter: [AUDIT_SCOPE.md](AUDIT_SCOPE.md) · threat model: [THREAT_MOD
 | Artifact | Path |
 |----------|------|
 | Static audit zip | Latest `logs/audit_pack_YYYYMMDD.zip` (operator current: `logs/audit_pack_20261004.zip`; regenerate: [AUDIT_PACK_CHECKLIST.md](AUDIT_PACK_CHECKLIST.md) → `.\scripts\export_audit_pack.ps1`). Historical Phase 4 binder zip `logs/audit_pack_20260807.zip` remains under `docs/evidence/runs/phase4-691329c/` narrative only. |
-| Tip-v2 **48h soak PASS** | `docs/evidence/runs/375d14f/` (`passed=true`, fail=0, mesh_warn=0, Aug 5–7 2026) |
+| Tip-v2 **48h soak PASS** (TCP+TLS freeze) | `docs/evidence/runs/375d14f/` (`passed=true`, fail=0, mesh_warn=0, Aug 5–7 2026) |
+| Pin libp2p STRICT **48h PASS** | `docs/evidence/runs/pin-libp2p-strict-48h/` (2026-10-15–17, `hard_fails=0`). 2026-10-08 VOID and 2026-10-11 short window are not this PASS. Tag not cut. Git `c1c281f` was dirty at start |
 | Phase 3 ops dry-run PASS | `docs/evidence/runs/phase3-da25c34/` |
 | Phase 4 binder READY | `docs/evidence/runs/phase4-691329c/` |
 | Ledger | [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) |
@@ -60,12 +61,20 @@ Full scope letter: [AUDIT_SCOPE.md](AUDIT_SCOPE.md) · threat model: [THREAT_MOD
 
 ## Reproduce locally (Windows)
 
+Historical TCP+TLS freeze (tag only; this is not the libp2p pack):
+
 ```powershell
 git fetch --tags
 git checkout v1.3.1339-tip-v2-industrial
 pip install -r requirements.txt
 .\scripts\build_native.ps1   # if wheel missing
 python scripts/industrial_gate.py --min-soak-hours 48
+```
+
+Working tip (libp2p mesh + `pin-libp2p-strict-48h`): stay on current `master`. `--min-soak-hours 48` reads that pack when the file is present, and falls back to `375d14f` on the freeze tag.
+
+```powershell
+python scripts/industrial_gate.py
 python scripts/prod_gate.py
 python scripts/bridge_off_audit_gate.py
 .\scripts\export_audit_pack.ps1

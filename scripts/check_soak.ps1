@@ -76,6 +76,11 @@ if (-not $reportFile) {
         $candidate = "logs/soak_report_$stem.json"
         if (Test-Path (Join-Path $Root ($candidate -replace '/', '\'))) {
             $reportFile = $candidate
+        } elseif ($stem -eq "48h_libp2p_strict") {
+            $pack = "docs/evidence/runs/pin-libp2p-strict-48h/soak_report_48h_libp2p_strict.json"
+            if (Test-Path (Join-Path $Root ($pack -replace '/', '\'))) {
+                $reportFile = $pack
+            }
         } elseif ($stem -eq "48h" -or $stem -eq "48h_prod_mesh") {
             $reportFile = "logs/soak_report_48h.json"
         }

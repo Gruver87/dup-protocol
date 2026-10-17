@@ -17,6 +17,7 @@ Canonical language for this repository is **English**. Older entries below may s
   `docs/evidence/runs/pin-libp2p-strict-48h/`. Not public mainnet.
   Tag `v1.3.1340-libp2p-industrial-mesh` is not cut. Recorded git
   `c1c281f` was dirty at start; image `sha256:be576392…`.
+- Firm front door (`FUND_AUDIT_PREP`, `FUND_DEMO_OPERATOR_PACK`, `DILIGENCE_BRIEF`, one-pagers, engagement brief) names the 2026-10-15–17 pack as the libp2p PASS. `industrial_gate.py --min-soak-hours` and `check_blockchain.py` read that pack. The gitignored TCP `logs/soak_report_48h.json` is not the libp2p claim. Another soak is only for a clean-commit image bind.
 - The 2026-10-08 power-off window stays **VOID**. The 2026-10-11 window
   stays short of 48h and is not PASS.
 

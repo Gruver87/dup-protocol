@@ -26,7 +26,7 @@ Working-tip pin mesh: **rust-libp2p** (ADR 0020). Freeze tag soak: **TCP+TLS**. 
 |---|-----|----------------|
 | GitHub | [`dup-protocol`](https://github.com/Gruver87/dup-protocol) | [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) |
 | Role | Audit freeze + working tip | libp2p / LR lab / EVM depth / mempool Rust |
-| Show | Tip-v2 soak [`375d14f`](evidence/runs/375d14f/) · ADR 0020 Quick [`pin-libp2p-cutover-pending`](evidence/runs/pin-libp2p-cutover-pending/) | STRICT packs on Exp only |
+| Show | Tip-v2 soak [`375d14f`](evidence/runs/375d14f/) · libp2p STRICT [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/) | Long-Range / Exp EVM STRICT packs only |
 
 ---
 
@@ -35,7 +35,8 @@ Working-tip pin mesh: **rust-libp2p** (ADR 0020). Freeze tag soak: **TCP+TLS**. 
 | Pack / claim | Proves |
 |--------------|--------|
 | Tag `v1.3.1339-tip-v2-industrial` · [`375d14f`](evidence/runs/375d14f/) | Historical **TCP+TLS** tip-v2 48h soak (`passed=true`, `hard_fails=0`) |
-| [`pin-libp2p-cutover-pending`](evidence/runs/pin-libp2p-cutover-pending/) | ADR 0020 mesh JSON cutover + **Quick** probe — **not** 48h soak |
+| [`pin-libp2p-cutover-pending`](evidence/runs/pin-libp2p-cutover-pending/) | ADR 0020 Quick probe. 2026-10-08 **VOID** and 2026-10-11 short window are not 48h PASS |
+| [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/) | Pin libp2p STRICT 48h PASS (`hard_fails=0`). Not mainnet. Tag not cut. Git at start was dirty |
 | Bridge OFF | `verify_bridge_off_lab.ps1` + gate |
 | Exp→pin merge waves | Units + `industrial_gate` on pin HEAD — see [FUND_READINESS.md](FUND_READINESS.md) |
 
@@ -53,4 +54,4 @@ Live demo: [DEMO_RUNBOOK_PIN.md](DEMO_RUNBOOK_PIN.md). FAQ: [FAQ.md](FAQ.md).
 
 ## Forbidden
 
-Public audited mainnet · soak without pack id · Quick ≠ soak · pin libp2p 48h PASS (**VOID** 2026-10-08) · prod Long-Range · bridge ON · ERC-721 parity · inventing company email / TM registration · citing Exp STRICT packs as pin evidence.
+Public audited mainnet · soak without pack id · Quick ≠ soak · calling the 2026-10-08 VOID or the 2026-10-11 short window a PASS · tag `v1.3.1340` · prod Long-Range · bridge ON · ERC-721 parity · inventing company email / TM registration · citing Exp STRICT packs as pin evidence.

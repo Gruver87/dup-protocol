@@ -32,7 +32,7 @@ Pin SHA verified locally 2026-10-03 via `git rev-list -n 1 v1.3.1339-tip-v2-indu
 
 ### Evidence pack IDs to list in the engagement letter
 
-- Tip / industrial mesh: pin soak + Hybrid tip-v2 pack as labeled in [`EVIDENCE_MATRIX.md`](EVIDENCE_MATRIX.md)
+- Tip / industrial mesh: TCP+TLS freeze pack `375d14f` and libp2p STRICT pack `pin-libp2p-strict-48h` (2026-10-08 VOID and 2026-10-11 short window are not that PASS), as labeled in [`EVIDENCE_MATRIX.md`](EVIDENCE_MATRIX.md)
 - Experimental (optional, label R&D): `ind48pass1`, `lp2pstrict1`, `evmstrict1`, `mempool48pass1`, `lrstrict1` (lab only)
 - Host lab re-verify (optional): `phase5reverify2` (oracle/shard/bridge OFF — **not** soak)
 - Phase 6 prep refresh: `phase6prep1` (**not** firm PASS)

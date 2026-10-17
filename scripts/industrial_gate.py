@@ -6431,7 +6431,15 @@ def run_industrial_gate(
             reverse=True,
         )
         # Prefer packaged tip-v2 PASS (in-repo) over gitignored logs/ copies.
+        # Current pin libp2p STRICT pack wins when it is on disk.
+        # 375d14f stays the TCP+TLS historical fallback (freeze tag).
         soak_candidates = [
+            ROOT
+            / "docs"
+            / "evidence"
+            / "runs"
+            / "pin-libp2p-strict-48h"
+            / "soak_report_48h_libp2p_strict.json",
             ROOT / "docs" / "evidence" / "runs" / "375d14f" / "soak_report_tipv2_48h_rerun.json",
             *evidence_soaks,
             ROOT / "logs" / "soak_report_tipv2_48h_rerun.json",

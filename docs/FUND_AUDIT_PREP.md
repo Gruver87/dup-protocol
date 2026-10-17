@@ -1,9 +1,9 @@
 # Fund + external audit prep — pin snapshot (honest)
 
-**Date:** 2026-10-09 · HEAD: run `git rev-parse --short HEAD`  
+**Date:** 2026-10-17 · HEAD: run `git rev-parse --short HEAD`  
 **Repo:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol) · brand: [BRAND.md](BRAND.md)  
 **Audience:** grant / investor / firm tech diligence  
-**Soak:** **not running** this prep. Pin libp2p STRICT attempt **VOID** (host power-off 2026-10-08) — see [`evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt).
+**Soak:** not running now. STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 is **PASS** (`passed=true`, `hard_fails=0`, `mesh_warn=0`, 48.0007h) in [`evidence/runs/pin-libp2p-strict-48h/`](evidence/runs/pin-libp2p-strict-48h/). 2026-10-08 is **VOID** ([`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt)). 2026-10-11 stopped short after 44.2h (not PASS). Not mainnet. Tag not cut. Recorded git `c1c281f` was dirty.
 
 This page is the **single front door** for “are you ready for funds and audit?”  
 Longer maps: [FUND_READINESS.md](FUND_READINESS.md) · [DILIGENCE_BRIEF.md](DILIGENCE_BRIEF.md) · [AUDITS.md](AUDITS.md) · [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md).
@@ -26,7 +26,7 @@ Longer maps: [FUND_READINESS.md](FUND_READINESS.md) · [DILIGENCE_BRIEF.md](DILI
 ## What funds should open first (15 min)
 
 1. This page + [DILIGENCE_BRIEF.md](DILIGENCE_BRIEF.md)  
-2. [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) — freeze pack + `pin-libp2p-cutover-pending/`  
+2. [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) — freeze pack `375d14f`, libp2p PASS [`pin-libp2p-strict-48h/`](evidence/runs/pin-libp2p-strict-48h/), VOID window in `pin-libp2p-cutover-pending/`  
 3. [AUDITS.md](AUDITS.md) · [AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md) · [FIRM_KICKOFF_CHECKLIST.md](FIRM_KICKOFF_CHECKLIST.md)  
 4. Gaps: [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md)  
 5. Operator: [VERIFY_SUITE.md](VERIFY_SUITE.md) · [FUND_DEMO_OPERATOR_PACK.md](FUND_DEMO_OPERATOR_PACK.md)
@@ -55,7 +55,7 @@ python scripts/external_audit_tracker.py --list
 1. Schedule external penetration test  
 2. Contract third-party L1 / EVM security audit → PDF under `audits/<firm>/`  
 3. Live ceremony pin + secret rotation on cutover day only  
-4. Fresh pin libp2p 48h soak when operator chooses (**not** this prep)
+4. Another 48h soak only if the operator wants a clean-commit image bind. The 2026-10-15–17 pack already exists. Tag `v1.3.1340-libp2p-industrial-mesh` is not cut.
 
 ---
 
@@ -82,7 +82,7 @@ python scripts/external_audit_tracker.py --list
 ## Honesty lines (copy-paste)
 
 - PASS on verify / industrial_gate ≠ public mainnet  
-- tip-v2 soak PASS is **TCP+TLS freeze-tag** evidence, not current-HEAD libp2p soak  
+- tip-v2 soak PASS is **TCP+TLS freeze-tag** evidence. The libp2p STRICT PASS is the separate pack `pin-libp2p-strict-48h` (git at start `c1c281f`, dirty; tag not cut)  
 - Harness soft-PASS requires peer-match wire evidence (`runtime/harness_honesty.py`); sticky `_state_consistent` lag alone does not greenwash  
 - `/health/ready` still fail-closed on the live P2P flag when peers are present  
 

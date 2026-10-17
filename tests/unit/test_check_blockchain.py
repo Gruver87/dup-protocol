@@ -23,7 +23,8 @@ def test_check_blockchain_scripts_exist():
     src = (ROOT / "scripts" / "check_blockchain.py").read_text(encoding="utf-8")
     assert "Does NOT start 48h soak" in src
     assert "--min-soak-hours" in src
-    assert "Do NOT pass --min-soak-hours" in src
+    assert "does not pass --min-soak-hours" in src
+    assert "pin-libp2p-strict-48h" in src
     assert '[py, "-m", "pytest", "-q", "--tb=line", "tests/"]' in src
 
 
@@ -111,10 +112,12 @@ def test_soak_fail_file_never_painted_pass(tmp_path, monkeypatch):
         encoding="utf-8",
     )
     monkeypatch.setattr(mod, "SOAK_48H", fail)
+    monkeypatch.setattr(mod, "SOAK_LIBP2P_48H", fail)
     monkeypatch.setattr(mod, "SOAK_5H", tmp_path / "missing.json")
     pack = mod.soak_honesty()
     assert pack["pin_48h"]["passed"] is False
     assert pack["pin_48h"]["claim"] == "FAIL"
+    assert pack["libp2p_48h"]["claim"] == "FAIL"
     assert pack["claim_48h_pass"] is False
     assert pack["strict_5h"]["claim"] == "NOT_RUN"
 
@@ -129,6 +132,21 @@ def test_soak_pass_with_hard_fails_is_still_fail(tmp_path):
     row = mod.read_soak_report(p)
     assert row["passed"] is False
     assert row["claim"] == "FAIL"
+
+
+def test_soak_pass_with_mesh_warn_is_still_fail(tmp_path):
+    mod = _load()
+    p = tmp_path / "warn.json"
+    p.write_text(
+        json.dumps(
+            {"passed": True, "counts": {"hard_fail_lines": 0, "mesh_warn_lines": 2}}
+        ),
+        encoding="utf-8",
+    )
+    row = mod.read_soak_report(p)
+    assert row["passed"] is False
+    assert row["claim"] == "FAIL"
+    assert "mesh_warn_lines=2" in str(row.get("error"))
 
 
 def test_soak_true_zero_hard_fails_is_pass(tmp_path):

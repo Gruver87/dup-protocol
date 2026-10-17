@@ -59,13 +59,6 @@ This page is the **15-minute path for the pin**. Claims map to **on-disk evidenc
 
 ## Operator next step
 
-**Now (no soak):** [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md) · `verify_project -Mode Industrial` · firm engagement docs.
+**Now:** [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md) · `verify_project -Mode Industrial` · firm engagement docs. The 2026-10-15–17 STRICT pack is PASS (`hard_fails=0`). Do not cite the 2026-10-08 VOID or the 2026-10-11 short window as that PASS. Not public mainnet. Tag not cut.
 
-**Later (soak — operator choice only):**
-
-```powershell
-.\scripts\prepare_48h_soak.ps1
-.\scripts\start_soak_prod_mesh_48h.ps1
-```
-
-Do **not** cite the 2026-10-08 VOID or the 2026-10-11 short window as PASS. The 2026-10-15–17 pack is PASS (`hard_fails=0`). That is not public mainnet.
+**Later (only if the operator wants a clean-commit image bind):** fresh STRICT 48h from a clean tree, image rebuilt from that commit. Do not resume the finished log.

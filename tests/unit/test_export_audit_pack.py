@@ -37,6 +37,11 @@ def test_export_audit_pack_manifest_shape(tmp_path):
     enc = json.loads((out / "gates" / "state_root_encoding.json").read_text(encoding="utf-8"))
     assert enc["active"]["version"] == 1
     assert manifest["state_root_encoding"]["active"]["version"] == 1
+    libp2p = out / "soak" / "soak_report_48h_libp2p_strict.evidence.json"
+    assert libp2p.is_file()
+    body = json.loads(libp2p.read_text(encoding="utf-8-sig"))
+    assert body["passed"] is True
+    assert body["strict"] is True
 
 
 def test_set_item_done_evidence_fields(tmp_path):

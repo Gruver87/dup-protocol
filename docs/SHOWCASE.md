@@ -21,9 +21,10 @@ R&D sibling showcase (not pin evidence):
 | Auditor one-pager | [AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md) |
 | One-screen | [AT_A_GLANCE.md](AT_A_GLANCE.md) |
 | Tip-v2 48h evidence (TCP+TLS) | [`375d14f`](evidence/runs/375d14f/) |
-| ADR 0020 Quick (not soak) | [`pin-libp2p-cutover-pending`](evidence/runs/pin-libp2p-cutover-pending/) |
+| ADR 0020 Quick probe | [`pin-libp2p-cutover-pending`](evidence/runs/pin-libp2p-cutover-pending/) |
+| Pin libp2p STRICT 48h PASS | [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/) (2026-10-08 VOID and 2026-10-11 short window are not this PASS) |
 | Live pin demo | [DEMO_RUNBOOK_PIN.md](DEMO_RUNBOOK_PIN.md) · [OPS_CONSOLE.md](OPS_CONSOLE.md) |
 | Verify suite | [VERIFY_SUITE.md](VERIFY_SUITE.md) |
 | Brand / IP / Belarus TM prep | [BRAND.md](BRAND.md) · [IP_AND_ATTRIBUTION.md](IP_AND_ATTRIBUTION.md) · [TRADEMARK_FILING_PREP_BY.md](TRADEMARK_FILING_PREP_BY.md) |
 
-Do **not** claim Experimental STRICT packs as pin tip-v2 evidence. Do **not** claim pin libp2p 48h PASS (**VOID** 2026-10-08 · STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 PASS (passed=true, hard_fails=0, mesh_warn=0, 48.0007h; pack pin-libp2p-strict-48h; not mainnet; tag not cut)). Do **not** claim public audited mainnet.
+Do **not** claim Experimental STRICT packs as pin evidence. The pin libp2p 48h PASS is only `pin-libp2p-strict-48h` (`hard_fails=0`, not mainnet, tag not cut, git `c1c281f` dirty at start). Do **not** cite the 2026-10-08 VOID or the 2026-10-11 short window as that PASS. Do **not** claim public audited mainnet.

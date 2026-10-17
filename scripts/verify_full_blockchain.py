@@ -377,7 +377,8 @@ def main() -> int:
     _banner("soak honesty (read-only; soak NOT started)")
     cb = _load_check_blockchain()
     soak = cb.soak_honesty()
-    cb._print_soak(soak["pin_48h"], "48h pin (if present)")
+    cb._print_soak(soak["libp2p_48h"], "48h libp2p pack")
+    cb._print_soak(soak["pin_48h"], "48h TCP log (if present)")
     cb._print_soak(soak["strict_5h"], "5h STRICT")
     print(f"  {soak['note']}")
     soak_rc = 0
@@ -525,7 +526,11 @@ def main() -> int:
         for w in warnings:
             print(f"  - {w}")
     if ok:
-        soak_word = "SOAK_48H_PASS" if soak["claim_48h_pass"] else "SOAK_48H_NOT_PASS"
+        soak_word = (
+            "SOAK_LIBP2P_48H_PASS"
+            if soak["claim_48h_pass"]
+            else "SOAK_LIBP2P_48H_NOT_PASS"
+        )
         print(f"RESULT: OK  {soak_word}")
         print(f"Report: {REPORT_PATH}")
         print(" Honesty: not public mainnet. Soak was not started.")

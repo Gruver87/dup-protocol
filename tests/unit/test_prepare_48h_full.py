@@ -54,7 +54,16 @@ def test_soak_status_alive_and_glob():
     assert 'state = "INCOMPLETE"' in check
     assert "full_every=6" in check
     assert "sample_h" in check
+    assert "pin-libp2p-strict-48h" in check
     check = (ROOT / "scripts" / "check_soak.ps1").read_text(encoding="utf-8")
     assert "VOID|stalled|prep" in check
     start = (ROOT / "scripts" / "start_soak_prod_mesh_48h_strict.ps1").read_text(encoding="utf-8")
     assert "Docker daemon is not running" in start
+
+
+def test_min_soak_hours_prefers_pin_libp2p_pack():
+    src = (ROOT / "scripts" / "industrial_gate.py").read_text(encoding="utf-8")
+    block = src.split("soak_candidates = [", 1)[1].split("]", 1)[0]
+    libp2p = block.find("pin-libp2p-strict-48h")
+    tcp = block.find("375d14f")
+    assert libp2p > 0 and tcp > libp2p

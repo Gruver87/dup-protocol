@@ -99,11 +99,17 @@ if ($usingActive -and $ReportFile -and -not $voidArchive) {
     $reportLabel = "logs/soak_report_48h.json"
     $reportPath = Join-Path $Root "logs\soak_report_48h.json"
 } elseif (-not $voidArchive -and ($logName -match '^soak_(.+)\.log$')) {
-    $derived = "logs/soak_report_$($Matches[1]).json"
+    $stem = $Matches[1]
+    $derived = "logs/soak_report_$stem.json"
     $derivedPath = Join-Path $Root ($derived -replace '/', '\')
+    $pack = "docs/evidence/runs/pin-libp2p-strict-48h/soak_report_48h_libp2p_strict.json"
+    $packPath = Join-Path $Root ($pack -replace '/', '\')
     if (Test-Path $derivedPath) {
         $reportLabel = $derived
         $reportPath = $derivedPath
+    } elseif ($stem -eq "48h_libp2p_strict" -and (Test-Path $packPath)) {
+        $reportLabel = $pack
+        $reportPath = $packPath
     } else {
         Write-Host "  report: none for this log (logs/soak_report_48h.json is a different historical window, not PASS here)" -ForegroundColor Yellow
     }

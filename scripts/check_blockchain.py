@@ -38,6 +38,14 @@ ROOT = Path(__file__).resolve().parents[1]
 REPORT_PATH = ROOT / "logs" / "check_blockchain.json"
 SOAK_48H = ROOT / "logs" / "soak_report_48h.json"
 SOAK_5H = ROOT / "logs" / "soak_report_5h_strict.json"
+SOAK_LIBP2P_48H = (
+    ROOT
+    / "docs"
+    / "evidence"
+    / "runs"
+    / "pin-libp2p-strict-48h"
+    / "soak_report_48h_libp2p_strict.json"
+)
 
 DEFAULT_UNIT = (
     "tests/unit/test_amount_units.py",
@@ -115,21 +123,31 @@ def read_soak_report(path: Path) -> dict[str, Any]:
             out["passed"] = False
             out["claim"] = "FAIL"
             out["error"] = f"hard_fail_lines={hf} cannot be soak PASS"
+        try:
+            mesh_warn = int(counts.get("mesh_warn_lines") or 0)
+        except (TypeError, ValueError):
+            mesh_warn = 1
+        if mesh_warn > 0:
+            out["passed"] = False
+            out["claim"] = "FAIL"
+            out["error"] = f"mesh_warn_lines={mesh_warn} cannot be soak PASS"
     return out
 
 
 def soak_honesty() -> dict[str, Any]:
     pin_48h = read_soak_report(SOAK_48H)
-    # Accept alternate pin filenames if the primary report is absent.
+    # Historical TCP log only. Absent file must not borrow the libp2p pack.
     if not pin_48h.get("exists"):
         alt = ROOT / "logs" / "soak_report_tipv2_48h_rerun.json"
         if alt.is_file():
             pin_48h = read_soak_report(alt)
+    libp2p_48h = read_soak_report(SOAK_LIBP2P_48H)
     strict_5h = read_soak_report(SOAK_5H)
     return {
         "pin_48h": pin_48h,
+        "libp2p_48h": libp2p_48h,
         "strict_5h": strict_5h,
-        "claim_48h_pass": bool(pin_48h.get("passed")),
+        "claim_48h_pass": bool(libp2p_48h.get("passed")),
         "note": (
             "48h PASS requires this tree's soak_report with passed=true and "
             "hard_fails=0. Do not cite Experimental soaks as pin evidence. "
@@ -219,7 +237,8 @@ def main() -> int:
 
     if not args.skip_gate:
         _banner("3) industrial_gate")
-        # Do NOT pass --min-soak-hours: pin libp2p 48h soak is VOID / not PASS.
+        # Default gate does not require the 48h file. --min-soak-hours 48
+        # reads the libp2p pack when it is on disk.
         rc = _run([py, "scripts/industrial_gate.py"])
         steps.append({"name": "industrial_gate", "rc": rc})
         if rc != 0:
@@ -227,9 +246,10 @@ def main() -> int:
         else:
             print("OK: industrial_gate (org-warnings may still print)")
 
-    _banner("4) soak honesty (read-only; this script does not start soak; pin 48h VOID)")
+    _banner("4) soak honesty (read-only; this script does not start soak)")
     soak = soak_honesty()
-    _print_soak(soak["pin_48h"], "48h pin")
+    _print_soak(soak["libp2p_48h"], "48h libp2p pack")
+    _print_soak(soak["pin_48h"], "48h TCP log")
     _print_soak(soak["strict_5h"], "5h STRICT")
     print(f"  {soak['note']}")
     steps.append(
@@ -257,7 +277,8 @@ def main() -> int:
             "PASS is not public mainnet",
             "this script does not start soak",
             "this script does not rebuild Docker",
-            "industrial_gate is not --min-soak-hours 48 (pin libp2p soak VOID)",
+            "default industrial_gate does not pass --min-soak-hours",
+            "claim_48h_pass is the pin-libp2p-strict-48h pack, not the TCP log",
         ],
         "rerun": [
             "python scripts/check_blockchain.py",
@@ -271,7 +292,11 @@ def main() -> int:
 
     _banner("RESULT")
     if ok:
-        soak_word = "SOAK_48H_PASS" if soak["claim_48h_pass"] else "SOAK_48H_NOT_PASS"
+        soak_word = (
+            "SOAK_LIBP2P_48H_PASS"
+            if soak["claim_48h_pass"]
+            else "SOAK_LIBP2P_48H_NOT_PASS"
+        )
         print(f"RESULT: OK  {soak_word}")
         print(f"Report: {REPORT_PATH}")
         return 0

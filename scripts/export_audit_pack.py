@@ -148,6 +148,18 @@ def export_audit_pack(
     ):
         _copy_if_exists(ROOT / "logs" / name, soak_dir / name)
     _copy_if_exists(tipv2_evidence, soak_dir / "soak_report_tipv2_48h_rerun.evidence.json")
+    libp2p_evidence = (
+        ROOT
+        / "docs"
+        / "evidence"
+        / "runs"
+        / "pin-libp2p-strict-48h"
+        / "soak_report_48h_libp2p_strict.json"
+    )
+    _copy_if_exists(
+        libp2p_evidence,
+        soak_dir / "soak_report_48h_libp2p_strict.evidence.json",
+    )
     # Historical FAIL — explicit name so auditors do not confuse with PASS.
     _copy_if_exists(
         ROOT / "logs" / "soak_report_tipv2_48h.json",

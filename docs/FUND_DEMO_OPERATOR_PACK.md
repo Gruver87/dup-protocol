@@ -3,9 +3,9 @@
 **Date:** 2026-10-05 (transport note refreshed for ADR 0020) · **Repo tip:** run `git rev-parse --short HEAD`  
 **Brand:** DUP Labs · DUP Protocol  
 **Repo:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)  
-**Not:** public audited mainnet · not firm pen-test PASS · not a new 48h soak claim.
+**Not:** public audited mainnet · not firm pen-test PASS · not tag `v1.3.1340-libp2p-industrial-mesh`.
 
-Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020: `feature_libp2p=true`, `p2p_tls_enabled=false`). **TCP+TLS** remains the alternate profile (`node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** evidence only. Pin libp2p **Quick probe PASS** packaged; **48h soak VOID** (2026-10-08 · not PASS · STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 PASS (passed=true, hard_fails=0, mesh_warn=0, 48.0007h; pack pin-libp2p-strict-48h; not mainnet; tag not cut)) — do not claim soak PASS.
+Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020: `feature_libp2p=true`, `p2p_tls_enabled=false`). **TCP+TLS** remains the alternate profile (`node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** evidence only. Pin libp2p STRICT 2026-10-15–17 is **PASS** (`pin-libp2p-strict-48h`, `hard_fails=0`, not mainnet, tag not cut, git `c1c281f` dirty at start). 2026-10-08 is **VOID** (not PASS). 2026-10-11 stopped short after 44.2h (not PASS).
 
 ---
 
@@ -13,9 +13,9 @@ Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-nod
 
 | Layer | Status | Proof |
 |-------|--------|-------|
-| Industrial pin (freeze + working tip) | Show for firm scope | tag `v1.3.1339-tip-v2-industrial` (`0531995`) = **TCP+TLS** sealed evidence; working tip = ADR 0020 libp2p mesh JSON (soak **VOID** 2026-10-08) |
+| Industrial pin (freeze + working tip) | Show for firm scope | tag `v1.3.1339-tip-v2-industrial` (`0531995`) = **TCP+TLS** sealed evidence; working tip = ADR 0020 libp2p; STRICT PASS `pin-libp2p-strict-48h` |
 | Fail-closed satoshi / RPC / health honesty | Code + units + industrial_gate | Exp→pin merge CLOSED — see [EVIDENCE_MATRIX](EVIDENCE_MATRIX.md) CI row |
-| STRICT 48h scoreboard | Historical packs only | Do not claim soak on current HEAD unless a new pack exists |
+| STRICT 48h scoreboard | Pin libp2p pack on disk | `pin-libp2p-strict-48h` PASS. Do not cite 2026-10-08 VOID or the 2026-10-11 short window as that PASS |
 | Showcase / diligence docs | Pin local | [SHOWCASE](SHOWCASE.md) · [FAQ](FAQ.md) · [ELEVATOR_PITCH](ELEVATOR_PITCH.md) · [FUND_READINESS](FUND_READINESS.md) · [VERIFY_SUITE](VERIFY_SUITE.md) |
 | Sprout lab profiles | Offline honesty | [NFT](sprouts/NFT_LAB_PROFILE.md) · [AI](sprouts/AI_LAB_PROFILE.md) · [Oracle](sprouts/ORACLE_LAB_PROFILE.md) |
 | Phase 6 firm prep | Prep only | [FIRM_KICKOFF_CHECKLIST](FIRM_KICKOFF_CHECKLIST.md) · [FIRM_ENGAGEMENT_CALENDAR](FIRM_ENGAGEMENT_CALENDAR.md) · [AUDITS.md](AUDITS.md) · [AUDIT_ENGAGEMENT_BRIEF](AUDIT_ENGAGEMENT_BRIEF.md) · `logs/audit_pack_20261004.zip` |

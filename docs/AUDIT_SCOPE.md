@@ -5,7 +5,7 @@
 **Repo:** https://github.com/Gruver87/dup-protocol  
 **Chain under review:** prod-profile `778888` (Docker 3-node mesh / future mainnet-v1)  
 **Date:** 2026-10-05 (ADR 0020 transport note; freeze tag unchanged)  
-**Release pin:** tag **`v1.3.1339-tip-v2-industrial`** (`0531995`; **TCP+TLS** historical evidence) · working tip mesh = **rust-libp2p** per [ADR 0020](adr/0020-libp2p-industrial-mesh.md) (pin libp2p soak **VOID** 2026-10-08)  
+**Release pin:** tag **`v1.3.1339-tip-v2-industrial`** (`0531995`; **TCP+TLS** historical evidence) · working tip mesh = **rust-libp2p** per [ADR 0020](adr/0020-libp2p-industrial-mesh.md) · libp2p STRICT PASS `pin-libp2p-strict-48h` (2026-10-08 VOID is not this PASS; tag `v1.3.1340` not cut)  
 **Phase status:** Phase 2 tip-v2 48h PASS (**TCP+TLS**, `375d14f`) · Phase 3 ops dry-run PASS · Phase 4 audit binder READY · Exp→pin honesty CLOSED (units+gate) · ADR 0020 mesh cutover + Quick probe · pin libp2p STRICT 2026-10-15–17 **PASS** (`pin-libp2p-strict-48h`; 2026-10-08 VOID is not PASS; not mainnet) — external firm engagement pending
 
 ## In scope
@@ -29,7 +29,7 @@
 | Public mainnet ops / legal / listing | Organizational, not code audit of this tree |
 | Full Ethereum client compatibility | EVM subset only |
 | Tip proof / Long-Range | Not claimed — Long-Range R&D in [dup-protocol-experimental](https://github.com/Gruver87/dup-protocol-experimental); `feature_long_range=false` on pin prod |
-| Experimental-only libp2p soak evidence | Not pin proof — e.g. `3c801b87` / `lp2pstrict1` on Experimental; pin libp2p 48h **VOID** (`pin-libp2p-cutover-pending`) |
+| Experimental-only libp2p soak evidence | Not pin proof — e.g. `3c801b87` / `lp2pstrict1` on Experimental. Pin VOID window stays in `pin-libp2p-cutover-pending`. Pin PASS is `pin-libp2p-strict-48h` |
 
 ## Deliverables expected from auditor
 

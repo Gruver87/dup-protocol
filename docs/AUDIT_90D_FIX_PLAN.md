@@ -30,7 +30,7 @@
 | Phase-5 sprout labs (offline) | **CLOSED** — `verify_sprout_labs.ps1` |
 | ADR 0020 libp2p mesh JSON + Quick probe | **Packaged** — 2026-10-08 soak **VOID** (not PASS); STRICT 2026-10-15–17 **PASS** (`pin-libp2p-strict-48h`, tag not cut) |
 | External firm audit PDF / pen-test | **Org Phase 6** — [FIRM_KICKOFF_CHECKLIST](FIRM_KICKOFF_CHECKLIST.md) |
-| Fresh pin libp2p 48h soak | **Operator** — prepare then start (do not invent PASS) |
+| Fresh pin libp2p 48h soak | **PASS** 2026-10-15–17 (`pin-libp2p-strict-48h`). Another run only for a clean-commit image bind |
 
 Detailed A–H remediation history for Experimental mid-2026 lives on the Exp tree; this pin tracks **industrial engagement**, not Exp R&D phase letters.
 

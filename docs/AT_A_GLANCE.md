@@ -35,7 +35,8 @@ Public audited mainnet · listed ABS token · investment product · bridge ON on
 | 3-node prod-profile bring-up + chain sync | Public mainnet |
 | Shared ceremony genesis artifact → followers | Always-green `/health/ready` under TLS churn forever |
 | 48h soak PASS (Jul float tip, historical) | External L1 / contract audit |
-| Failover + signed tx + EVM on mesh | Tip proof / Long-Range / libp2p (see [experimental](https://github.com/Gruver87/dup-protocol-experimental)) |
+| Failover + signed tx + EVM on mesh | Tip proof / Long-Range (lab on [experimental](https://github.com/Gruver87/dup-protocol-experimental); `feature_long_range=false` on the pin) |
+| ADR 0020 rust-libp2p mesh + STRICT pack `pin-libp2p-strict-48h` | Tag `v1.3.1340` · public mainnet · a pure-Rust P2P stack |
 | Forest-stable LMD-GHOST + satoshi storage | Full Rust P2P transport claim |
 | **Wave C** tip+apply: tip v2 `b_satoshi` + satoshi apply (fresh mesh) | Public mainnet cutover |
 | **tip-v2 48h soak PASS** (Aug 5–7, operator-local) | Listed ABS / investment product |

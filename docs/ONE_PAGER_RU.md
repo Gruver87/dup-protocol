@@ -19,17 +19,18 @@
 |---|-----|----------------|
 | GitHub | [dup-protocol](https://github.com/Gruver87/dup-protocol) | [dup-protocol-experimental](https://github.com/Gruver87/dup-protocol-experimental) |
 | Роль | Аудит-заморозка; tip-v2 TCP+TLS soak; working tip ADR 0020 libp2p | libp2p depth, Long-Range lab, EVM STRICT |
-| Не путать | Pin packs (`375d14f`, Quick cutover) | STRICT packs Experimental |
+| Не путать | Pin packs (`375d14f`, `pin-libp2p-strict-48h`) | Long-Range и STRICT Experimental |
 
 ---
 
 ## Что доказано на pin
 
 - Tip-v2 48h (**TCP+TLS**): pack `375d14f`, тег `v1.3.1339-tip-v2-industrial`  
-- ADR 0020 cutover + **Quick** probe: `pin-libp2p-cutover-pending` — **не** 48h soak  
-- Bridge OFF + sprout labs verify + Exp→pin merge honesty — см. [FUND_READINESS.md](FUND_READINESS.md)  
+- ADR 0020 Quick probe: `pin-libp2p-cutover-pending`. Окно 2026-10-08 — **VOID**, не PASS. Окно 2026-10-11 оборвалось на 44.2 ч, не PASS.
+- Pin libp2p STRICT 48h **PASS**: `pin-libp2p-strict-48h` (15–17 октября 2026, `hard_fails=0`). Не мейннет. Тег не резался. Git на старте был грязный.
+- Bridge OFF + sprout labs verify + Exp→pin merge honesty — см. [FUND_READINESS.md](FUND_READINESS.md)
 
-**Pin libp2p 48h soak — VOID** (host power-off 2026-10-08; не PASS · не перезапущен). STRICT / LR / EVM depth soaks — только на Experimental.
+Long-Range и EVM STRICT Experimental — не доказательство пина.
 
 ---
 
@@ -37,7 +38,7 @@
 
 - Публичный audited mainnet / листинг токена  
 - Готовый внешний security-audit PDF  
-- Pin libp2p 48h PASS на текущем HEAD  
+- Окна 2026-10-08 и 2026-10-11 как libp2p PASS. Тег `v1.3.1340` не резался  
 - Prod Long-Range / включённый bridge  
 - Зарегистрированный товарный знак НЦИС (есть только [prep](TRADEMARK_FILING_PREP_BY.md))  
 - Юрлицо / email ПВТ в репозитории (поля-заглушки в NDA)
