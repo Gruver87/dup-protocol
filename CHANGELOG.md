@@ -10,6 +10,11 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### README front door matches the working tip
+
+- Architecture sprouts row lists NFT, oracles, AI, and Long-Range as off the industrial mesh.
+- Repo layout names rust-libp2p as the working network path. Quality-gate count is the 2026-10-18 full pytest (3204), not the August 2164 figure.
+
 ### Long-Range lab nodes and console honesty
 
 - `node.long_range.lab1.json` and `node.long_range.lab2.json` match the lab compose. Prod `778888` stays unarmed. No soak is started.

@@ -121,7 +121,7 @@ flowchart TB
 | **Network** | rust-libp2p (ADR 0020) working-tip · TCP+TLS alternate | Soft-refuse; Noise mesh default; TCP+TLS via `docker_prod_3node_p2ptls.ps1` |
 | **Domain** | CatchUp · Fork · StateService · StoragePort | No sockets inside services |
 | **Native** | `native/abs_native/` (PyO3) | Crypto · satoshi roots · Rocks · EVM kernels |
-| **Sprouts** | ADR 0016 profiles | Bridge / L2 / shard **off** industrial mesh |
+| **Sprouts** | ADR 0016 profiles | Bridge, L2, shard, NFT, oracles, AI **off** on industrial mesh. Long-Range lab stays off prod. |
 
 Full map + sequences: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** · ADR index: **[docs/adr/](docs/adr/)** (0001–0012, 0014–0022; **0013 unused**) · sprouts: **[docs/sprouts/](docs/sprouts/)**
 
@@ -131,12 +131,12 @@ Full map + sequences: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** · ADR in
 
 ```text
 native/abs_native/   Rust crypto · Rocks · EVM kernels (PyO3)  ← Cargo.toml here
-network/             P2P TCP + dispatch + catchup/fork adapters
+network/             rust-libp2p working tip + TCP+TLS alternate + dispatch
 sync/                CatchUp Path A · ForkReconcile · SolicitHub
 storage/             StoragePort · RocksDB adapter · open_storage
 core/                Blockchain facade · StateService · TxPipeline
 api/                 REST + JSON-RPC · QueryFacade (ADR 0011)
-consensus/           LMD-GHOST (forest-deterministic) + finality
+consensus/           LMD-GHOST + finality; long_range/ is lab-only (off on prod)
 secret_mgmt/         SecretManagerPort (ADR 0015)
 observability/       MetricsExporterPort · Prometheus (ADR 0015)
 docs/adr/            boundaries 0001–0012, 0014–0022 (0013 unused)
@@ -184,12 +184,12 @@ Do **not** mix local `main.py` with Docker on the same host ports. `verify-indus
 | Area | Level |
 |------|-------|
 | L1 core · REST/Explorer · TX/EVM on mesh · Rocks path | Hardened R&D / Proven |
-| P2P ready under TLS churn | Partial (soft-refuse yes; session churn open) |
+| P2P under TCP+TLS session churn | Partial (soft-refuse yes; session churn open). Working-tip mesh is rust-libp2p, not this row. |
 | Failover + tip-v2 48h soak | Proven (operator-local evidence) |
 | Bridge / Lightning / Plasma / WASM / ZK / PQ | Ports or R&D only — **OFF** industrial mesh |
 | Public mainnet | **Not launched** |
 
-Quality gate: CI · `make test-quick` / `check_all.ps1` · **2164+** pytest passed locally (2026-08-05)
+Quality gate: CI on `639c644` green. Full pytest **3204 passed** on 2026-10-18 (host Max). Daily bar is `check_all.ps1 -Mode Quick`, not that full count.
 
 ---
 
@@ -259,4 +259,4 @@ Open source allows viewing, testing, and forking. It does **not** mean the work 
 ---
 
 *Author: ULADZIMIR DABRANSKI (D.U.P.) · Owner: [Gruver87](https://github.com/Gruver87) · Default branch: `master`*  
-*Last update: **2026-10-17** — working-tip mesh is **rust-libp2p** (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` stays **TCP+TLS**. Libp2p STRICT pack `pin-libp2p-strict-48h` is PASS; tag `v1.3.1340` is not cut. `feature_long_range` stays off. External firm audit still pending. Not a launched public mainnet.*
+*Last update: **2026-10-18** — working-tip mesh is **rust-libp2p** (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` stays **TCP+TLS**. Libp2p STRICT pack `pin-libp2p-strict-48h` is PASS; tag `v1.3.1340` is not cut. Long-Range lab code is on the pin; `feature_long_range` stays off on prod. External firm audit still pending. Not a launched public mainnet.*
