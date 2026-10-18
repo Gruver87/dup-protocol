@@ -10,6 +10,10 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Plain-language entry for a first-time reader
+
+- `docs/FOR_EVERYONE.md` and `docs/FOR_EVERYONE_RU.md` explain the pin without fund or audit jargon. They do not add a mainnet or firm-audit claim.
+
 ### CI: no stub libp2p dial, patched quinn-proto and rustls
 
 - Unit tests no longer expect a phase-1 stub handle when `abs_native` is built without `--features libp2p`. Dial fails closed.

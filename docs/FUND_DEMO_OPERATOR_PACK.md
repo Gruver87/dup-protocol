@@ -18,7 +18,7 @@ Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-nod
 | STRICT 48h scoreboard | Pin libp2p pack on disk | `pin-libp2p-strict-48h` PASS. Do not cite 2026-10-08 VOID or the 2026-10-11 short window as that PASS |
 | Showcase / diligence docs | Pin local | [SHOWCASE](SHOWCASE.md) · [FAQ](FAQ.md) · [ELEVATOR_PITCH](ELEVATOR_PITCH.md) · [FUND_READINESS](FUND_READINESS.md) · [VERIFY_SUITE](VERIFY_SUITE.md) |
 | Sprout lab profiles | Offline honesty | [NFT](sprouts/NFT_LAB_PROFILE.md) · [AI](sprouts/AI_LAB_PROFILE.md) · [Oracle](sprouts/ORACLE_LAB_PROFILE.md) |
-| Phase 6 firm prep | Prep only | [FIRM_KICKOFF_CHECKLIST](FIRM_KICKOFF_CHECKLIST.md) · [FIRM_ENGAGEMENT_CALENDAR](FIRM_ENGAGEMENT_CALENDAR.md) · [AUDITS.md](AUDITS.md) · [AUDIT_ENGAGEMENT_BRIEF](AUDIT_ENGAGEMENT_BRIEF.md) · `logs/audit_pack_20261004.zip` |
+| Phase 6 firm prep | Prep only | [FIRM_KICKOFF_CHECKLIST](FIRM_KICKOFF_CHECKLIST.md) · [FIRM_ENGAGEMENT_CALENDAR](FIRM_ENGAGEMENT_CALENDAR.md) · [AUDITS.md](AUDITS.md) · [AUDIT_ENGAGEMENT_BRIEF](AUDIT_ENGAGEMENT_BRIEF.md) · `logs/audit_pack_20261017.zip` |
 
 ---
 

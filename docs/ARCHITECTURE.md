@@ -1,7 +1,7 @@
 # Architecture (honest overview)
 
 **Updated:** 2026-10-05 (ADR 0020 transport note)  
-**Scope:** DUP Protocol industrial pin — domain ports + adapters (ADR **0001–0016**, **0018–0020**; **0013 unused**). Devnet + mainnet-v1 **prep**, not a launched public mainnet.  
+**Scope:** DUP Protocol industrial pin — domain ports + adapters (ADR **0001–0012**, **0014–0022**; **0013 unused**). 0017 is lab-only. Devnet + mainnet-v1 **prep**, not a launched public mainnet.  
 **Industrial pin:** tag [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) (**TCP+TLS** tip-v2 `b_satoshi` 48h soak PASS + Phase 3–4 binder READY). Working-tip prod mesh uses **rust-libp2p** per [ADR 0020](adr/0020-libp2p-industrial-mesh.md) — pin libp2p 2026-10-08 soak **VOID** (not PASS); STRICT 2026-10-15–17 **PASS** in `pin-libp2p-strict-48h` (not mainnet, tag not cut).  
 **This pin refuses** `FEATURE_LONG_RANGE` and `SECRET_BACKEND=file` in prod. `feature_libp2p=true` vs TCP+TLS (`feature_libp2p=false`, `p2p_tls_enabled=true`) are **mutually exclusive** mesh profiles (both-on refused).
 
@@ -117,7 +117,7 @@ flowchart TB
 
 Solid = **prod-relevant hot path**. Dotted = **aux / cold / optional**.
 
-ADR index: [docs/adr/](adr/) (**0001–0016**; [README](adr/README.md)). Feature sprouts: [docs/sprouts/](sprouts/). Disaster runbooks: [DISASTER_RECOVERY.md](DISASTER_RECOVERY.md).
+ADR index: [docs/adr/](adr/) (**0001–0012**, **0014–0022**; [README](adr/README.md)). Feature sprouts: [docs/sprouts/](sprouts/). Disaster runbooks: [DISASTER_RECOVERY.md](DISASTER_RECOVERY.md).
 
 ---
 
@@ -201,7 +201,7 @@ consensus/
   bft/                  Round SM · quorum · Evidence (ADR 0007)
 native/abs_native/      Rust crypto · Rocks · P2P IO · EVM
 runtime/                Config · prod smoke profile
-docs/adr/               boundary decisions 0001–0016
+docs/adr/               boundary decisions 0001–0012, 0014–0022 (0013 unused)
 docs/sprouts/           ADR 0016 feature profiles
 scripts/                industrial_gate · mesh · soak
 ```

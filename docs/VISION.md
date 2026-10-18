@@ -47,7 +47,7 @@ One-screen card: [AT_A_GLANCE](AT_A_GLANCE.md) · full ledger: [EVIDENCE_MATRIX]
 | External firm L1 / penetration audit PDF | **Pending** |
 | Bridge ON on live mesh | **OFF** by design |
 | rust-libp2p on this pin (ADR 0020) | **Working-tip** · Quick probe PASS · 2026-10-08 soak **VOID** (not PASS) · STRICT 2026-10-15–17 **PASS** (`hard_fails=0`, pack `pin-libp2p-strict-48h`, not mainnet, tag not cut) |
-| Long-Range on this pin | **No** (lab-only) — see Experimental |
+| Long-Range on this pin | **Lab code present, prod switch off** — Ed25519, not BLS, not a pin soak |
 | Oracles / sharding as prod mesh features | **No** — lab profiles only; flags stay off on `778888` |
 
 Gaps stay listed: [MAINNET_GAP_ANALYSIS](MAINNET_GAP_ANALYSIS.md)
@@ -58,7 +58,7 @@ Gaps stay listed: [MAINNET_GAP_ANALYSIS](MAINNET_GAP_ANALYSIS.md)
 
 [`experimental`](https://github.com/Gruver87/dup-protocol-experimental) is the R&D sandbox: rust-libp2p (ADR 0019/0020), Long-Range WS labs (ADR 0017), EVM depth / RPC honesty.  
 **B1 closed:** Experimental libp2p 48h soak **PASS** [`3c801b87`](https://github.com/Gruver87/dup-protocol-experimental/tree/main/docs/evidence/runs/3c801b87) (2026-09-01→03).  
-**B1/B2/Phase3 closed (Experimental, lab/mesh):** libp2p [`3c801b87`](https://github.com/Gruver87/dup-protocol-experimental/tree/main/docs/evidence/runs/3c801b87) · LR lab [`lr48pass1`](https://github.com/Gruver87/dup-protocol-experimental/tree/main/docs/evidence/runs/lr48pass1) · post-EVM mesh [`evm48pass1`](https://github.com/Gruver87/dup-protocol-experimental/tree/main/docs/evidence/runs/evm48pass1). **Not** Hybrid evidence. **Not** BLS / prod Long-Range / EVM-only / mainnet. Sequence: [EXECUTION_ORDER](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/EXECUTION_ORDER.md).  
+**B1/B2/Phase3 closed (Experimental, lab/mesh):** libp2p [`3c801b87`](https://github.com/Gruver87/dup-protocol-experimental/tree/main/docs/evidence/runs/3c801b87) · LR lab [`lr48pass1`](https://github.com/Gruver87/dup-protocol-experimental/tree/main/docs/evidence/runs/lr48pass1) · post-EVM mesh [`evm48pass1`](https://github.com/Gruver87/dup-protocol-experimental/tree/main/docs/evidence/runs/evm48pass1). **Not** pin evidence. **Not** BLS / prod Long-Range / EVM-only / mainnet. Sequence: [EXECUTION_ORDER](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/EXECUTION_ORDER.md).  
 Lab/Experimental PASS ≠ pin libp2p soak PASS ≠ public mainnet. Pin prod **mesh** defaults **rust-libp2p** (ADR 0020); freeze tag stays **TCP+TLS** evidence. `feature_long_range` remains **false**.
 
 ---

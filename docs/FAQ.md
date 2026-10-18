@@ -1,6 +1,6 @@
 # FAQ — DUP Protocol / DUP Labs (industrial pin)
 
-**Audience:** grant officers, HTP / ПВТ, technical advisors.  
+**Audience:** grant officers, HTP / ПВТ, technical advisors. First-time readers: [FOR_EVERYONE](FOR_EVERYONE.md) · [RU](FOR_EVERYONE_RU.md).  
 **Canonical:** English · RU summary: [ONE_PAGER_RU.md](ONE_PAGER_RU.md)  
 **Source of truth for claims:** [DILIGENCE_BRIEF.md](DILIGENCE_BRIEF.md) · [FUND_READINESS.md](FUND_READINESS.md) · [SHOWCASE.md](SHOWCASE.md)  
 **This tree:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)
@@ -44,7 +44,7 @@ Only a packaged run under `docs/evidence/runs/<id>/` with report `passed=true` a
 
 ### Is Long-Range production-ready?
 
-**No.** ADR 0017 work is **lab-only** on Experimental. Prod JSON keeps `feature_long_range=false`. Do not cite Exp LR packs as pin evidence.
+**No.** ADR 0017 lab code is on this pin (Ed25519). Prod and staging keep `feature_long_range=false`. Not BLS. Experimental LR packs are not pin evidence.
 
 ### Is the bridge on?
 

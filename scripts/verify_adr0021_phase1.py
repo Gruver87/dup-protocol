@@ -168,7 +168,7 @@ def main() -> int:
     py = sys.executable
     fails = 0
 
-    print("ADR 0021 Phase 4.1+4.2+4.3 verify — does NOT start soak / does NOT rebuild image")
+    print("ADR 0021 phases 0-3 verify — does NOT start soak / does NOT rebuild image")
     if not _kernel_goldens(require_rust=args.require_rust):
         fails += 1
     if not _run(
@@ -214,10 +214,10 @@ def main() -> int:
 
     if fails:
         print(f"ADR 0021 phase-1/2/3 FAIL: {fails} step(s)")
-        print("NOT: soak / mainnet / Hybrid")
+        print("NOT: soak / mainnet / live mesh (use without --skip-mesh only when the mesh is already up)")
         return 1
-    print("OK: ADR 0021 Phase 4.1+4.2+4.3 verify PASS")
-    print("NOT: soak / mainnet")
+    print("OK: ADR 0021 phases 0-3 verify PASS")
+    print("NOT: soak / mainnet / experimental mempool48pass1 is not this run")
     return 0
 
 

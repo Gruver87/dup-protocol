@@ -16,8 +16,8 @@ Public audited mainnet · listed ABS token · investment product · bridge ON on
 |---|---|
 | Tag | **[v1.3.1339-tip-v2-industrial](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial)** (audit pin) · prior [v1.3.1338](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1338-deterministic-core) |
 | Prior industrial | [v1.3.206](../RELEASE_NOTES_v1.3.206.md) tip-safety / P2P |
-| ADR stack | **0001–0016** ([docs/adr/](adr/); **0013 unused**) |
-| R&D fork | [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — ADR 0017–0021; B1/B2/Phase3 closed (`3c801b87`, `lr48pass1`, `evm48pass1`) · **not** this pin |
+| ADR stack | **0001–0012, 0014–0022** ([docs/adr/](adr/); **0013 unused**). 0017 and 0022 stay off prod `778888`. |
+| R&D fork | [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — sandbox soaks (`3c801b87`, `lr48pass1`, `evm48pass1`) are **not** pin evidence |
 | Auditor | [AUDIT_ENGAGEMENT_BRIEF](AUDIT_ENGAGEMENT_BRIEF.md) |
 | CI | Ubuntu `test.yml` + docker + security + fuzz (tip-v2 soak gates on `master`) |
 | 48h soak (Jul float) | **PASS** (historical / operator-local) |
@@ -35,7 +35,7 @@ Public audited mainnet · listed ABS token · investment product · bridge ON on
 | 3-node prod-profile bring-up + chain sync | Public mainnet |
 | Shared ceremony genesis artifact → followers | Always-green `/health/ready` under TLS churn forever |
 | 48h soak PASS (Jul float tip, historical) | External L1 / contract audit |
-| Failover + signed tx + EVM on mesh | Tip proof / Long-Range (lab on [experimental](https://github.com/Gruver87/dup-protocol-experimental); `feature_long_range=false` on the pin) |
+| Failover + signed tx + EVM on mesh | Prod Long-Range armed (`feature_long_range=false`; lab code is Ed25519, not BLS) |
 | ADR 0020 rust-libp2p mesh + STRICT pack `pin-libp2p-strict-48h` | Tag `v1.3.1340` · public mainnet · a pure-Rust P2P stack |
 | Forest-stable LMD-GHOST + satoshi storage | Full Rust P2P transport claim |
 | **Wave C** tip+apply: tip v2 `b_satoshi` + satoshi apply (fresh mesh) | Public mainnet cutover |

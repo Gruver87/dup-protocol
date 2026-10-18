@@ -15,7 +15,7 @@ Pin transport (working tip): **rust-libp2p** on prod 3-node mesh JSON (ADR 0020)
 |-------|-------|
 | Freeze tag | `v1.3.1339-tip-v2-industrial` |
 | Freeze SHA | `0531995` (`git rev-list -n 1 v1.3.1339-tip-v2-industrial`) |
-| Working tip | `git rev-parse --short HEAD` (honesty code close `adc8547`; docs tip advances) |
+| Working tip | `74ddffdc` at the 2026-10-17 static pack. Honesty-merge close `adc8547` is historical. |
 | Chain under review | prod-profile `778888` · bridge **OFF** |
 
 ---
@@ -23,7 +23,7 @@ Pin transport (working tip): **rust-libp2p** on prod 3-node mesh JSON (ADR 0020)
 ## Before first firm call
 
 - [ ] Scope = **this pin** (not Experimental as “audited”)
-- [ ] Attach / regenerate static zip: `.\scripts\export_audit_pack.ps1` → latest `logs/audit_pack_YYYYMMDD.zip` (operator current: `logs/audit_pack_20261004.zip`)
+- [ ] Attach static zip: `logs/audit_pack_20261017.zip` (regenerate with `.\scripts\export_audit_pack.ps1` if HEAD moves)
 - [ ] Read [AUDIT_ENGAGEMENT_BRIEF.md](AUDIT_ENGAGEMENT_BRIEF.md) · [AUDIT_SCOPE.md](AUDIT_SCOPE.md) · [THREAT_MODEL.md](THREAT_MODEL.md) · [AUDITS.md](AUDITS.md)
 - [ ] Tracker shows **6/8** until firm evidence: `python scripts/external_audit_tracker.py --list`
 - [ ] NDA drafted / signed
@@ -53,7 +53,7 @@ Place PDF under `audits/<firm>/report.pdf`. Do **not** mark tracker items with T
 
 - “Audited” / “mainnet-ready” / listed ABS  
 - Claiming Experimental soak packs as pin audit PASS  
-- Enabling `feature_long_range` on prod · claiming pin libp2p soak PASS without `docs/evidence/runs/pin-libp2p-cutover-pending/` (or successor) pack  
+- Enabling `feature_long_range` on prod · claiming pin libp2p soak PASS without `docs/evidence/runs/pin-libp2p-strict-48h/`  
 
 ---
 

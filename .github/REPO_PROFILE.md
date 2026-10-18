@@ -68,7 +68,7 @@ hybrid-blockchain
 | **Tag** | `v1.3.1339-tip-v2-industrial` — tip-v2 industrial audit pin (48h soak PASS + Phase 3–4 binder) |
 | **Prior** | `v1.3.1338-deterministic-core` — satoshi state domain + forest-stable LMD-GHOST |
 | **Prior industrial** | `v1.3.206` — tip-safety + P2P transport/dispatch |
-| **ADR stack** | **0001–0016** (0013 unused) · [docs/adr/](../docs/adr/) |
+| **ADR stack** | **0001–0012, 0014–0022** (0013 unused; 0017 and 0022 off on prod) · [docs/adr/](../docs/adr/) |
 | **Auditor entry** | [AUDIT_ENGAGEMENT_BRIEF](../docs/AUDIT_ENGAGEMENT_BRIEF.md) |
 | **Notes** | [CHANGELOG](../CHANGELOG.md) · [DISASTER_RECOVERY](../docs/DISASTER_RECOVERY.md) |
 | **R&D sibling** | [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases 1–5 + STRICT closed; not the audit pin |

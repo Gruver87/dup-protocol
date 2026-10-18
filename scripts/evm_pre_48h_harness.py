@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """EVM pre-48h harness — prove mesh EVM path before any soak claim.
 
-Does NOT start a 48h soak. Exit 0 = labs + gate + live mesh smoke PASS.
+Does NOT start a 48h soak. Exit 0 with --skip-mesh means the host labs and
+industrial_gate passed. Live mesh smoke runs only without --skip-mesh.
 
 Usage:
   python scripts/evm_pre_48h_harness.py
@@ -125,7 +126,7 @@ def main() -> int:
         return 1
     scope = "labs + gate only (--skip-mesh)" if args.skip_mesh else "labs + gate + mesh smoke"
     print(f"OK: EVM pre-48h harness PASS ({scope})")
-    print("NOT: 48h soak started; not mainnet; not BLS; not Hybrid")
+    print("NOT: 48h soak started; not mainnet; not BLS; prod mesh not required for --skip-mesh")
     if not args.skip_mesh:
         print("Next (manual): .\\scripts\\prepare_48h_soak.ps1 then start_soak_prod_mesh_48h_strict.ps1")
     return 0

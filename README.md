@@ -29,9 +29,10 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 
 | Audience | Start here |
 |----------|------------|
+| **First visit / recruiter / non-specialist** | [FOR_EVERYONE](docs/FOR_EVERYONE.md) · [RU](docs/FOR_EVERYONE_RU.md) |
 | **External auditors / firms** | [AUDIT_ENGAGEMENT_BRIEF](docs/AUDIT_ENGAGEMENT_BRIEF.md) → [AUDIT_SCOPE](docs/AUDIT_SCOPE.md) → [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md) → `.\scripts\export_audit_pack.ps1` |
 | **Grant officers / diligence / ПВТ** | [FUND_AUDIT_PREP](docs/FUND_AUDIT_PREP.md) · [SHOWCASE](docs/SHOWCASE.md) · [FAQ](docs/FAQ.md) · [FUND_READINESS](docs/FUND_READINESS.md) · tip-v2 [375d14f](docs/evidence/runs/375d14f/) · libp2p [pin-libp2p-strict-48h](docs/evidence/runs/pin-libp2p-strict-48h/) · [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
-| **Architects / principals** | [VISION](docs/VISION.md) → [AT_A_GLANCE](docs/AT_A_GLANCE.md) → mermaid below → [docs/adr/](docs/adr/) (0001–0016) |
+| **Architects / principals** | [VISION](docs/VISION.md) → [AT_A_GLANCE](docs/AT_A_GLANCE.md) → mermaid below → [docs/adr/](docs/adr/) (0001–0012, 0014–0022; 0013 unused) |
 | **Operators** | [Start in 60 seconds](#start-in-60-seconds) · `.\scripts\verify_project.ps1` · dual pin+Exp `.\scripts\verify_dup_both.ps1 -Mode Standard` · prod mesh `.\scripts\docker_prod_3node.ps1` |
 
 ---
@@ -81,7 +82,7 @@ Not an investment product. **ABS** = in-repo tokenomics model (221M) — **not**
 | Public mainnet / listed ABS / firm audit PDF | **No** | [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
 | Bridge on live mesh | **OFF** | by design until L1 cutover |
 | rust-libp2p on this pin (ADR 0020) | **Working-tip** · Quick probe PASS · STRICT 48h **PASS** 2026-10-15–17 | [`pin-libp2p-strict-48h`](docs/evidence/runs/pin-libp2p-strict-48h/) · not mainnet · tag not cut |
-| Long-Range on this pin | **No** (lab-only) | ADR 0017 incomplete · R&D in [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) |
+| Long-Range on this pin | **Lab code, prod switch off** | ADR 0017 Ed25519 lab. `feature_long_range=false` on prod and staging. Not BLS. Not a pin soak. |
 
 **Jump:** [Architecture](#architecture) · [Layout](#repo-layout) · [Ops](#operator-cheatsheet) · [Docs](#docs-map) · [Contribute](CONTRIBUTING.md)
 
@@ -122,7 +123,7 @@ flowchart TB
 | **Native** | `native/abs_native/` (PyO3) | Crypto · satoshi roots · Rocks · EVM kernels |
 | **Sprouts** | ADR 0016 profiles | Bridge / L2 / shard **off** industrial mesh |
 
-Full map + sequences: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** · ADR index: **[docs/adr/](docs/adr/)** (0001–0016; **0013 unused**) · sprouts: **[docs/sprouts/](docs/sprouts/)**
+Full map + sequences: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** · ADR index: **[docs/adr/](docs/adr/)** (0001–0012, 0014–0022; **0013 unused**) · sprouts: **[docs/sprouts/](docs/sprouts/)**
 
 ---
 
@@ -138,7 +139,7 @@ api/                 REST + JSON-RPC · QueryFacade (ADR 0011)
 consensus/           LMD-GHOST (forest-deterministic) + finality
 secret_mgmt/         SecretManagerPort (ADR 0015)
 observability/       MetricsExporterPort · Prometheus (ADR 0015)
-docs/adr/            boundaries 0001–0016 (0013 unused)
+docs/adr/            boundaries 0001–0012, 0014–0022 (0013 unused)
 docs/sprouts/        ADR 0016 profiles (App · Bridge · L2 · Shard · EVM)
 docs/evidence/       packaged soak / phase runs
 scripts/             gates · mesh · soak · DR
@@ -196,6 +197,7 @@ Quality gate: CI · `make test-quick` / `check_all.ps1` · **2164+** pytest pass
 
 | Need | Open |
 |------|------|
+| Plain language (recruiter / first visit) | [FOR_EVERYONE](docs/FOR_EVERYONE.md) · [RU](docs/FOR_EVERYONE_RU.md) |
 | Vision & honest scope | [VISION](docs/VISION.md) |
 | Brand (DUP Labs / DUP Protocol) | [BRAND](docs/BRAND.md) |
 | Proven vs not | [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md) |
