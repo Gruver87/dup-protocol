@@ -1,6 +1,7 @@
 # ADR 0017 — Long-Range lab 3-node mesh (separate project / volumes / ports).
 # Never bootstrap to abs-prod-mesh or reuse industrial prod Rocks volumes.
-# Do NOT mount docker prod mesh JSON. Timed 2h/48h via start_soak_long_range_lab.ps1.
+# Do NOT mount docker prod mesh JSON. This file does not start a soak.
+# Later window: up, then python scripts/seed_long_range_lab_ws.py --restart.
 #
 #   docker compose -p abs-lr-lab -f docker-compose.long_range.lab.yml up -d --build
 #   docker compose -p abs-lr-lab -f docker-compose.long_range.lab.yml down -v

@@ -14,7 +14,7 @@ Usage:
   python scripts/verify_adr0021_phase1.py --require-rust
 
 Honesty: PASS here = phase-1/2/3 host path + goldens (+ mesh probe if not skipped).
-Not soak. Not mainnet. Not Hybrid pin.
+Not soak. Not mainnet. Experimental mempool48pass1 is not this run.
 """
 
 from __future__ import annotations

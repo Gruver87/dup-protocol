@@ -787,8 +787,8 @@
             )}</td></tr>
           </table>
           <p class="muted" style="margin-top:12px;line-height:1.6">
-            Long-Range stays lab-only until ADR 0017 is complete.
-            libp2p is Experimental / opt-in — pin default remains TCP+TLS.
+            Long-Range lab code is on this pin (ADR 0017). Prod and staging keep the switch off. Not BLS.
+            Working-tip mesh is rust-libp2p (ADR 0020). Freeze tag v1.3.1339-tip-v2-industrial stays TCP+TLS.
             Docs: <code>docs/EVIDENCE_MATRIX.md</code>, <code>docs/OPS_CONSOLE.md</code>.
           </p>
         </div>

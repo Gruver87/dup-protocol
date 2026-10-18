@@ -10,6 +10,11 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Long-Range lab nodes and console honesty
+
+- `node.long_range.lab1.json` and `node.long_range.lab2.json` match the lab compose. Prod `778888` stays unarmed. No soak is started.
+- Ops console Evidence text matches ADR 0017 (lab on the pin, prod switch off) and ADR 0020 (working-tip rust-libp2p).
+
 ### Plain-language entry for a first-time reader
 
 - `docs/FOR_EVERYONE.md` and `docs/FOR_EVERYONE_RU.md` explain the pin without fund or audit jargon. They do not add a mainnet or firm-audit claim.

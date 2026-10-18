@@ -34,7 +34,7 @@ wire ingress
 | Import / apply | `core/blockchain.py` (`add_block`), `execution/state_engine.py` | Deterministic state_root |
 | State root | native / `crypto/native.py` + StateEngine | Prod refuses tip rewrite when configured |
 | Storage UoW | `storage/database.py`, `storage/rocks_store.py` | Atomic where exposed; satoshi twins |
-| Tip safety | ADR 0001 / `AncestryWindow` (bounded) | Long-Range **off** until ADR 0017 complete |
+| Tip safety | ADR 0001 / `AncestryWindow` (bounded) | Long-Range lab is on the pin; prod switch stays off (ADR 0017). Not BLS. |
 | Finality view | `consensus/bft/*` (integer stake quorum) | `quorum_live` may stay false until live finality armed — honesty labels |
 
 ## Explicitly non-canonical (do not treat as prod path)
@@ -42,7 +42,7 @@ wire ingress
 | Surface | Where | Status |
 |---------|-------|--------|
 | libp2p (when off) | `feature_libp2p=false` | TCP+TLS alternate; mesh JSON defaults **true** after ADR 0020 |
-| Long-Range / weak subjectivity | `feature_long_range`, `consensus/long_range/` | Lab-only until ADR 0017 on disk |
+| Long-Range / weak subjectivity | `feature_long_range`, `consensus/long_range/` | Lab/dev on chain `77779`. Prod and staging stay hard-off. |
 | Bridge lock/mint live | `bridge/*` | **OFF** in prod JSON / cutover examples only |
 | NFT / AI / MEV sprouts | `features/*` | ADR 0016 Profile C; prod flags **false** |
 | Legacy Beacon/Casper demos | historical `consensus/` variants | Not the prod mesh proposer path |

@@ -31,15 +31,39 @@ def test_seed_writes_valid_checkpoint(tmp_path):
     assert raw["items"][0].get("digest")
 
 
-def test_lab_node_json_arms_tip_safety():
-    node = json.loads((ROOT / "node.long_range.lab.json").read_text(encoding="utf-8"))
+def _assert_lab_node(name: str, *, node_id: str, peers: list[str], mining: bool) -> None:
+    node = json.loads((ROOT / name).read_text(encoding="utf-8"))
+    assert node["node_id"] == node_id
     assert node["feature_long_range"] is True
+    assert node["feature_libp2p"] is False
+    assert node["bridge_enabled"] is False
     assert node["tip_safety_enforce"] is True
     assert node["tip_safety_shadow"] is True
     assert node["deployment_mode"] == "dev"
-    assert int(node["chain_id"]) != 778888
-    assert node["mining_enabled"] is True
-    assert "lr1:5000" in node["bootstrap_peers"]
+    assert int(node["chain_id"]) == 77779
+    assert node["mining_enabled"] is mining
+    assert node["bootstrap_peers"] == peers
+
+
+def test_lab_node_json_arms_tip_safety():
+    _assert_lab_node(
+        "node.long_range.lab.json",
+        node_id="lr-lab-0",
+        peers=["lr1:5000", "lr2:5000"],
+        mining=True,
+    )
+    _assert_lab_node(
+        "node.long_range.lab1.json",
+        node_id="lr-lab-1",
+        peers=["lr0:5000", "lr2:5000"],
+        mining=False,
+    )
+    _assert_lab_node(
+        "node.long_range.lab2.json",
+        node_id="lr-lab-2",
+        peers=["lr0:5000", "lr1:5000"],
+        mining=False,
+    )
 
 
 def test_lr_compose_bind_and_tip_safety():
