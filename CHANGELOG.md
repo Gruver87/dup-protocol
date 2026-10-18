@@ -10,6 +10,10 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### README evidence snapshot includes the October libp2p windows
+
+- The lower snapshot now lists the Oct 8 VOID, the Oct 11 short window, and the Oct 15–17 STRICT PASS. It does not start a soak.
+
 ### README front door matches the working tip
 
 - Architecture sprouts row lists NFT, oracles, AI, and Long-Range as off the industrial mesh.

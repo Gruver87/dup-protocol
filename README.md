@@ -223,7 +223,10 @@ Quality gate: CI on `639c644` green. Full pytest **3204 passed** on 2026-10-18 (
 | Aug 2–4 | tip-v2 48h **FAIL** (historical only) |
 | Aug 5–7 | tip-v2 48h **PASS** — [375d14f](docs/evidence/runs/375d14f/) |
 | Aug 7 | Phase 3 **PASS** · Phase 4 binder **READY** |
-| Aug 7 | Tag **`v1.3.1339-tip-v2-industrial`** — audit pin |
+| Aug 7 | Tag **`v1.3.1339-tip-v2-industrial`** — audit pin (TCP+TLS) |
+| Oct 8 | libp2p window **VOID** (power-off) |
+| Oct 11 | libp2p window stopped at 44.2h — **not PASS** |
+| Oct 15–17 | rust-libp2p STRICT 48h **PASS** — [pin-libp2p-strict-48h](docs/evidence/runs/pin-libp2p-strict-48h/) · tag not cut |
 
 Full ledger: [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md)
 
