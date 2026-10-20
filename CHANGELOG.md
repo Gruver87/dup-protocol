@@ -10,6 +10,12 @@ Canonical language for this repository is **English**. Older entries below may s
 
 ## [Unreleased]
 
+### Pin libp2p STRICT 48h PASS on clean commit (2026-10-18–20)
+
+- Packaged `docs/evidence/runs/pin-libp2p-strict-48h/` from host STRICT window: `passed=true`, `hours_elapsed=48.0004`, `hard_fails=0`, `mesh_warn=0`, `warn_lines=0`, git `c5ac635c` (`git_dirty=false`), image `sha256:83d7e19e…`.
+- Prior dirty PASS 2026-10-15–17 archived under `docs/evidence/runs/pin-libp2p-strict-48h-dirty-c1c281f/`.
+- Front doors updated (`README`, `FUND_AUDIT_PREP`, `FUND_READINESS`, `EVIDENCE_MATRIX`, FAQ, gap analysis). Not mainnet. Tag `v1.3.1340` not cut. No new soak started.
+
 ### README evidence snapshot includes the October libp2p windows
 
 - The lower snapshot now lists the Oct 8 VOID, the Oct 11 short window, and the Oct 15–17 STRICT PASS. It does not start a soak.

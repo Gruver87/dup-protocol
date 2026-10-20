@@ -18,7 +18,7 @@
 ## What this is
 
 Industrial **private-testnet / firm-engagement** hybrid L1 (Python orchestration + Rust/PyO3 hot path).  
-**Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** soak evidence. Pin libp2p STRICT attempt **VOID** (host power-off 2026-10-08); soak **STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 PASS (passed=true, hard_fails=0, mesh_warn=0, 48.0007h; pack pin-libp2p-strict-48h; not mainnet; tag not cut)**.
+**Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** soak evidence. Pin libp2p STRICT attempt **VOID** (host power-off 2026-10-08); soak **STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15–17 PASS on dirty git (archived `pin-libp2p-strict-48h-dirty-c1c281f`). STRICT 2026-10-18 09:59+03 through 2026-10-20 09:59+03 PASS (passed=true, hard_fails=0, mesh_warn=0, warn_lines=0, 48.0004h; pack pin-libp2p-strict-48h; git `c5ac635c` clean; not mainnet; tag not cut)**.
 
 ---
 
@@ -73,7 +73,7 @@ ADRs: 0001 tip-safety · 0009 hybrid · 0015 secrets · 0016 profiles · 0017 Lo
 | Bridge OFF defaults + audit gate | Done |
 | Sprout labs verify (oracle/shard/NFT/AI) | Done — `verify_sprout_labs.ps1` |
 | Industrial HIGH honesty / industrial_gate | Done |
-| Fresh 48h soak on current HEAD (libp2p) | **PASS** 2026-10-15–17 (`hard_fails=0`, [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/)). 2026-10-08 **VOID** (not PASS) — [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt). 2026-10-11 short window not PASS. Not mainnet. Tag not cut. |
+| Fresh 48h soak on current HEAD (libp2p) | **PASS** 2026-10-18–20 (`hard_fails=0`, `warn_lines=0`, clean git `c5ac635c`, [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/)). Prior dirty 2026-10-15–17 archived. 2026-10-08 **VOID** (not PASS) — [`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt). 2026-10-11 short window not PASS. Not mainnet. Tag not cut. |
 | External audit / secrets rotate / validator ceremony live | Org Phase 6 |
 
 ---
@@ -86,4 +86,4 @@ ADRs: 0001 tip-safety · 0009 hybrid · 0015 secrets · 0016 profiles · 0017 Lo
 4. Optional live: `.\scripts\probe_prod_mesh.ps1 -Quick` if mesh already up  
 5. Gaps first: [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md)
 
-**Bottom line:** ready for **technical diligence on an industrial private mesh**. Not ready to claim **public audited mainnet** or **pin libp2p 48h soak PASS** without a new pack on HEAD.
+**Bottom line:** ready for **technical diligence on an industrial private mesh**. Pin libp2p STRICT 48h **PASS** is packaged on clean HEAD (`pin-libp2p-strict-48h`). Not ready to claim **public audited mainnet**.

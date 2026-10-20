@@ -28,9 +28,9 @@
 | Honesty / satoshi / RPC / health | **CLOSED** via Exp→pin merge waves — [EVIDENCE_MATRIX](EVIDENCE_MATRIX.md) |
 | Bridge OFF audit | **CLOSED** — `verify_bridge_off_lab.ps1` |
 | Phase-5 sprout labs (offline) | **CLOSED** — `verify_sprout_labs.ps1` |
-| ADR 0020 libp2p mesh JSON + Quick probe | **Packaged** — 2026-10-08 soak **VOID** (not PASS); STRICT 2026-10-15–17 **PASS** (`pin-libp2p-strict-48h`, tag not cut) |
+| ADR 0020 libp2p mesh JSON + Quick probe | **Packaged** — 2026-10-08 soak **VOID** (not PASS); clean STRICT 2026-10-18–20 **PASS** (`pin-libp2p-strict-48h`, `c5ac635c`, tag not cut) |
 | External firm audit PDF / pen-test | **Org Phase 6** — [FIRM_KICKOFF_CHECKLIST](FIRM_KICKOFF_CHECKLIST.md) |
-| Fresh pin libp2p 48h soak | **PASS** 2026-10-15–17 (`pin-libp2p-strict-48h`). Another run only for a clean-commit image bind |
+| Fresh pin libp2p 48h soak | **PASS** 2026-10-18–20 (`pin-libp2p-strict-48h`, clean `c5ac635c`). Another run only if HEAD/image changes |
 
 Detailed A–H remediation history for Experimental mid-2026 lives on the Exp tree; this pin tracks **industrial engagement**, not Exp R&D phase letters.
 
@@ -60,7 +60,7 @@ Code for libp2p, EVM, mempool validation, Long-Range, and the council NFT gate i
 ## Next 90 days (org / operator)
 
 1. Keep CI + `industrial_gate` green on `master`  
-2. Pin libp2p STRICT 48h is PASS (`pin-libp2p-strict-48h`). A new window, only if ordered, is `prepare_48h_soak.ps1` then `start_soak_prod_mesh_48h_strict.ps1`. The non-strict starter stays on disk and is not that bar.  
+2. Pin libp2p STRICT 48h is PASS (`pin-libp2p-strict-48h`, 2026-10-18–20 clean). A new window, only if ordered, is `prepare_48h_soak.ps1` then `start_soak_prod_mesh_48h_strict.ps1`. The non-strict starter stays on disk and is not that bar.  
 3. Firm outreach + NDA / scope — [EXTERNAL_AUDIT_ENGAGEMENT.md](EXTERNAL_AUDIT_ENGAGEMENT.md)  
 4. Do **not** arm Long-Range or bridge on prod 778888 mesh JSON  
 

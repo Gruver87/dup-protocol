@@ -9,7 +9,7 @@
 
 **Wave C tip+apply (2026-08-02):** ceremony-armed tip encoding v2 uses integer `b_satoshi` (`SATOSHI_MULTIPLIER=1e6`) on fresh prod mesh; StateService fees/gas/reward are satoshi-int. Float tip `"b"` remains legacy/offline only. See [STATE_ROOT_ENCODING_MIGRATION.md](STATE_ROOT_ENCODING_MIGRATION.md) + evidence `docs/evidence/runs/79472a111cd5/`. **Phase 2 tip-v2 48h soak PASS** 2026-08-05→07 — `docs/evidence/runs/375d14f/` + `logs/soak_report_tipv2_48h_rerun.json` (**TCP+TLS**; freeze tag evidence).
 
-**ADR 0020 (2026-10):** working-tip prod 3-node mesh JSON is **rust-libp2p** (`feature_libp2p=true`, `p2p_tls_enabled=false`). **Quick probe PASS** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/`. Pin libp2p STRICT attempt **VOID** (host power-off 2026-10-08) — not PASS; STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 PASS (passed=true, hard_fails=0, mesh_warn=0, 48.0007h; pack pin-libp2p-strict-48h; not mainnet; tag not cut). Do not cite Experimental libp2p soaks as pin proof. Suggested tag after a future soak PASS: `v1.3.1340-libp2p-industrial-mesh` (document only until tagged).
+**ADR 0020 (2026-10):** working-tip prod 3-node mesh JSON is **rust-libp2p** (`feature_libp2p=true`, `p2p_tls_enabled=false`). **Quick probe PASS** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/`. Pin libp2p STRICT attempt **VOID** (host power-off 2026-10-08) — not PASS; STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). Dirty STRICT 2026-10-15–17 archived; clean STRICT 2026-10-18–20 PASS (passed=true, hard_fails=0, mesh_warn=0, warn_lines=0, 48.0004h; pack pin-libp2p-strict-48h; git `c5ac635c` clean; not mainnet; tag not cut). Do not cite Experimental libp2p soaks as pin proof. Suggested tag `v1.3.1340-libp2p-industrial-mesh` remains **document only until tagged**.
 
 This document is the honest engineering checklist after a full repository scan.  
 Automated gates (`mainnet_readiness`, `prod_gate`, `industrial_gate`, `post_soak_verify`) enforce code-level fail-closed rules; **they do not replace** external audit, validator operations, or legal review.
@@ -115,7 +115,7 @@ Operator sequence: [MAINNET_CUTOVER.md](MAINNET_CUTOVER.md).
 | Storage | RocksDB prod + backup/restore; **reorg purges EVM/tx-prop indexes** (v1.2.43); aux.db scope documented |
 | State root | Prod refuse tip header rewrite (`allow_state_root_rewrite=false`, v1.2.79) |
 | Tests | ✅ CI: `industrial_gate.py`, prod boot E2E, `verify_p2p_ci --mode prod-smoke` |
-| libp2p / Long-Range | **ADR 0020:** pin prod **mesh** JSON uses `feature_libp2p=true` (rust-libp2p); alternate TCP+TLS via `node.prod.json` / ceremony. **Long-Range** stays off (`feature_long_range=false`). Pin libp2p 2026-10-08 soak **VOID** (not PASS). STRICT 2026-10-15–17 **PASS** (`pin-libp2p-strict-48h`, not mainnet). Experimental Long-Range/libp2p lab soaks are **not** pin evidence |
+| libp2p / Long-Range | **ADR 0020:** pin prod **mesh** JSON uses `feature_libp2p=true` (rust-libp2p); alternate TCP+TLS via `node.prod.json` / ceremony. **Long-Range** stays off (`feature_long_range=false`). Pin libp2p 2026-10-08 soak **VOID** (not PASS). Clean STRICT 2026-10-18–20 **PASS** (`pin-libp2p-strict-48h`, not mainnet, tag not cut). Experimental Long-Range/libp2p lab soaks are **not** pin evidence |
 
 ---
 

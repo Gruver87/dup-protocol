@@ -8,6 +8,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Pin libp2p STRICT clean-commit PASS packaged (2026-10-18–20)
+
+- Primary pack `evidence/runs/pin-libp2p-strict-48h/` now holds the clean-git STRICT window (`c5ac635c`). Dirty 2026-10-15–17 archived beside it. Tag `v1.3.1340` not cut.
+
 ### Sprout lab profiles + elevator / firm calendar
 
 - Pin-honest NFT/AI/Oracle lab profiles, elevator pitch, firm engagement calendar,

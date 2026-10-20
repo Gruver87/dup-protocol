@@ -15,13 +15,13 @@ Canonical docs language is **English**. If GitHub shows a translation, open **Vi
 [![Security checks](https://github.com/Gruver87/dup-protocol/actions/workflows/security-audit.yml/badge.svg?branch=master)](https://github.com/Gruver87/dup-protocol/actions/workflows/security-audit.yml)
 [![Community health](https://img.shields.io/badge/community%20health-100%25-brightgreen)](https://github.com/Gruver87/dup-protocol#docs-map)
 
-> **Industrial pin:** [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) is historical **TCP+TLS** tip-v2 48h **PASS** ([`375d14f`](docs/evidence/runs/375d14f/)). Working-tip **rust-libp2p** STRICT 48h **PASS** is [`pin-libp2p-strict-48h`](docs/evidence/runs/pin-libp2p-strict-48h/) (tag not cut). Phase 3–4 binder **READY**. External firm audit **still pending**.  
+> **Industrial pin:** [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial) is historical **TCP+TLS** tip-v2 48h **PASS** ([`375d14f`](docs/evidence/runs/375d14f/)). Working-tip **rust-libp2p** STRICT 48h **PASS** (clean commit) is [`pin-libp2p-strict-48h`](docs/evidence/runs/pin-libp2p-strict-48h/) (2026-10-18–20, `c5ac635c`, `git_dirty=false`; tag not cut). Phase 3–4 binder **READY**. External firm audit **still pending**.  
 > **Showcase:** [SHOWCASE](docs/SHOWCASE.md) · [FAQ](docs/FAQ.md) · [ONE_PAGER](docs/ONE_PAGER.md) / [RU](docs/ONE_PAGER_RU.md) · pin demo → [DEMO_RUNBOOK_PIN](docs/DEMO_RUNBOOK_PIN.md) · [FUND_AUDIT_PREP](docs/FUND_AUDIT_PREP.md) · [FUND_READINESS](docs/FUND_READINESS.md) · [VISION](docs/VISION.md) · [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md)
 
 **Funds / ПВТ (pin):** [FUND_AUDIT_PREP](docs/FUND_AUDIT_PREP.md) · [SHOWCASE](docs/SHOWCASE.md) · [DILIGENCE_BRIEF](docs/DILIGENCE_BRIEF.md) · [ONE_PAGER_RU](docs/ONE_PAGER_RU.md).  
 **R&D sibling pack (not pin evidence):** [Exp SHOWCASE](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/SHOWCASE.md).
 
-**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Working-tip pin mesh is **ADR 0020 rust-libp2p**; freeze tag soak is **TCP+TLS**. Experimental soaks are not pin evidence. Pin libp2p STRICT 2026-10-15–17 is **PASS** (`hard_fails=0`, pack [`pin-libp2p-strict-48h`](docs/evidence/runs/pin-libp2p-strict-48h/), not mainnet, tag not cut). The 2026-10-08 window is **VOID** and the 2026-10-11 window stopped short after 44.2h (not PASS). Another soak is not required.
+**Sibling R&D (not this freeze):** [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) — Phases **1–5 closed** + STRICT packs. Working-tip pin mesh is **ADR 0020 rust-libp2p**; freeze tag soak is **TCP+TLS**. Experimental soaks are not pin evidence. Pin libp2p STRICT **2026-10-18–20** is **PASS** (`hard_fails=0`, `warn_lines=0`, pack [`pin-libp2p-strict-48h`](docs/evidence/runs/pin-libp2p-strict-48h/), git `c5ac635c` clean, not mainnet, tag not cut). Prior dirty window 2026-10-15–17 is archived under [`pin-libp2p-strict-48h-dirty-c1c281f`](docs/evidence/runs/pin-libp2p-strict-48h-dirty-c1c281f/). The 2026-10-08 window is **VOID** and the 2026-10-11 window stopped short after 44.2h (not PASS). Another soak is not required.
 
 ---
 
@@ -81,7 +81,7 @@ Not an investment product. **ABS** = in-repo tokenomics model (221M) — **not**
 | Phase 4 audit binder | **READY** | [phase4-691329c](docs/evidence/runs/phase4-691329c/) |
 | Public mainnet / listed ABS / firm audit PDF | **No** | [MAINNET_GAP_ANALYSIS](docs/MAINNET_GAP_ANALYSIS.md) |
 | Bridge on live mesh | **OFF** | by design until L1 cutover |
-| rust-libp2p on this pin (ADR 0020) | **Working-tip** · Quick probe PASS · STRICT 48h **PASS** 2026-10-15–17 | [`pin-libp2p-strict-48h`](docs/evidence/runs/pin-libp2p-strict-48h/) · not mainnet · tag not cut |
+| rust-libp2p on this pin (ADR 0020) | **Working-tip** · Quick probe PASS · STRICT 48h **PASS** 2026-10-18–20 (clean `c5ac635c`) | [`pin-libp2p-strict-48h`](docs/evidence/runs/pin-libp2p-strict-48h/) · not mainnet · tag not cut |
 | Long-Range on this pin | **Lab code, prod switch off** | ADR 0017 Ed25519 lab. `feature_long_range=false` on prod and staging. Not BLS. Not a pin soak. |
 
 **Jump:** [Architecture](#architecture) · [Layout](#repo-layout) · [Ops](#operator-cheatsheet) · [Docs](#docs-map) · [Contribute](CONTRIBUTING.md)
@@ -226,7 +226,8 @@ Quality gate: CI on `639c644` green. Full pytest **3204 passed** on 2026-10-18 (
 | Aug 7 | Tag **`v1.3.1339-tip-v2-industrial`** — audit pin (TCP+TLS) |
 | Oct 8 | libp2p window **VOID** (power-off) |
 | Oct 11 | libp2p window stopped at 44.2h — **not PASS** |
-| Oct 15–17 | rust-libp2p STRICT 48h **PASS** — [pin-libp2p-strict-48h](docs/evidence/runs/pin-libp2p-strict-48h/) · tag not cut |
+| Oct 15–17 | rust-libp2p STRICT 48h **PASS** (dirty git `c1c281f`) — archived [pin-libp2p-strict-48h-dirty-c1c281f](docs/evidence/runs/pin-libp2p-strict-48h-dirty-c1c281f/) |
+| Oct 18–20 | rust-libp2p STRICT 48h **PASS** (clean `c5ac635c`) — [pin-libp2p-strict-48h](docs/evidence/runs/pin-libp2p-strict-48h/) · tag not cut |
 
 Full ledger: [EVIDENCE_MATRIX](docs/EVIDENCE_MATRIX.md)
 
@@ -262,4 +263,4 @@ Open source allows viewing, testing, and forking. It does **not** mean the work 
 ---
 
 *Author: ULADZIMIR DABRANSKI (D.U.P.) · Owner: [Gruver87](https://github.com/Gruver87) · Default branch: `master`*  
-*Last update: **2026-10-18** — working-tip mesh is **rust-libp2p** (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` stays **TCP+TLS**. Libp2p STRICT pack `pin-libp2p-strict-48h` is PASS; tag `v1.3.1340` is not cut. Long-Range lab code is on the pin; `feature_long_range` stays off on prod. External firm audit still pending. Not a launched public mainnet.*
+*Last update: **2026-10-20** — working-tip mesh is **rust-libp2p** (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` stays **TCP+TLS**. Libp2p STRICT clean-commit pack `pin-libp2p-strict-48h` is PASS (2026-10-18–20, `c5ac635c`); tag `v1.3.1340` is not cut. Long-Range lab code is on the pin; `feature_long_range` stays off on prod. External firm audit still pending. Not a launched public mainnet.*

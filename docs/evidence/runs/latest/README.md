@@ -9,9 +9,10 @@
 | Need | Open |
 |------|------|
 | Tip-v2 48h PASS (TCP+TLS) | [`../375d14f/`](../375d14f/) |
-| libp2p STRICT 48h PASS (2026-10-15–17) | [`../pin-libp2p-strict-48h/`](../pin-libp2p-strict-48h/) |
+| libp2p STRICT 48h PASS clean (2026-10-18–20) | [`../pin-libp2p-strict-48h/`](../pin-libp2p-strict-48h/) |
+| libp2p STRICT 48h PASS dirty archive (2026-10-15–17) | [`../pin-libp2p-strict-48h-dirty-c1c281f/`](../pin-libp2p-strict-48h-dirty-c1c281f/) |
 | ADR 0020 cutover + Quick + VOID libp2p | [`../pin-libp2p-cutover-pending/`](../pin-libp2p-cutover-pending/) |
 | Fund / audit front door | [`../../FUND_AUDIT_PREP.md`](../../FUND_AUDIT_PREP.md) |
 
-The libp2p STRICT 48h PASS is [`../pin-libp2p-strict-48h/`](../pin-libp2p-strict-48h/).
+The primary libp2p STRICT 48h PASS is [`../pin-libp2p-strict-48h/`](../pin-libp2p-strict-48h/) (clean `c5ac635c`).
 This folder stays the tip-v2 pointer. Do not rename it into that pack.

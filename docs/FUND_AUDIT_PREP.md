@@ -3,7 +3,7 @@
 **Date:** 2026-10-17 · HEAD: run `git rev-parse --short HEAD`  
 **Repo:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol) · brand: [BRAND.md](BRAND.md)  
 **Audience:** grant / investor / firm tech diligence  
-**Soak:** not running now. STRICT 2026-10-15 20:27+03 through 2026-10-17 20:28+03 is **PASS** (`passed=true`, `hard_fails=0`, `mesh_warn=0`, 48.0007h) in [`evidence/runs/pin-libp2p-strict-48h/`](evidence/runs/pin-libp2p-strict-48h/). 2026-10-08 is **VOID** ([`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt)). 2026-10-11 stopped short after 44.2h (not PASS). Not mainnet. Tag not cut. Recorded git `c1c281f` was dirty.
+**Soak:** not running now. STRICT 2026-10-18 09:59+03 through 2026-10-20 09:59+03 is **PASS** (`passed=true`, `hard_fails=0`, `mesh_warn=0`, `warn_lines=0`, 48.0004h) in [`evidence/runs/pin-libp2p-strict-48h/`](evidence/runs/pin-libp2p-strict-48h/) on clean git `c5ac635c` (`git_dirty=false`, image `sha256:83d7e19e…`). Prior dirty STRICT 2026-10-15–17 is archived under [`evidence/runs/pin-libp2p-strict-48h-dirty-c1c281f/`](evidence/runs/pin-libp2p-strict-48h-dirty-c1c281f/). 2026-10-08 is **VOID** ([`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt)). 2026-10-11 stopped short after 44.2h (not PASS). Not mainnet. Tag not cut.
 
 This page is the **single front door** for “are you ready for funds and audit?”  
 Longer maps: [FUND_READINESS.md](FUND_READINESS.md) · [DILIGENCE_BRIEF.md](DILIGENCE_BRIEF.md) · [AUDITS.md](AUDITS.md) · [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md).
@@ -15,7 +15,7 @@ Longer maps: [FUND_READINESS.md](FUND_READINESS.md) · [DILIGENCE_BRIEF.md](DILI
 | Question | Answer |
 |----------|--------|
 | Industrial private mesh proven? | **Yes** — tip-v2 TCP+TLS freeze soak (`375d14f` / tag `v1.3.1339-tip-v2-industrial`); ADR 0020 libp2p cutover + Quick probe packaged |
-| Pin libp2p 48h soak PASS on HEAD? | **Yes for the 2026-10-15–17 STRICT window** (`passed=true`, `hard_fails=0`, `mesh_warn=0`, 48.0007h, pack `pin-libp2p-strict-48h`). 2026-10-08 VOID and 2026-10-11 short window are not PASS. Not mainnet. Tag not cut. Recorded git `c1c281f` was dirty. |
+| Pin libp2p 48h soak PASS on HEAD? | **Yes for the 2026-10-18–20 STRICT window** (`passed=true`, `hard_fails=0`, `mesh_warn=0`, `warn_lines=0`, 48.0004h, pack `pin-libp2p-strict-48h`, git `c5ac635c` clean). Prior dirty 2026-10-15–17 archived. 2026-10-08 VOID and 2026-10-11 short window are not PASS. Not mainnet. Tag not cut. |
 | External firm PDF? | **No** — tracker **6/8** (2 firm-owned open) |
 | Public mainnet / listed token? | **Not claimed** |
 | Ready for technical diligence meeting? | **Yes** — private-mesh + evidence-first |
@@ -55,7 +55,7 @@ python scripts/external_audit_tracker.py --list
 1. Schedule external penetration test  
 2. Contract third-party L1 / EVM security audit → PDF under `audits/<firm>/`  
 3. Live ceremony pin + secret rotation on cutover day only  
-4. Another 48h soak only if the operator wants a clean-commit image bind. The 2026-10-15–17 pack already exists. Tag `v1.3.1340-libp2p-industrial-mesh` is not cut.
+4. Clean-commit STRICT pack is packaged (`pin-libp2p-strict-48h`, 2026-10-18–20). Another soak is not required unless HEAD or the mesh image changes materially. Tag `v1.3.1340-libp2p-industrial-mesh` is not cut.
 
 ---
 
@@ -82,7 +82,7 @@ python scripts/external_audit_tracker.py --list
 ## Honesty lines (copy-paste)
 
 - PASS on verify / industrial_gate ≠ public mainnet  
-- tip-v2 soak PASS is **TCP+TLS freeze-tag** evidence. The libp2p STRICT PASS is the separate pack `pin-libp2p-strict-48h` (git at start `c1c281f`, dirty; tag not cut)  
+- tip-v2 soak PASS is **TCP+TLS freeze-tag** evidence. The libp2p STRICT PASS is the separate pack `pin-libp2p-strict-48h` (clean git `c5ac635c`; prior dirty archive `pin-libp2p-strict-48h-dirty-c1c281f`; tag not cut)  
 - Harness soft-PASS requires peer-match wire evidence (`runtime/harness_honesty.py`); sticky `_state_consistent` lag alone does not greenwash  
 - `/health/ready` still fail-closed on the live P2P flag when peers are present  
 
