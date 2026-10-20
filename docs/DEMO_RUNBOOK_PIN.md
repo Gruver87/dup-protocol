@@ -53,7 +53,7 @@ Operator harden detail: [INDUSTRIAL_HARDEN_RUNBOOK.md](INDUSTRIAL_HARDEN_RUNBOOK
 
 - This is the **industrial pin** working tip. Freeze tag `v1.3.1339-tip-v2-industrial` is historical **TCP+TLS**, not this mesh.  
 - Transport is **rust-libp2p** (Noise). Experimental soaks are not this demo.  
-- Libp2p 48h PASS is [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/) (`hard_fails=0`, tag not cut). TCP+TLS tip-v2 PASS is [`375d14f`](evidence/runs/375d14f/). Do not start a soak from this demo.  
+- Libp2p 48h PASS is [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/) (`hard_fails=0`, tagged `v1.3.1340-libp2p-industrial-mesh`). TCP+TLS tip-v2 PASS is [`375d14f`](evidence/runs/375d14f/). Do not start a soak from this demo.  
 - External firm audit PDF is still **pending**.  
 
 ## Forbidden

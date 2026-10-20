@@ -36,7 +36,7 @@ Working-tip pin mesh: **rust-libp2p** (ADR 0020). Freeze tag soak: **TCP+TLS**. 
 |--------------|--------|
 | Tag `v1.3.1339-tip-v2-industrial` · [`375d14f`](evidence/runs/375d14f/) | Historical **TCP+TLS** tip-v2 48h soak (`passed=true`, `hard_fails=0`) |
 | [`pin-libp2p-cutover-pending`](evidence/runs/pin-libp2p-cutover-pending/) | ADR 0020 Quick probe. 2026-10-08 **VOID** and 2026-10-11 short window are not 48h PASS |
-| [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/) | Pin libp2p STRICT 48h PASS (`hard_fails=0`). Not mainnet. Tag not cut. Git at start was dirty |
+| [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/) | Pin libp2p STRICT 48h PASS (`hard_fails=0`, clean `c5ac635c`). Not mainnet. Tagged `v1.3.1340-libp2p-industrial-mesh`. Prior dirty archive `pin-libp2p-strict-48h-dirty-c1c281f` |
 | Bridge OFF | `verify_bridge_off_lab.ps1` + gate |
 | Exp→pin merge waves | Units + `industrial_gate` on pin HEAD — see [FUND_READINESS.md](FUND_READINESS.md) |
 

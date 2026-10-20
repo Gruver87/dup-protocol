@@ -73,4 +73,4 @@ Do not claim mainnet-ready until external tracker complete + public TLS evidence
 ## Non-goals
 
 Sharding on prod tip · `finality_quorum_live` marketing · bridge enablement · new FEATURE_*  
-Long-Range on prod (`feature_long_range=false`) · calling the 2026-10-08 VOID or the 2026-10-11 short window a libp2p PASS. The PASS pack is `pin-libp2p-strict-48h` (interval 60, tag not cut).  
+Long-Range on prod (`feature_long_range=false`) · calling the 2026-10-08 VOID or the 2026-10-11 short window a libp2p PASS. The PASS pack is `pin-libp2p-strict-48h` (interval 60, tagged `v1.3.1340-libp2p-industrial-mesh`).  

@@ -36,7 +36,7 @@ Public audited mainnet · listed ABS token · investment product · bridge ON on
 | Shared ceremony genesis artifact → followers | Always-green `/health/ready` under TLS churn forever |
 | 48h soak PASS (Jul float tip, historical) | External L1 / contract audit |
 | Failover + signed tx + EVM on mesh | Prod Long-Range armed (`feature_long_range=false`; lab code is Ed25519, not BLS) |
-| ADR 0020 rust-libp2p mesh + STRICT pack `pin-libp2p-strict-48h` | Tag `v1.3.1340` · public mainnet · a pure-Rust P2P stack |
+| ADR 0020 rust-libp2p mesh + STRICT pack `pin-libp2p-strict-48h` + tag `v1.3.1340-libp2p-industrial-mesh` | Public mainnet · a pure-Rust P2P stack · firm audit PDF |
 | Forest-stable LMD-GHOST + satoshi storage | Full Rust P2P transport claim |
 | **Wave C** tip+apply: tip v2 `b_satoshi` + satoshi apply (fresh mesh) | Public mainnet cutover |
 | **tip-v2 48h soak PASS** (Aug 5–7, operator-local) | Listed ABS / investment product |

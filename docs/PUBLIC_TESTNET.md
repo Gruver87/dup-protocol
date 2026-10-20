@@ -22,7 +22,7 @@ Target (example placeholder only): operator-chosen TLS hostname → explorer + R
 
 - [x] Prod mesh soak **48h+ completed** (`logs/soak_report_48h.json` passed) — see [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md); **PASS** 2026-07-19→21 (v1.2.84). Historical float tip, not the libp2p pack.
 - [x] Tip-v2 (`b_satoshi`) **48h soak** `passed=true` — industrial Phase 2 ([PUBLIC_TESTNET_GO_LIVE.md](PUBLIC_TESTNET_GO_LIVE.md); `logs/soak_report_tipv2_48h_rerun.json` + `docs/evidence/runs/375d14f/`). **TCP+TLS** freeze evidence.
-- [x] Pin libp2p STRICT **48h** `passed=true` — `docs/evidence/runs/pin-libp2p-strict-48h/` (2026-10-15–17, `hard_fails=0`). Not mainnet. Tag not cut. Do not start another soak for this checklist.
+- [x] Pin libp2p STRICT **48h** `passed=true` — `docs/evidence/runs/pin-libp2p-strict-48h/` (2026-10-15–17, `hard_fails=0`). Not mainnet. Tagged `v1.3.1340-libp2p-industrial-mesh`. Do not start another soak for this checklist.
 - [x] Automated local gate: `.\scripts\testnet_readiness.ps1 -ProdMesh`
 - [x] Historical TCP restart script exists: `.\scripts\restart_soak_prod_mesh.ps1`. It refuses unless `-AllowHistoricalTcp`. It is not the libp2p PASS.
 - [x] Failover drill on prod mesh (`prod_mesh_failover.ps1`) — `prod_mesh_resilience_suite.ps1`

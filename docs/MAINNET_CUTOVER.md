@@ -70,7 +70,7 @@ Do not start a soak from this page. The packs already on disk:
 
 - July float tip: `logs/soak_report_48h.json` (2026-07-19→21)
 - TCP+TLS tip-v2: `docs/evidence/runs/375d14f/`
-- rust-libp2p STRICT: `docs/evidence/runs/pin-libp2p-strict-48h/` (`hard_fails=0`, interval 60). Tag `v1.3.1340` is not cut.
+- rust-libp2p STRICT: `docs/evidence/runs/pin-libp2p-strict-48h/` (`hard_fails=0`, interval 60). Tagged `v1.3.1340-libp2p-industrial-mesh`.
 
 `.\scripts\restart_soak_prod_mesh.ps1` is the old tip-v2 restarter (interval 300). It exits unless `-AllowHistoricalTcp`. That flag is not the libp2p PASS.
 

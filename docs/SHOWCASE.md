@@ -27,4 +27,4 @@ R&D sibling showcase (not pin evidence):
 | Verify suite | [VERIFY_SUITE.md](VERIFY_SUITE.md) |
 | Brand / IP / Belarus TM prep | [BRAND.md](BRAND.md) · [IP_AND_ATTRIBUTION.md](IP_AND_ATTRIBUTION.md) · [TRADEMARK_FILING_PREP_BY.md](TRADEMARK_FILING_PREP_BY.md) |
 
-Do **not** claim Experimental STRICT packs as pin evidence. The pin libp2p 48h PASS is only `pin-libp2p-strict-48h` (`hard_fails=0`, not mainnet, tag not cut, git `c1c281f` dirty at start). Do **not** cite the 2026-10-08 VOID or the 2026-10-11 short window as that PASS. Do **not** claim public audited mainnet.
+Do **not** claim Experimental STRICT packs as pin evidence. The pin libp2p 48h PASS is only `pin-libp2p-strict-48h` (`hard_fails=0`, not mainnet, tagged `v1.3.1340-libp2p-industrial-mesh`, clean `c5ac635c`; prior dirty archive). Do **not** cite the 2026-10-08 VOID or the 2026-10-11 short window as that PASS. Do **not** claim public audited mainnet.

@@ -5,7 +5,7 @@
 **Repo:** https://github.com/Gruver87/dup-protocol  
 **Chain under review:** prod-profile `778888` (Docker 3-node mesh / future mainnet-v1)  
 **Date:** 2026-10-05 (ADR 0020 transport note; freeze tag unchanged)  
-**Release pin:** tag **`v1.3.1339-tip-v2-industrial`** (`0531995`; **TCP+TLS** historical evidence) · working tip mesh = **rust-libp2p** per [ADR 0020](adr/0020-libp2p-industrial-mesh.md) · libp2p STRICT PASS `pin-libp2p-strict-48h` (2026-10-08 VOID is not this PASS; tag `v1.3.1340` not cut)  
+**Release pin:** tag **`v1.3.1339-tip-v2-industrial`** (`0531995`; **TCP+TLS** historical evidence) · working tip mesh = **rust-libp2p** per [ADR 0020](adr/0020-libp2p-industrial-mesh.md) · libp2p STRICT PASS `pin-libp2p-strict-48h` (2026-10-08 VOID is not this PASS; tagged `v1.3.1340-libp2p-industrial-mesh`)  
 **Phase status:** Phase 2 tip-v2 48h PASS (**TCP+TLS**, `375d14f`) · Phase 3 ops dry-run PASS · Phase 4 audit binder READY · Exp→pin honesty CLOSED (units+gate) · ADR 0020 mesh cutover + Quick probe · pin libp2p STRICT 2026-10-15–17 **PASS** (`pin-libp2p-strict-48h`; 2026-10-08 VOID is not PASS; not mainnet) — external firm engagement pending
 
 ## In scope

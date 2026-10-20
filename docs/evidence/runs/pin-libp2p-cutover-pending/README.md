@@ -20,7 +20,7 @@
 
 Do not start another soak. The clean STRICT window finished PASS in [`pin-libp2p-strict-48h`](../pin-libp2p-strict-48h/). This folder is the Quick probe and the 2026-10-08 VOID attempt.
 
-Tag `v1.3.1340-libp2p-industrial-mesh` is not cut. `manifest.json` for a release stamp is still absent.
+Tag `v1.3.1340-libp2p-industrial-mesh` is cut. `manifest.json` for a release stamp is still absent.
 
 ## Prep stamp (this wave)
 
@@ -37,4 +37,4 @@ Tag `v1.3.1340-libp2p-industrial-mesh` is not cut. `manifest.json` for a release
 
 ## 48h claim
 
-The PASS report and log are in [`pin-libp2p-strict-48h`](../pin-libp2p-strict-48h/). This folder does not contain that report. Tag `v1.3.1340-libp2p-industrial-mesh` is not cut. `manifest.json` for a release stamp is still absent.
+The PASS report and log are in [`pin-libp2p-strict-48h`](../pin-libp2p-strict-48h/). This folder does not contain that report. Tag `v1.3.1340-libp2p-industrial-mesh` is cut. `manifest.json` for a release stamp is still absent.

@@ -18,7 +18,7 @@ We are **DUP Labs** (product **DUP Protocol**), seeking a **scoped external secu
 - **Primary tree:** https://github.com/Gruver87/dup-protocol  
 - **Freeze tag:** `v1.3.1339-tip-v2-industrial`  
 - **Chain:** prod-profile `778888`, 3-node Docker mesh, tip encoding v2 (`b_satoshi`), RocksDB, native crypto required, **bridge OFF**. Working-tip transport is rust-libp2p (ADR 0020). Freeze tag `v1.3.1339-tip-v2-industrial` is historical TCP+TLS.
-- **In scope:** tip-safety / import refuse, satoshi money path, libp2p mesh honesty, API/RPC auth, RocksDB + DR scripts, `abs_native` hot path. Libp2p STRICT pack: `docs/evidence/runs/pin-libp2p-strict-48h/` (not mainnet; tag `v1.3.1340` not cut).
+- **In scope:** tip-safety / import refuse, satoshi money path, libp2p mesh honesty, API/RPC auth, RocksDB + DR scripts, `abs_native` hot path. Libp2p STRICT pack: `docs/evidence/runs/pin-libp2p-strict-48h/` (not mainnet; tagged `v1.3.1340-libp2p-industrial-mesh`).
 - **Out of scope (explicit):** bridge ON, prod Long-Range, full geth parity, public mainnet ops, ZK “real circuits”
 
 Optional R&D appendix (label as Experimental, not pin):  

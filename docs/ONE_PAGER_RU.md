@@ -38,7 +38,7 @@ Long-Range и EVM STRICT Experimental — не доказательство пи
 
 - Публичный audited mainnet / листинг токена  
 - Готовый внешний security-audit PDF  
-- Окна 2026-10-08 и 2026-10-11 как libp2p PASS. Тег `v1.3.1340` не резался  
+- Окна 2026-10-08 и 2026-10-11 как libp2p PASS. Тег `v1.3.1340-libp2p-industrial-mesh` нарезан (не публичная mainnet)  
 - Prod Long-Range / включённый bridge  
 - Зарегистрированный товарный знак НЦИС (есть только [prep](TRADEMARK_FILING_PREP_BY.md))  
 - Юрлицо / email ПВТ в репозитории (поля-заглушки в NDA)

@@ -3,9 +3,9 @@
 **Date:** 2026-10-05 (transport note refreshed for ADR 0020) · **Repo tip:** run `git rev-parse --short HEAD`  
 **Brand:** DUP Labs · DUP Protocol  
 **Repo:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)  
-**Not:** public audited mainnet · not firm pen-test PASS · not tag `v1.3.1340-libp2p-industrial-mesh`.
+**Not:** public audited mainnet · not firm pen-test PASS. Tag `v1.3.1340-libp2p-industrial-mesh` is cut.
 
-Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020: `feature_libp2p=true`, `p2p_tls_enabled=false`). **TCP+TLS** remains the alternate profile (`node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** evidence only. Pin libp2p STRICT 2026-10-15–17 is **PASS** (`pin-libp2p-strict-48h`, `hard_fails=0`, not mainnet, tag not cut, git `c1c281f` dirty at start). 2026-10-08 is **VOID** (not PASS). 2026-10-11 stopped short after 44.2h (not PASS).
+Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-node mesh** uses **rust-libp2p** (ADR 0020: `feature_libp2p=true`, `p2p_tls_enabled=false`). **TCP+TLS** remains the alternate profile (`node.prod.json` / ceremony). Freeze tag `v1.3.1339-tip-v2-industrial` is **historical TCP+TLS** evidence only. Pin libp2p STRICT 2026-10-15–17 is **PASS** (`pin-libp2p-strict-48h`, `hard_fails=0`, not mainnet, tagged `v1.3.1340-libp2p-industrial-mesh`, git `c1c281f` dirty at start). 2026-10-08 is **VOID** (not PASS). 2026-10-11 stopped short after 44.2h (not PASS).
 
 ---
 
@@ -70,7 +70,7 @@ python scripts/industrial_gate.py
 |------|-------|
 | External pen-test + L1 audit PDF | Org / Phase 6 |
 | Bridge L1 contracts live | Keep bridge OFF on live mesh |
-| Fresh 48h soak on current HEAD | STRICT 2026-10-15–17 **PASS** (`pin-libp2p-strict-48h`). 2026-10-08 attempt stays **VOID** (not PASS). Tag not cut. |
+| Fresh 48h soak on current HEAD | STRICT 2026-10-15–17 **PASS** (`pin-libp2p-strict-48h`). 2026-10-08 attempt stays **VOID** (not PASS). Tagged `v1.3.1340-libp2p-industrial-mesh`. |
 | Post-cutover mesh probe | Operator — `probe_prod_mesh.ps1 -Quick` not re-run as pin evidence pack |
 | Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`) | **Not** pin evidence — R&D on [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental) only |
 | Long-Range / BLS | Lab-only / off in prod JSON |

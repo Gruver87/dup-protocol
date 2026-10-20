@@ -49,7 +49,7 @@ Full scope letter: [AUDIT_SCOPE.md](AUDIT_SCOPE.md) · threat model: [THREAT_MOD
 |----------|------|
 | Static audit zip | Operator current: `logs/audit_pack_20261017.zip` (git `74ddffdc`). Regenerate with [AUDIT_PACK_CHECKLIST.md](AUDIT_PACK_CHECKLIST.md) → `.\scripts\export_audit_pack.ps1` if HEAD moves. Historical Phase 4 binder zip `logs/audit_pack_20260807.zip` remains under `docs/evidence/runs/phase4-691329c/` narrative only. |
 | Tip-v2 **48h soak PASS** (TCP+TLS freeze) | `docs/evidence/runs/375d14f/` (`passed=true`, fail=0, mesh_warn=0, Aug 5–7 2026) |
-| Pin libp2p STRICT **48h PASS** | `docs/evidence/runs/pin-libp2p-strict-48h/` (2026-10-15–17, `hard_fails=0`). 2026-10-08 VOID and 2026-10-11 short window are not this PASS. Tag not cut. Git `c1c281f` was dirty at start |
+| Pin libp2p STRICT **48h PASS** | `docs/evidence/runs/pin-libp2p-strict-48h/` (2026-10-15–17, `hard_fails=0`). 2026-10-08 VOID and 2026-10-11 short window are not this PASS. Tagged `v1.3.1340-libp2p-industrial-mesh`. Git `c1c281f` was dirty at start |
 | Phase 3 ops dry-run PASS | `docs/evidence/runs/phase3-da25c34/` |
 | Phase 4 binder READY | `docs/evidence/runs/phase4-691329c/` |
 | Ledger | [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) |

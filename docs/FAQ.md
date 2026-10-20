@@ -35,7 +35,7 @@ Only a packaged run under `docs/evidence/runs/<id>/` with report `passed=true` a
 ### What transport do I see in a demo?
 
 - **Pin live demo** ([DEMO_RUNBOOK_PIN.md](DEMO_RUNBOOK_PIN.md)): working-tip prod 3-node mesh JSON is **rust-libp2p** (ADR 0020). Freeze-tag soak evidence is **TCP+TLS** — do not relabel.  
-- **Pin libp2p 48h soak:** **PASS** 2026-10-18–20 in [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/) (`hard_fails=0`, clean git `c5ac635c`, not mainnet, tag not cut). Dirty 2026-10-15–17 archived under [`pin-libp2p-strict-48h-dirty-c1c281f`](evidence/runs/pin-libp2p-strict-48h-dirty-c1c281f/). 2026-10-08 is **VOID**. 2026-10-11 stopped short after 44.2h (not PASS). Quick probe stays under [`pin-libp2p-cutover-pending`](evidence/runs/pin-libp2p-cutover-pending/).  
+- **Pin libp2p 48h soak:** **PASS** 2026-10-18–20 in [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/) (`hard_fails=0`, clean git `c5ac635c`) · tag [`v1.3.1340-libp2p-industrial-mesh`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1340-libp2p-industrial-mesh). Not public mainnet. Dirty 2026-10-15–17 archived under [`pin-libp2p-strict-48h-dirty-c1c281f`](evidence/runs/pin-libp2p-strict-48h-dirty-c1c281f/). 2026-10-08 is **VOID**. 2026-10-11 stopped short after 44.2h (not PASS). Quick probe stays under [`pin-libp2p-cutover-pending`](evidence/runs/pin-libp2p-cutover-pending/).  
 - **Experimental demo:** separate tree — [Exp DEMO_RUNBOOK](https://github.com/Gruver87/dup-protocol-experimental/blob/main/docs/DEMO_RUNBOOK.md).
 
 ### How is money represented?

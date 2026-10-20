@@ -1,7 +1,8 @@
 # Pin libp2p STRICT 48h soak — PASS (clean commit)
 
 **Kind:** ADR 0020 industrial mesh soak  
-**Status:** **PASS** on this host. Not public mainnet. Tag `v1.3.1340-libp2p-industrial-mesh` is **not cut**.  
+**Status:** **PASS** on this host. Not public mainnet.  
+**Release tag:** [`v1.3.1340-libp2p-industrial-mesh`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1340-libp2p-industrial-mesh)  
 **Window:** 2026-10-18 09:59:31+03 through 2026-10-20 09:59:33+03 (`hours_elapsed=48.0004`).  
 **Chain:** prod-profile `778888` · rust-libp2p (`feature_libp2p=true`, `p2p_tls_enabled=false`).
 
@@ -40,4 +41,4 @@ The earlier STRICT PASS 2026-10-15–17 (`git_sha=c1c281f`, `git_dirty=true`, im
 - 2026-10-11 10:39+03 window stopped 2026-10-13 06:51+03 after 44.2h — not PASS.
 - Freeze tag `v1.3.1339-tip-v2-industrial` stays **TCP+TLS** historical evidence.
 - Experimental soak packs are not pin evidence.
-- Tag `v1.3.1340-libp2p-industrial-mesh` is **not cut** by packaging this pack.
+- Public mainnet is **not** claimed by this tag.

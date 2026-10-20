@@ -14,7 +14,7 @@ Canonical language for this repository is **English**. Older entries below may s
 
 - Packaged `docs/evidence/runs/pin-libp2p-strict-48h/` from host STRICT window: `passed=true`, `hours_elapsed=48.0004`, `hard_fails=0`, `mesh_warn=0`, `warn_lines=0`, git `c5ac635c` (`git_dirty=false`), image `sha256:83d7e19e…`.
 - Prior dirty PASS 2026-10-15–17 archived under `docs/evidence/runs/pin-libp2p-strict-48h-dirty-c1c281f/`.
-- Front doors updated (`README`, `FUND_AUDIT_PREP`, `FUND_READINESS`, `EVIDENCE_MATRIX`, FAQ, gap analysis). Not mainnet. Tag `v1.3.1340` not cut. No new soak started.
+- Front doors updated (`README`, `FUND_AUDIT_PREP`, `FUND_READINESS`, `EVIDENCE_MATRIX`, FAQ, gap analysis). Not mainnet. Tag `v1.3.1340-libp2p-industrial-mesh` is cut. No new soak started.
 
 ### README evidence snapshot includes the October libp2p windows
 
@@ -56,7 +56,7 @@ Canonical language for this repository is **English**. Older entries below may s
 - Report `passed=true`, `strict=true`, `hard_fail_lines=0`, `mesh_warn_lines=0`,
   `hours_elapsed=48.0007`. Pack
   `docs/evidence/runs/pin-libp2p-strict-48h/`. Not public mainnet.
-  Tag `v1.3.1340-libp2p-industrial-mesh` is not cut. Recorded git
+  Tag `v1.3.1340-libp2p-industrial-mesh` is cut. Recorded git
   `c1c281f` was dirty at start; image `sha256:be576392…`.
 - Firm front door (`FUND_AUDIT_PREP`, `FUND_DEMO_OPERATOR_PACK`, `DILIGENCE_BRIEF`, one-pagers, engagement brief) names the 2026-10-15–17 pack as the libp2p PASS. `industrial_gate.py --min-soak-hours`, `check_blockchain.py`, the audit-pack manifest, and `stamp_release_evidence.py` read that pack. Prod-mesh `testnet_readiness.ps1 -ProdMesh` does too. Prep hints now name `start_soak_prod_mesh_48h_strict.ps1`. The non-strict starter stays on disk. The gitignored TCP `logs/soak_report_48h.json` is not the libp2p claim. Another soak is only for a clean-commit image bind.
 - Prep now records interval 60. A 300s plan is refused. `restart_soak_prod_mesh.ps1` does not start unless `-AllowHistoricalTcp`.
@@ -656,7 +656,7 @@ Canonical language for this repository is **English**. Older entries below may s
 
 - **Transport (2026-10-05+):** prod 3-node mesh (`778888`) defaults to **rust-libp2p** — `docker/node.prod.mesh{1,2,3}.json` set `feature_libp2p=true`, `p2p_tls_enabled=false`; mutually exclusive with TCP+TLS (`feature_libp2p=false`). Single-node / ceremony profile `docker/node.prod.json` keeps TCP+TLS alternate. Boot fail-closed if native libp2p unavailable. **Not** public mainnet.
 - **Evidence honesty:** freeze tag `v1.3.1339-tip-v2-industrial` + `docs/evidence/runs/375d14f/` remain **TCP+TLS tip-v2** proof — sealed packs unchanged. Post-cutover **`probe_prod_mesh.ps1 -Quick` → RESULT: OK** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/` (`industrial_gate` OK). **48h libp2p soak VOID** (host power-off 2026-10-08 — not PASS · not restarted). Do **not** cite Experimental libp2p soaks (`3c801b87`, `lp2pstrict1`, `0a7932c4`) as pin transport evidence. Long-Range stays **off**.
-- **Suggested operator tag after soak PASS:** `v1.3.1340-libp2p-industrial-mesh` (document only — **no tag** until repo clean + soak pack).
+- **Suggested operator tag after soak PASS:** `v1.3.1340-libp2p-industrial-mesh` (cut as `v1.3.1340-libp2p-industrial-mesh` after clean STRICT pack `pin-libp2p-strict-48h`).
 - **Docs:** [docs/CHANGELOG.md](docs/CHANGELOG.md) · [ADR 0020](docs/adr/0020-libp2p-industrial-mesh.md) · EVIDENCE_MATRIX / MAINNET_GAP / audit pack honesty sync.
 
 ### Industrial harden (no new features)

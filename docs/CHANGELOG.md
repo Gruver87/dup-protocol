@@ -10,7 +10,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Pin libp2p STRICT clean-commit PASS packaged (2026-10-18–20)
 
-- Primary pack `evidence/runs/pin-libp2p-strict-48h/` now holds the clean-git STRICT window (`c5ac635c`). Dirty 2026-10-15–17 archived beside it. Tag `v1.3.1340` not cut.
+- Primary pack `evidence/runs/pin-libp2p-strict-48h/` now holds the clean-git STRICT window (`c5ac635c`). Dirty 2026-10-15–17 archived beside it. Tag `v1.3.1340-libp2p-industrial-mesh` is cut.
 
 ### Sprout lab profiles + elevator / firm calendar
 
@@ -26,6 +26,6 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 ### ADR 0020 — libp2p industrial mesh (pin docs)
 
 - **Transport honesty:** prod 3-node mesh JSON (`778888`) is **rust-libp2p** (`feature_libp2p=true`, `p2p_tls_enabled=false`). TCP+TLS/mTLS remains the **alternate** profile (`docker/node.prod.json`, ceremony, `feature_libp2p=false`). Long-Range stays **off** / refuse.
-- **Evidence:** tag `v1.3.1339-tip-v2-industrial` and sealed tip-v2 packs remain **historical TCP+TLS** — do not relabel. Pin libp2p 2026-10-08 soak **VOID** (not PASS); later STRICT 2026-10-15–17 **PASS** in [`evidence/runs/pin-libp2p-strict-48h/`](evidence/runs/pin-libp2p-strict-48h/) (not mainnet, tag not cut). VOID pack remains [`evidence/runs/pin-libp2p-cutover-pending/`](evidence/runs/pin-libp2p-cutover-pending/). Do **not** cite Experimental soaks `3c801b87` / `lp2pstrict1` as pin evidence.
-- **Suggested release tag (operator, after soak + probe):** `v1.3.1340-libp2p-industrial-mesh` — **not tagged** until mesh probe + 48h `hard_fails=0` pack exist on pin HEAD.
+- **Evidence:** tag `v1.3.1339-tip-v2-industrial` and sealed tip-v2 packs remain **historical TCP+TLS** — do not relabel. Pin libp2p 2026-10-08 soak **VOID** (not PASS); later STRICT 2026-10-15–17 **PASS** in [`evidence/runs/pin-libp2p-strict-48h/`](evidence/runs/pin-libp2p-strict-48h/) (not mainnet, tagged `v1.3.1340-libp2p-industrial-mesh`). VOID pack remains [`evidence/runs/pin-libp2p-cutover-pending/`](evidence/runs/pin-libp2p-cutover-pending/). Do **not** cite Experimental soaks `3c801b87` / `lp2pstrict1` as pin evidence.
+- **Suggested release tag (operator, after soak + probe):** `v1.3.1340-libp2p-industrial-mesh` — **tagged** `v1.3.1340-libp2p-industrial-mesh` after clean STRICT pack `pin-libp2p-strict-48h` (2026-10-18–20).
 - Synced: [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) · [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md) · [FUND_DEMO_OPERATOR_PACK.md](FUND_DEMO_OPERATOR_PACK.md) · audit scope / threat model · [FIRM_KICKOFF_CHECKLIST.md](FIRM_KICKOFF_CHECKLIST.md) · [adr/0020-libp2p-industrial-mesh.md](adr/0020-libp2p-industrial-mesh.md) · [adr/README.md](adr/README.md).
