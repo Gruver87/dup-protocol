@@ -1,10 +1,10 @@
 # Пакет для показа ПВТ / HTP — DUP Protocol
 
-**Версия пакета:** 2026-10-24 (rev. 3 — diligence hygiene)  
-**Pin HEAD (снимок пакета):** `a4a01326` — tip на момент публикации; сверяйте `git rev-parse HEAD` после clone  
+**Версия пакета:** 2026-10-24 (rev. 4 — closed)  
+**Pin HEAD:** tip `master` — после clone: `git fetch origin && git rev-parse --short origin/master`  
 **Canonical URL:** https://github.com/Gruver87/dup-protocol/blob/master/docs/PVT_HTP_SHOW_PACK_RU.md  
 
-**Прямые ссылки (tip `master`):**  
+**Прямые ссылки diligence (всегда tip `master`):**  
 1. https://github.com/Gruver87/dup-protocol/blob/master/docs/FUND_AUDIT_PREP.md  
 2. https://github.com/Gruver87/dup-protocol/blob/master/docs/DILIGENCE_BRIEF.md  
 3. https://github.com/Gruver87/dup-protocol/blob/master/docs/ONE_PAGER_RU.md  
@@ -53,9 +53,9 @@
 
 | Pack | Что это | Ссылка |
 |------|---------|--------|
-| `375d14f` | Tip-v2 48h soak PASS, TCP+TLS, тег `v1.3.1339-tip-v2-industrial` | [`docs/evidence/runs/375d14f/`](evidence/runs/375d14f/) |
-| `pin-libp2p-strict-48h` | Libp2p STRICT 48h PASS (чистый git, 2026-10-18→20), тег `v1.3.1340-libp2p-industrial-mesh` | [`docs/evidence/runs/pin-libp2p-strict-48h/`](evidence/runs/pin-libp2p-strict-48h/) |
-| `pin-libp2p-cutover-pending` | Quick probe + VOID 2026-10-08 (не PASS) | [`docs/evidence/runs/pin-libp2p-cutover-pending/`](evidence/runs/pin-libp2p-cutover-pending/) |
+| `375d14f` | Tip-v2 48h soak PASS, TCP+TLS, тег `v1.3.1339-tip-v2-industrial` | [`375d14f`](https://github.com/Gruver87/dup-protocol/tree/master/docs/evidence/runs/375d14f) |
+| `pin-libp2p-strict-48h` | Libp2p STRICT 48h PASS (чистый git, 2026-10-18→20), тег `v1.3.1340-libp2p-industrial-mesh` | [`pin-libp2p-strict-48h`](https://github.com/Gruver87/dup-protocol/tree/master/docs/evidence/runs/pin-libp2p-strict-48h) |
+| `pin-libp2p-cutover-pending` | Quick probe + VOID 2026-10-08 (не PASS) | [`pin-libp2p-cutover-pending`](https://github.com/Gruver87/dup-protocol/tree/master/docs/evidence/runs/pin-libp2p-cutover-pending) |
 
 Полный реестр: [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
 
@@ -136,7 +136,9 @@ Gaps: [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md).
 1. [FOR_EVERYONE_RU.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/FOR_EVERYONE_RU.md) — границы простым языком  
 2. Этот файл: [PVT_HTP_SHOW_PACK_RU.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/PVT_HTP_SHOW_PACK_RU.md)  
 3. [ONE_PAGER_RU.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/ONE_PAGER_RU.md)  
-4. [AT_A_GLANCE.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/AT_A_GLANCE.md)  
+4. [AT_A_GLANCE.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/AT_A_GLANCE.md)
+
+Метаданные цитирования: [CITATION.cff](https://github.com/Gruver87/dup-protocol/blob/master/CITATION.cff) (ersion: 1.3.1340).  
 
 В репозитории те же пути: `docs/FOR_EVERYONE_RU.md`, `docs/ONE_PAGER_RU.md`, `docs/AT_A_GLANCE.md`.
 
