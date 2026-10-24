@@ -1,7 +1,7 @@
 # Пакет для показа ПВТ / HTP — DUP Protocol
 
 **Версия пакета:** 2026-10-24 (rev. 2 — ссылки, packs, ADR, ОКЭД-подсказка, HEAD)  
-**Pin HEAD (снимок пакета):** `1a1059f8` · после merge этого файла см. `git log -1 -- docs/PVT_HTP_SHOW_PACK_RU.md`  
+**Pin HEAD (снимок пакета):** `e22e9ae9` (e22e9ae998590c53682b9a0eedabc89e14f8cf29)
 **Канон:** industrial pin [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)  
 **R&D sibling:** [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)  
 
