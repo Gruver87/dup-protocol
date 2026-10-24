@@ -1,6 +1,7 @@
 # Пакет для показа ПВТ / HTP — DUP Protocol
 
-**Версия пакета:** 2026-10-24  
+**Версия пакета:** 2026-10-24 (rev. 2 — ссылки, packs, ADR, ОКЭД-подсказка, HEAD)  
+**Pin HEAD (снимок пакета):** `1a1059f8` · после merge этого файла см. `git log -1 -- docs/PVT_HTP_SHOW_PACK_RU.md`  
 **Канон:** industrial pin [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)  
 **R&D sibling:** [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)  
 
@@ -35,9 +36,19 @@
 | | Industrial pin | Experimental |
 |---|---|---|
 | GitHub | [dup-protocol](https://github.com/Gruver87/dup-protocol) | [dup-protocol-experimental](https://github.com/Gruver87/dup-protocol-experimental) |
-| Роль | Аудит-заморозка + working tip; то, что показывают фирме / ПВТ как продуктовую линию | Песочница: глубина libp2p, Long-Range **lab**, EVM STRICT |
-| Доказательства для ПВТ | Packs **этого** дерева | Можно показать как R&D-ёмкость; **не** подменять ими pin PASS |
+| Роль | Аудит-заморозка + working tip; продуктовая линия для фирмы / ПВТ | Песочница: глубина libp2p, Long-Range **lab**, EVM STRICT |
+| Доказательства для ПВТ | **Ключевые packs этого дерева** (см. ниже) | R&D-ёмкость; **не** подменять ими pin PASS |
 | Транспорт | Freeze-tag era: TCP+TLS · working tip: rust-libp2p (ADR 0020) | libp2p / labs по своим packs |
+
+**Ключевые pin packs (куда смотреть сразу):**
+
+| Pack | Что это | Ссылка |
+|------|---------|--------|
+| `375d14f` | Tip-v2 48h soak PASS, TCP+TLS, тег `v1.3.1339-tip-v2-industrial` | [`docs/evidence/runs/375d14f/`](evidence/runs/375d14f/) |
+| `pin-libp2p-strict-48h` | Libp2p STRICT 48h PASS (чистый git, 2026-10-18→20), тег `v1.3.1340-libp2p-industrial-mesh` | [`docs/evidence/runs/pin-libp2p-strict-48h/`](evidence/runs/pin-libp2p-strict-48h/) |
+| `pin-libp2p-cutover-pending` | Quick probe + VOID 2026-10-08 (не PASS) | [`docs/evidence/runs/pin-libp2p-cutover-pending/`](evidence/runs/pin-libp2p-cutover-pending/) |
+
+Полный реестр: [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md).
 
 ---
 
@@ -54,7 +65,7 @@
 | Fail-closed money (satoshi integers) | Units + `industrial_gate` | Токен на бирже |
 | Bridge на live mesh | **OFF** by design | Bridge ON |
 
-Полный реестр: [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) · gaps: [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md).
+Gaps: [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md).
 
 ---
 
@@ -64,7 +75,7 @@
 |------|------------|
 | Языки | Python (оркестрация, API, политика P2P) + Rust/PyO3 (`abs_native`: crypto, state roots, RocksDB, EVM kernels) |
 | Сеть | 3-node prod-profile mesh, chain id `778888` |
-| Качество | CI, `industrial_gate`, probe/soak runbooks, ADR 0001–0022 (0017/0022 off на prod) |
+| Качество | CI, `industrial_gate`, probe/soak runbooks; **ADR** (Architecture Decision Records) — короткие записки «почему так» в [`docs/adr/`](adr/); на prod включены решения линейки **0001–0022**, кроме **0017** (Long-Range) и **0022** (council) — они **выключены** на боевом профиле |
 | Деньги | Только целые satoshi; float на критическом пути отвергается |
 | Лицензия | MIT (код открыт) · бренд DUP Labs / DUP Protocol MIT **не** передаёт |
 
@@ -82,7 +93,16 @@
 | Зарегистрировано ли юрлицо / ИП в репо? | **Нет** — только бренд-лицо DUP Labs |
 | Подан ли ТЗ в НЦИС? | **Нет** — есть prep-чеклист |
 | Есть ли внешний audit PDF? | **Нет** |
-| Подходит ли под коды деятельности резидента ПВТ? | **Решает ПВТ** по своим регламентам; классификаторов резидентства в git нет |
+| Подходит ли под коды деятельности резидента ПВТ? | **Решает ПВТ** по своим регламентам. Ниже — **рабочая гипотеза автора для обсуждения**, не зарегистрированный ОКЭД и не одобрение ПВТ |
+
+**Рабочая гипотеза ОКЭД (на подтверждение ПВТ / юристу, не claim):**
+
+| Код (ОКЭД/ОКВЭД-подобная логика) | Смысл | Почему кажется уместным для DUP |
+|----------------------------------|--------|----------------------------------|
+| **62.01** | Разработка компьютерного ПО | Публичный гибридный L1: Python + Rust, mesh, gates |
+| **72.19** | Прочие НИОКР в области естественных / технических наук | Industrial R&D: soak packs, ADR, fail-closed labs |
+
+Просим ПВТ / юриста **подтвердить или скорректировать** коды под актуальный классификатор и режим резидентства. В git классификаторов резидентства нет.
 
 ---
 
@@ -93,27 +113,32 @@
 - «Товарный знак уже зарегистрирован в НЦИС»  
 - «Experimental STRICT = pin industrial PASS»  
 - «Окна 2026-10-08 или 2026-10-11 — это libp2p PASS»  
+- «Коды 62.01 / 72.19 уже утверждены ПВТ» — нет, только гипотеза для диалога  
 - Любые сторонние репозитории автора как часть DUP Protocol
 
 ---
 
 ## 8. Порядок показа (рекомендуемый)
 
+Прямые ссылки на GitHub (pin `master`):
+
 ### 15 минут
 
-1. [FOR_EVERYONE_RU.md](FOR_EVERYONE_RU.md) — границы простым языком  
-2. Этот файл (фактшит)  
-3. [ONE_PAGER_RU.md](ONE_PAGER_RU.md)  
-4. [AT_A_GLANCE.md](AT_A_GLANCE.md)  
+1. [FOR_EVERYONE_RU.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/FOR_EVERYONE_RU.md) — границы простым языком  
+2. Этот файл: [PVT_HTP_SHOW_PACK_RU.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/PVT_HTP_SHOW_PACK_RU.md)  
+3. [ONE_PAGER_RU.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/ONE_PAGER_RU.md)  
+4. [AT_A_GLANCE.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/AT_A_GLANCE.md)  
+
+В репозитории те же пути: `docs/FOR_EVERYONE_RU.md`, `docs/ONE_PAGER_RU.md`, `docs/AT_A_GLANCE.md`.
 
 ### 45–60 минут (diligence)
 
-5. [DILIGENCE_BRIEF.md](DILIGENCE_BRIEF.md) · [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md)  
-6. [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) + README packs `375d14f` и `pin-libp2p-strict-48h`  
-7. [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_ANALYSIS.md)  
-8. [IP_AND_ATTRIBUTION.md](IP_AND_ATTRIBUTION.md) · [TRADEMARK_FILING_PREP_BY.md](TRADEMARK_FILING_PREP_BY.md)  
-9. По желанию live: [DEMO_RUNBOOK_PIN.md](DEMO_RUNBOOK_PIN.md) · [FUND_DEMO_OPERATOR_PACK.md](FUND_DEMO_OPERATOR_PACK.md)  
-10. Индекс: [SHOWCASE.md](SHOWCASE.md) · FAQ: [FAQ.md](FAQ.md)
+5. [DILIGENCE_BRIEF.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/DILIGENCE_BRIEF.md) · [FUND_AUDIT_PREP.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/FUND_AUDIT_PREP.md)  
+6. [EVIDENCE_MATRIX.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/EVIDENCE_MATRIX.md) + packs [`375d14f`](https://github.com/Gruver87/dup-protocol/tree/master/docs/evidence/runs/375d14f) и [`pin-libp2p-strict-48h`](https://github.com/Gruver87/dup-protocol/tree/master/docs/evidence/runs/pin-libp2p-strict-48h)  
+7. [MAINNET_GAP_ANALYSIS.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/MAINNET_GAP_ANALYSIS.md)  
+8. [IP_AND_ATTRIBUTION.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/IP_AND_ATTRIBUTION.md) · [TRADEMARK_FILING_PREP_BY.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/TRADEMARK_FILING_PREP_BY.md)  
+9. По желанию live: [DEMO_RUNBOOK_PIN.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/DEMO_RUNBOOK_PIN.md) · [FUND_DEMO_OPERATOR_PACK.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/FUND_DEMO_OPERATOR_PACK.md)  
+10. Индекс: [SHOWCASE.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/SHOWCASE.md) · [FAQ.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/FAQ.md)
 
 ### Experimental (приложение, не замена pin)
 
@@ -126,25 +151,33 @@
 
 ```text
 git clone https://github.com/Gruver87/dup-protocol.git
+cd dup-protocol
+git rev-parse HEAD
 # затем по VERIFY_SUITE / FUND_DEMO_OPERATOR_PACK:
 # verify_project, industrial_gate, при поднятой mesh — probe_prod_mesh -Quick
 # читать JSON/README внутри docs/evidence/runs/pin-libp2p-strict-48h/
+# читать docs/evidence/runs/375d14f/
 ```
 
-Детали: [VERIFY_SUITE.md](VERIFY_SUITE.md).
+Детали: [VERIFY_SUITE.md](https://github.com/Gruver87/dup-protocol/blob/master/docs/VERIFY_SUITE.md).
 
 ---
 
 ## 10. Что автору нужно вне git перед разговором об ИП / резидентстве
 
 1. Заполнить контакты и выбрать форму (ИП / ООО) — сейчас placeholders.  
-2. Сверить с ПВТ / юристом вид деятельности (разработка ПО / R&D) под их регламент.  
+2. Сверить с ПВТ / юристом вид деятельности и коды (гипотеза §6: 62.01 / 72.19) под актуальный регламент.  
 3. Опционально: подать ТЗ по prep НЦИС.  
 4. Опционально: живое демо mesh.  
-5. Следующий индустриальный шаг продукта: внешний audit PDF — усиливает diligence, **не** подменяет решение ПВТ по резидентству.
+5. Следующий индустриальный шаг продукта: внешний audit PDF — усиливает diligence, **не** подменяет решение ПВТ по резидентству (и не требуется для этого диалога, если бюджета нет).
 
 ---
 
 ## 11. Ask к ПВТ (честный)
 
-Просим **техническую оценку**: выглядит ли DUP Labs / DUP Protocol как устойчивая ИТ/R&D-линия, с которой разумно дальше оформлять хозяйственную деятельность и обсуждать путь к резидентству — на базе **частной mesh + evidence ledger**, без заявления «mainnet ready» и без обещания автоматического резидентства.
+Просим **техническую оценку**:
+
+1. Выглядит ли DUP Labs / DUP Protocol как устойчивая ИТ/R&D-линия, с которой разумно дальше оформлять хозяйственную деятельность и обсуждать путь к резидентству — на базе **частной mesh + evidence ledger**, без заявления «mainnet ready» и без обещания автоматического резидентства.  
+2. Имеет ли смысл для дальнейшего оформления опираться на гипотезу видов деятельности **62.01** (разработка ПО) и **72.19** (НИОКР) — или ПВТ укажет более точные коды / иной путь.
+
+Ответ «скорректируйте коды / пока рано для резидентства / линия выглядит как ИТ-R&D» — ожидаемый и полезный исход. Мы не просим одобрить статус этим письмом.
