@@ -1,9 +1,10 @@
 # DUP Protocol — краткая карточка (RU) · industrial pin
 
 **Организация:** DUP Labs · **Продукт:** DUP Protocol · **Автор:** Уладзимир Дабранский (D.U.P.)  
-**Дата:** 2026-10-07 · Полный вход (EN): [SHOWCASE.md](SHOWCASE.md) · EN one-pager: [ONE_PAGER.md](ONE_PAGER.md)  
+**Дата:** 2026-10-24 · Полный вход (EN): [SHOWCASE.md](SHOWCASE.md) · EN one-pager: [ONE_PAGER.md](ONE_PAGER.md)  
 **Репозиторий:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)  
-**Канонический язык репозитория:** English. Этот файл — краткая карточка для показа / ПВТ. Обычным языком, без фонда: [FOR_EVERYONE_RU.md](FOR_EVERYONE_RU.md).
+**ПВТ / HTP пакет:** [PVT_HTP_SHOW_PACK_RU.md](PVT_HTP_SHOW_PACK_RU.md)  
+**Канонический язык репозитория:** English. Этот файл — краткая карточка для показа / ПВТ. Обычным языком: [FOR_EVERYONE_RU.md](FOR_EVERYONE_RU.md).
 
 ---
 
@@ -25,10 +26,11 @@
 
 ## Что доказано на pin
 
-- Tip-v2 48h (**TCP+TLS**): pack `375d14f`, тег `v1.3.1339-tip-v2-industrial`  
-- ADR 0020 Quick probe: `pin-libp2p-cutover-pending`. Окно 2026-10-08 — **VOID**, не PASS. Окно 2026-10-11 оборвалось на 44.2 ч, не PASS.
-- Pin libp2p STRICT 48h **PASS**: `pin-libp2p-strict-48h` (15–17 октября 2026, `hard_fails=0`). Не мейннет. Тег не резался. Git на старте был грязный.
-- Bridge OFF + sprout labs verify + Exp→pin merge honesty — см. [FUND_READINESS.md](FUND_READINESS.md)
+- Tip-v2 48h (**TCP+TLS**): pack `375d14f`, тег [`v1.3.1339-tip-v2-industrial`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial)  
+- ADR 0020 Quick probe: `pin-libp2p-cutover-pending`. Окно 2026-10-08 — **VOID**, не PASS. Окно 2026-10-11 оборвалось ~44.2 ч, не PASS.  
+- Pin libp2p STRICT 48h **PASS** (чистый git): pack [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/) · окно **2026-10-18→20** · `hard_fails=0` · тег [`v1.3.1340-libp2p-industrial-mesh`](https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1340-libp2p-industrial-mesh). Не мейннет.  
+- Предыдущий STRICT 2026-10-15–17 (грязный git) — архив `pin-libp2p-strict-48h-dirty-c1c281f`, не заменяет clean pack.  
+- Bridge OFF + sprout labs verify — см. [FUND_READINESS.md](FUND_READINESS.md)
 
 Long-Range и EVM STRICT Experimental — не доказательство пина.
 
@@ -38,10 +40,11 @@ Long-Range и EVM STRICT Experimental — не доказательство пи
 
 - Публичный audited mainnet / листинг токена  
 - Готовый внешний security-audit PDF  
-- Окна 2026-10-08 и 2026-10-11 как libp2p PASS. Тег `v1.3.1340-libp2p-industrial-mesh` нарезан (не публичная mainnet)  
+- Окна 2026-10-08 и 2026-10-11 как libp2p PASS  
 - Prod Long-Range / включённый bridge  
 - Зарегистрированный товарный знак НЦИС (есть только [prep](TRADEMARK_FILING_PREP_BY.md))  
-- Юрлицо / email ПВТ в репозитории (поля-заглушки в NDA)
+- Юрлицо / email ПВТ в репозитории (поля-заглушки в NDA)  
+- Автоматическое резидентство ПВТ / обязательность ИП этим документом
 
 ---
 
@@ -54,6 +57,7 @@ Long-Range и EVM STRICT Experimental — не доказательство пи
 
 ## Просьба (ask)
 
-Технический due diligence / грант / ПВТ: обзор **частной mesh + evidence packs**. Не «mainnet ready».
+Технический due diligence / грант / ПВТ: обзор **частной mesh + evidence packs**. Не «mainnet ready».  
+Пакет для оценки «ИП / будущий резидент»: [PVT_HTP_SHOW_PACK_RU.md](PVT_HTP_SHOW_PACK_RU.md).
 
 Демо pin: [DEMO_RUNBOOK_PIN.md](DEMO_RUNBOOK_PIN.md). FAQ (EN): [FAQ.md](FAQ.md). Контакт: GitHub [Gruver87](https://github.com/Gruver87).

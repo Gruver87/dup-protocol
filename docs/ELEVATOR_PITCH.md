@@ -16,12 +16,12 @@ We build **DUP Protocol**: an industrial **hybrid L1** where Python orchestrates
 
 Most chain demos invent readiness. We separate:
 
-1. **Industrial pin** (this tree) — freeze tag `v1.3.1339-tip-v2-industrial` with tip-v2 **TCP+TLS** soak [`375d14f`](evidence/runs/375d14f/); working tip uses **ADR 0020 rust-libp2p** (Quick probe packaged; 2026-10-08 soak **VOID** not PASS; STRICT 2026-10-15–17 **PASS** in `pin-libp2p-strict-48h`, not mainnet). External firm audit still pending.  
+1. **Industrial pin** (this tree) — freeze tag `v1.3.1339-tip-v2-industrial` with tip-v2 **TCP+TLS** soak [`375d14f`](evidence/runs/375d14f/); working tip uses **ADR 0020 rust-libp2p** (Quick probe packaged; 2026-10-08 soak **VOID** not PASS; clean STRICT **2026-10-18–20 PASS** in [`pin-libp2p-strict-48h`](evidence/runs/pin-libp2p-strict-48h/), tag `v1.3.1340-libp2p-industrial-mesh`, not mainnet; dirty 15–17 Oct archived). External firm audit still pending.  
 2. **Experimental** — libp2p depth, Long-Range **lab**, EVM STRICT, mempool Rust; STRICT packs live **only** there — not pin industrial evidence.
 
-Live show: [DEMO_RUNBOOK_PIN.md](DEMO_RUNBOOK_PIN.md) · Ops Console [OPS_CONSOLE.md](OPS_CONSOLE.md). Funds/ПВТ: [ONE_PAGER.md](ONE_PAGER.md) / [ONE_PAGER_RU.md](ONE_PAGER_RU.md), [FAQ.md](FAQ.md), IP/Belarus TM **prep** [TRADEMARK_FILING_PREP_BY.md](TRADEMARK_FILING_PREP_BY.md).
+Live show: [DEMO_RUNBOOK_PIN.md](DEMO_RUNBOOK_PIN.md) · Ops Console [OPS_CONSOLE.md](OPS_CONSOLE.md). Funds/ПВТ: [ONE_PAGER.md](ONE_PAGER.md) / [ONE_PAGER_RU.md](ONE_PAGER_RU.md) · [PVT_HTP_SHOW_PACK_RU.md](PVT_HTP_SHOW_PACK_RU.md), [FAQ.md](FAQ.md), IP/Belarus TM **prep** [TRADEMARK_FILING_PREP_BY.md](TRADEMARK_FILING_PREP_BY.md).
 
-**We do not claim:** public audited mainnet, listed token, prod Long-Range, bridge ON, pin libp2p 48h PASS, or soak PASS without a pack id.
+**We do not claim:** public audited mainnet, listed token, prod Long-Range, bridge ON, HTP residency, or any soak PASS without naming its pack id.
 
 ---
 

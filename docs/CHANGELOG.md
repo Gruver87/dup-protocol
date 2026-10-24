@@ -12,6 +12,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 - Primary pack `evidence/runs/pin-libp2p-strict-48h/` now holds the clean-git STRICT window (`c5ac635c`). Dirty 2026-10-15–17 archived beside it. Tag `v1.3.1340-libp2p-industrial-mesh` is cut.
 
+### ПВТ / HTP show pack (RU) + soak fact alignment
+
+- Canonical RU pack for HTP/ИП discussion: `docs/PVT_HTP_SHOW_PACK_RU.md` (not legal advice / not residency claim)
+- Aligned ONE_PAGER_RU / FOR_EVERYONE_RU / ELEVATOR / DILIGENCE_BRIEF to clean STRICT `pin-libp2p-strict-48h` (2026-10-18–20) + tag `v1.3.1340-libp2p-industrial-mesh`
+- Experimental SHOWCASE / ONE_PAGER_RU: ПВТ primary → pin pack; Exp = R&D appendix only
+
 ### Sprout lab profiles + elevator / firm calendar
 
 - Pin-honest NFT/AI/Oracle lab profiles, elevator pitch, firm engagement calendar,

@@ -66,6 +66,10 @@ Same trees / evidence. Current brand: **DUP Labs / DUP Protocol**. Old Desktop f
 
 **Prep pack only** for НЦИС trademark filing: [TRADEMARK_FILING_PREP_BY.md](TRADEMARK_FILING_PREP_BY.md). Not a registration certificate. Not a utility patent grant. Copyright + MIT attribution: [IP_AND_ATTRIBUTION.md](IP_AND_ATTRIBUTION.md).
 
+### HTP / ПВТ (residency / sole proprietor discussion)?
+
+RU show pack on this pin: [PVT_HTP_SHOW_PACK_RU.md](PVT_HTP_SHOW_PACK_RU.md). Technical diligence material only — **not** a residency application, **not** legal advice, **not** a guarantee of HTP admission. Legal entity / ПВТ email fields in [FIRM_NDA_OUTLINE.md](FIRM_NDA_OUTLINE.md) remain operator-filled placeholders.
+
 ### Who do we contact?
 
 GitHub [Gruver87](https://github.com/Gruver87) · [`SECURITY.md`](../SECURITY.md). Company email / ПВТ legal entity fields in [FIRM_NDA_OUTLINE.md](FIRM_NDA_OUTLINE.md) are **placeholders** until the operator fills them — we do not invent contacts in-repo.
