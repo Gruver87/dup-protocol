@@ -3,7 +3,8 @@ title: "DUP Protocol (Industrial Pin)"
 message: >-
   If you use this software in research, audit engagement, or diligence, please
   cite it using these metadata. Retain LICENSE copyright and NOTICE attribution
-  in redistributions.
+  in redistributions. Prefer the working-tip release tag below; the TCP+TLS
+  audit-freeze tag v1.3.1339-tip-v2-industrial remains valid historical evidence.
 type: software
 authors:
   - family-names: Dabranski
@@ -15,9 +16,10 @@ repository-code: "https://github.com/Gruver87/dup-protocol"
 url: "https://github.com/Gruver87/dup-protocol"
 abstract: >-
   DUP Protocol industrial pin (DUP Labs) — hybrid Python + Rust L1 with prod-profile
-  Docker mesh, tip-v2 satoshi soak evidence, fail-closed industrial gates, and an audit
-  engagement binder. Formerly Absolute Blockchain Ultimate Hybrid. External firm audit
-  pending. Not a launched public mainnet. Copyright Uladzimir Dabranski (D.U.P.) / DUP Labs.
+  Docker mesh, tip-v2 satoshi soak evidence, ADR 0020 libp2p industrial mesh soak,
+  fail-closed industrial gates, and an audit engagement binder. Formerly Absolute
+  Blockchain Ultimate Hybrid. External firm audit pending. Not a launched public
+  mainnet. Copyright Uladzimir Dabranski (D.U.P.) / DUP Labs.
 keywords:
   - blockchain
   - layer1
@@ -30,8 +32,15 @@ keywords:
   - dup-protocol
   - dup-labs
 license: MIT
-version: "1.3.1339"
-date-released: "2026-08-07"
+version: "1.3.1340"
+date-released: "2026-10-20"
+identifiers:
+  - type: url
+    value: "https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1340-libp2p-industrial-mesh"
+    description: "Working-tip industrial mesh tag (libp2p STRICT 48h PASS pack pin-libp2p-strict-48h)"
+  - type: url
+    value: "https://github.com/Gruver87/dup-protocol/releases/tag/v1.3.1339-tip-v2-industrial"
+    description: "Audit-freeze tip-v2 TCP+TLS soak tag (historical pack 375d14f)"
 preferred-citation:
   type: software
   authors:
@@ -40,4 +49,4 @@ preferred-citation:
   title: "DUP Protocol (Industrial Pin)"
   year: 2026
   url: "https://github.com/Gruver87/dup-protocol"
-  version: "1.3.1339"
+  version: "1.3.1340"

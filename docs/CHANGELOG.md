@@ -12,6 +12,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 - Primary pack `evidence/runs/pin-libp2p-strict-48h/` now holds the clean-git STRICT window (`c5ac635c`). Dirty 2026-10-15–17 archived beside it. Tag `v1.3.1340-libp2p-industrial-mesh` is cut.
 
+### Diligence pack hygiene (fund / ПВТ)
+
+- `FUND_AUDIT_PREP`: repo-root `cd` (no Desktop path); **Forbidden claims** blacklist; date 2026-10-24
+- `CITATION.cff` → version `1.3.1340` (+ freeze tag `1.3.1339` as identifier)
+- `DILIGENCE_BRIEF` date; `ONE_PAGER_RU` → `FUND_AUDIT_PREP`; operator packs use `<repo-root>`
+
 ### ПВТ / HTP show pack (RU) + soak fact alignment
 
 - Canonical RU pack for HTP/ИП discussion: `docs/PVT_HTP_SHOW_PACK_RU.md` (not legal advice / not residency claim)

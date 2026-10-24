@@ -25,7 +25,7 @@ Operator checklist after Exp→pin honesty merge close. **Working-tip prod 3-nod
 ## Pre-meeting verify (operator)
 
 ```powershell
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
+cd <repo-root>   # clone of Gruver87/dup-protocol
 
 python -m pytest `
   tests/unit/test_committed_state_root.py `

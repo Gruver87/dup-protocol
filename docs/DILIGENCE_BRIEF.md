@@ -1,7 +1,8 @@
 # Diligence brief — DUP Protocol / DUP Labs (industrial pin)
 
 **Audience:** grant officers, investors, HTP / ПВТ reviewers, technical advisors.  
-**Date:** 2026-10-09 · Language: English (canonical)  
+**Date:** 2026-10-24 · Language: English (canonical)  
+
 **Front door:** [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md)  
 **Brand:** [BRAND.md](BRAND.md) — **DUP Labs** (org) · **DUP Protocol** (product) · Uladzimir Dabranski (D.U.P.)  
 **This tree:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol) (industrial pin)  

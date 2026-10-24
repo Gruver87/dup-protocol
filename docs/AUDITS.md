@@ -46,7 +46,7 @@ Experimental owns Long-Range R&D and completed libp2p soaks on **its** tree (**B
 **Operator commands (local, no Experimental port):**
 
 ```powershell
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
+cd <repo-root>   # clone of Gruver87/dup-protocol
 .\scripts\export_audit_pack.ps1
 python scripts/external_audit_tracker.py --list
 python scripts/industrial_gate.py

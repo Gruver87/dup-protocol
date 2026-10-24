@@ -3,6 +3,7 @@
 **Организация:** DUP Labs · **Продукт:** DUP Protocol · **Автор:** Уладзимир Дабранский (D.U.P.)  
 **Дата:** 2026-10-24 · Полный вход (EN): [SHOWCASE.md](SHOWCASE.md) · EN one-pager: [ONE_PAGER.md](ONE_PAGER.md)  
 **Репозиторий:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)  
+**Front door (fund / audit):** [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md)  
 **ПВТ / HTP пакет:** [PVT_HTP_SHOW_PACK_RU.md](PVT_HTP_SHOW_PACK_RU.md)  
 **Канонический язык репозитория:** English. Этот файл — краткая карточка для показа / ПВТ. Обычным языком: [FOR_EVERYONE_RU.md](FOR_EVERYONE_RU.md).
 

@@ -1,6 +1,7 @@
 # Fund + external audit prep — pin snapshot (honest)
 
-**Date:** 2026-10-17 · HEAD: run `git rev-parse --short HEAD`  
+**Date:** 2026-10-24 · HEAD: run `git rev-parse --short HEAD` after clone  
+
 **Repo:** [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol) · brand: [BRAND.md](BRAND.md)  
 **Audience:** grant / investor / firm tech diligence  
 **Soak:** not running now. STRICT 2026-10-18 09:59+03 through 2026-10-20 09:59+03 is **PASS** (`passed=true`, `hard_fails=0`, `mesh_warn=0`, `warn_lines=0`, 48.0004h) in [`evidence/runs/pin-libp2p-strict-48h/`](evidence/runs/pin-libp2p-strict-48h/) on clean git `c5ac635c` (`git_dirty=false`, image `sha256:83d7e19e…`). Prior dirty STRICT 2026-10-15–17 is archived under [`evidence/runs/pin-libp2p-strict-48h-dirty-c1c281f/`](evidence/runs/pin-libp2p-strict-48h-dirty-c1c281f/). 2026-10-08 is **VOID** ([`SOAK_VOID_HOST_POWEROFF_2026-10-08.txt`](evidence/runs/pin-libp2p-cutover-pending/SOAK_VOID_HOST_POWEROFF_2026-10-08.txt)). 2026-10-11 stopped short after 44.2h (not PASS). Not mainnet. Tagged `v1.3.1340-libp2p-industrial-mesh`.
@@ -35,8 +36,10 @@ Longer maps: [FUND_READINESS.md](FUND_READINESS.md) · [DILIGENCE_BRIEF.md](DILI
 
 ## Operator bar (no soak)
 
+From the **clone root** of [`dup-protocol`](https://github.com/Gruver87/dup-protocol) (not a machine-local Desktop path):
+
 ```powershell
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
+cd <repo-root>   # e.g. after: git clone https://github.com/Gruver87/dup-protocol.git
 .\scripts\verify_project.ps1 -Mode Quick
 .\scripts\verify_project.ps1 -Mode Industrial
 python scripts/industrial_gate.py
@@ -47,6 +50,21 @@ python scripts/external_audit_tracker.py --list
 .\scripts\probe_prod_mesh.ps1 -Quick
 .\scripts\docker_testnet_mesh3.ps1   # public testnet 77777 demo
 ```
+
+---
+
+## Forbidden claims (copy-paste blacklist)
+
+Do **not** say in a fund / ПВТ / firm room:
+
+- “Audited mainnet” / “public mainnet ready” / listed token  
+- “External firm security audit complete” (PDF still pending; tracker 6/8)  
+- “Soak passed” without pack id + `hard_fails=0` on disk  
+- Cite 2026-10-08 VOID or 2026-10-11 short window as libp2p PASS  
+- Cite Experimental packs (`3c801b87`, Exp Long-Range / EVM STRICT) as **pin** industrial evidence  
+- “Prod Long-Range” / “bridge ON” on live mesh  
+- “Belarus trademark registered” (prep only) / “HTP resident” / filled ПВТ legal email in-repo  
+- Old GitHub names as current (`Absolute_Blockchain_*`, `Gruver87/experimental`)
 
 ---
 

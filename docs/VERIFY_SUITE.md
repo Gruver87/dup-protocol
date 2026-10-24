@@ -12,7 +12,7 @@ Dual-repo Exp+pin verify (`verify_dup_suite`) lives only on [`dup-protocol-exper
 ## Daily / after a disk wave
 
 ```powershell
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
+cd <repo-root>   # clone of Gruver87/dup-protocol
 
 .\scripts\verify_project.ps1 -Mode Quick
 # or:
