@@ -1,7 +1,7 @@
 # Пакет для показа ПВТ / HTP — DUP Protocol
 
 **Версия пакета:** 2026-10-24 (rev. 3 — diligence hygiene)  
-**Pin HEAD (снимок пакета):** `12147ea1` — tip на момент публикации; сверяйте `git rev-parse HEAD` после clone  
+**Pin HEAD (снимок пакета):** `78ff49b6` — tip на момент публикации; сверяйте `git rev-parse HEAD` после clone  
 **Canonical URL:** https://github.com/Gruver87/dup-protocol/blob/master/docs/PVT_HTP_SHOW_PACK_RU.md  
 
 **Прямые ссылки (tip `master`):**  
