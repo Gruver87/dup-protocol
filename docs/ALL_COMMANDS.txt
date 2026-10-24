@@ -6,11 +6,11 @@
 
 # ДВА РЕПОЗИТОРИЯ (не путать):
 #   HYBRID  — audit-pin, TCP+TLS mesh
-#             C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
+#             <repo-root-pin>
 #             https://github.com/Gruver87/dup-protocol  (master)
 
 #   EXPERIMENTAL — R&D: libp2p, Long-Range lab, council NFT, EVM depth
-#             C:\Users\vovun\Desktop\Absolute_Blockchain_Experimental
+#             <repo-root-experimental>
 #             https://github.com/Gruver87/dup-protocol-experimental  (main)
 
 # Личная копия (Desktop, не в git): Absolute_Blockchain_All_Commands_FIXED.txt
@@ -119,7 +119,7 @@
 # =============================================================================
 
 # --- [EXP] Industrial mesh (основная R&D работа) ---
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Experimental
+cd <repo-root-experimental>
 pip install -r requirements.txt
 .\scripts\build_native.ps1
 Copy-Item .env.example .env
@@ -131,7 +131,7 @@ Copy-Item .env.example .env
 python scripts/industrial_gate.py
 
 # --- [HYBRID] Audit-pin mesh (TCP+TLS, без libp2p Experimental) ---
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
+cd <repo-root-pin>
 .\scripts\build_native.ps1
 .\scripts\start_all.ps1 -SkipBuild -KeepVolumes
 # Explorer: :18180 :18181 :18182
@@ -280,12 +280,12 @@ python scripts/prod_signed_tx_smoke.py
 # =============================================================================
 
 # [EXP] libp2p Noise mesh (ADR 0020) — default в Experimental
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Experimental
+cd <repo-root-experimental>
 .\scripts\docker_prod_3node.ps1 -SkipBuild -KeepVolumes
 # ⚠️  -P2pTls НЕ использовать в Experimental (refuse в скрипте)
 
 # [HYBRID] TCP+TLS overlay
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
+cd <repo-root-pin>
 .\scripts\docker_prod_3node.ps1 -CeremonyDir data\ceremony_keys -SkipBuild -KeepVolumes
 .\scripts\docker_prod_3node.ps1 -P2pTls -SkipBuild -KeepVolumes   # Hybrid only
 
@@ -463,13 +463,13 @@ CONTACT_EMAIL=gruverpetrov@gmail.com
 # =============================================================================
 
 # [EXP]
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Experimental
+cd <repo-root-experimental>
 git status
 git pull origin main
 git push origin main
 
 # [HYBRID]
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
+cd <repo-root-pin>
 git pull origin master
 git push origin master
 
@@ -492,7 +492,7 @@ git push origin master
 # =============================================================================
 
 # A) [EXP] Утро — mesh + gate
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Experimental
+cd <repo-root-experimental>
 git pull
 .\scripts\build_native.ps1
 .\scripts\docker_prod_3node.ps1 -SkipBuild -KeepVolumes
@@ -570,7 +570,7 @@ python scripts/guarantor_council_staging_ceremony.py --base-url http://127.0.0.1
 # =============================================================================
 # После изменений core / EVM / P2P / sync / bridge / native — В ТАКОМ ПОРЯДКЕ:
 
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Experimental
+cd <repo-root-experimental>
 .\scripts\build_native.ps1
 .\scripts\docker_prod_3node.ps1 -SkipBuild -KeepVolumes
 .\scripts\probe_prod_mesh.ps1 -Quick

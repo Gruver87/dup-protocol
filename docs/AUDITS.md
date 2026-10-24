@@ -32,7 +32,7 @@ Related: [SECURITY.md](../SECURITY.md) · [MAINNET_GAP_ANALYSIS.md](MAINNET_GAP_
 
 ## Safe Hybrid work (Exp→pin honesty CLOSED)
 
-**Front door:** [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md) (2026-10-09).
+**Front door:** [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md) (2026-10-24).
 
 **ADR 0020:** working-tip prod 3-node mesh JSON on this pin is **rust-libp2p** (`feature_libp2p=true`). Freeze tag `v1.3.1339-tip-v2-industrial` remains **TCP+TLS** sealed evidence. **Post-cutover Quick probe PASS** packaged under `docs/evidence/runs/pin-libp2p-cutover-pending/`. Pin libp2p STRICT attempt **VOID** (host power-off 2026-10-08) — not PASS; STRICT 2026-10-11 10:39+03 stopped short after 44.2h (not PASS). STRICT 2026-10-15-17 (dirty) archived; clean STRICT 2026-10-18-20 PASS (pack pin-libp2p-strict-48h; git c5ac635c; tagged `v1.3.1340-libp2p-industrial-mesh`; not mainnet).
 

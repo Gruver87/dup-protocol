@@ -1,7 +1,8 @@
 # Fund / diligence readiness — DUP Protocol industrial pin (honest)
 
 **Audience:** grant officers, investors, HTP / ПВТ reviewers, technical advisors.  
-**Date:** 2026-10-09 · Repo: [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol) · branch `master`  
+**Date:** 2026-10-24 · Repo: [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol) · branch `master`  
+
 **Front door:** [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md)  
 **Brand:** [BRAND.md](BRAND.md) — **DUP Labs** · **DUP Protocol** · Uladzimir Dabranski (D.U.P.)  
 **Not:** public audited mainnet · not listed token · not Experimental Long-Range / Exp soak packs as pin evidence.  

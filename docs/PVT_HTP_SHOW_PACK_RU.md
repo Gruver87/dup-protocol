@@ -1,7 +1,16 @@
 # Пакет для показа ПВТ / HTP — DUP Protocol
 
-**Версия пакета:** 2026-10-24 (rev. 2 — ссылки, packs, ADR, ОКЭД-подсказка, HEAD)  
-**Pin HEAD (снимок пакета):** `fe8c059f` — актуальный tip master на момент публикации; сверяйте `git rev-parse HEAD` после clone.
+**Версия пакета:** 2026-10-24 (rev. 3 — diligence hygiene)  
+**Pin HEAD (снимок пакета):** `12147ea1` — tip на момент публикации; сверяйте `git rev-parse HEAD` после clone  
+**Canonical URL:** https://github.com/Gruver87/dup-protocol/blob/master/docs/PVT_HTP_SHOW_PACK_RU.md  
+
+**Прямые ссылки (tip `master`):**  
+1. https://github.com/Gruver87/dup-protocol/blob/master/docs/FUND_AUDIT_PREP.md  
+2. https://github.com/Gruver87/dup-protocol/blob/master/docs/DILIGENCE_BRIEF.md  
+3. https://github.com/Gruver87/dup-protocol/blob/master/docs/ONE_PAGER_RU.md  
+4. https://github.com/Gruver87/dup-protocol/blob/master/CITATION.cff  
+5. https://github.com/Gruver87/dup-protocol/blob/master/docs/PVT_HTP_SHOW_PACK_RU.md  
+
 **Канон:** industrial pin [`Gruver87/dup-protocol`](https://github.com/Gruver87/dup-protocol)  
 **R&D sibling:** [`Gruver87/dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)  
 

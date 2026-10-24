@@ -3,7 +3,7 @@
 **Product:** DUP Protocol · **Org:** DUP Labs  
 **Repos:** [`dup-protocol`](https://github.com/Gruver87/dup-protocol) (industrial pin) · R&D [`dup-protocol-experimental`](https://github.com/Gruver87/dup-protocol-experimental)  
 **Formerly:** Absolute Blockchain Ultimate Hybrid (same pin / evidence)  
-**Updated:** 2026-10-09 (fund/audit prep; pin libp2p STRICT VOID 2026-10-08 explicit; front door [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md))  
+**Updated:** 2026-10-24 (fund/audit prep; clean STRICT `pin-libp2p-strict-48h` 2026-10-18–20; VOID 2026-10-08 explicit; front door [FUND_AUDIT_PREP.md](FUND_AUDIT_PREP.md))  
 **Positioning:** Production-hardened R&D stack → path to public mainnet  
 **Evidence ledger:** [EVIDENCE_MATRIX.md](EVIDENCE_MATRIX.md) — separates CI/automation from live ops proof
 

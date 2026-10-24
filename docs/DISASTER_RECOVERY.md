@@ -364,7 +364,7 @@ Also: `docs/EVIDENCE_MATRIX.md`, `docs/MAINNET_GAP_ANALYSIS.md`, `docs/PORTING_R
 From repo root:
 
 ```powershell
-cd C:\Users\vovun\Desktop\Absolute_Blockchain_Ultimate_Hybrid
+cd <repo-root-pin>
 
 # Fast industrial gate (needles + ADR presence)
 python scripts/industrial_gate.py

@@ -52,7 +52,7 @@ Explorer static files: copy `web/explorer/` to `/var/www/abs-explorer`.
 
 ```bash
 # cron every 5 minutes on VPS
-*/5 * * * * cd /opt/Absolute_Blockchain_Ultimate_Hybrid && python3 scripts/testnet_uptime_probe.py --append
+*/5 * * * * cd /opt/dup-protocol && python3 scripts/testnet_uptime_probe.py --append
 ```
 
 Snapshot: `logs/testnet_uptime.json` · history: `logs/testnet_uptime.jsonl`
@@ -61,10 +61,10 @@ Snapshot: `logs/testnet_uptime.json` · history: `logs/testnet_uptime.jsonl`
 
 ```bash
 # weekly backup (brief seed stop for consistent RocksDB checkpoint)
-bash -c 'cd /opt/Absolute_Blockchain_Ultimate_Hybrid && pwsh -File scripts/testnet_backup_restore.ps1 -DockerTestnetSeed -Rehearsal'
+bash -c 'cd /opt/dup-protocol && pwsh -File scripts/testnet_backup_restore.ps1 -DockerTestnetSeed -Rehearsal'
 
 # weekly log rotate inside containers
-0 3 * * 0 cd /opt/Absolute_Blockchain_Ultimate_Hybrid && bash scripts/testnet_log_rotate.sh
+0 3 * * 0 cd /opt/dup-protocol && bash scripts/testnet_log_rotate.sh
 ```
 
 Backups: `backups/testnet-seed-YYYYMMDD-HHMMSS/`
