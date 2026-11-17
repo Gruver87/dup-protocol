@@ -388,11 +388,11 @@ pub(crate) fn recover_eth_address_keccak_inner(
     sig_bytes[..32].copy_from_slice(r);
     sig_bytes[32..].copy_from_slice(s);
     let mut signature = Signature::from_slice(&sig_bytes).map_err(|e| e.to_string())?;
-    signature = signature.normalize_s().unwrap_or(signature);
+    signature = signature.normalize_s(); // ecdsa 0.17: returns Self
     let rid = RecoveryId::from_byte(rec_id).ok_or_else(|| "bad_recovery_id".to_string())?;
     let vk =
         VerifyingKey::recover_from_prehash(prehash, &signature, rid).map_err(|e| e.to_string())?;
-    let point = vk.to_encoded_point(false);
+    let point = vk.to_sec1_point(false);
     let pub_bytes = &point.as_bytes()[1..];
     let hash = keccak256_digest_bytes(pub_bytes);
     Ok(format!("0x{}", hex::encode(&hash[12..])))
@@ -640,7 +640,7 @@ pub(crate) fn verify_secp256k1_sha256_inner(
         Ok(sig) => sig,
         Err(_) => return false,
     };
-    let signature = signature.normalize_s().unwrap_or(signature);
+    let signature = signature.normalize_s();
 
     let mut sec1_public_key = Vec::with_capacity(65);
     sec1_public_key.push(0x04);

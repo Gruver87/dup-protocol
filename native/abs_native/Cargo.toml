@@ -21,7 +21,7 @@ libp2p = ["dep:libp2p", "dep:tokio", "dep:futures", "dep:async-trait"]
 
 [dependencies]
 hex = "0.4"
-k256 = { version = "0.13", features = ["ecdsa"] }
+k256 = { version = "0.14", default-features = false, features = ["ecdsa", "std"] }
 pyo3 = { version = "0.22", features = ["abi3-py310"] }
 rocksdb = "0.22"
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }

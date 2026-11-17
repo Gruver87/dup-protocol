@@ -6,7 +6,7 @@
 ignore = [
     # RUSTSEC-2025-0020 — pyo3 PyString::from_object buffer overflow
     # owner: @Gruver87 | reachability: unused API (no from_object call sites)
-    # mitigation: do not call PyString::from_object | clear: pyo3 >= 0.24.1 / Dependabot PR #7
+    # mitigation: do not call PyString::from_object | clear: pyo3 >= 0.24.1 / PR #7
     # review-by: 2026-12-31
     "RUSTSEC-2025-0020",
 
@@ -24,24 +24,74 @@ ignore = [
 
     # --- ADR 0020 rust-libp2p industrial mesh (feature_libp2p=true on pin prod JSON) ---
 
-    # RUSTSEC-2026-0119 — hickory-proto via libp2p-mdns
-    # owner: @Gruver87 | reachability: mDNS lock edge; mesh uses dial/bootstrap, not LAN mDNS discovery
-    # mitigation: Noise/Yamux TCP path; clear: libp2p-mdns → hickory>=0.26
+    # RUSTSEC-2026-0119 — hickory-proto via libp2p-mdns (legacy id; superseded by 0487+)
+    # owner: @Gruver87 | reachability: lab mDNS only (feature_libp2p)
+    # mitigation: prod feature_libp2p=false | clear: libp2p-mdns → hickory>=0.26
     # review-by: 2026-12-31
     "RUSTSEC-2026-0119",
 
     # RUSTSEC-2025-0009 / 2026-0098 / 0099 / 0104 — ring/webpki via stale libp2p-tls
-    # owner: @Gruver87 | reachability: optional tls lock edges; live path is Noise+TCP (p2p_tls_enabled=false)
-    # mitigation: tls/quic/websocket features OFF on mesh | clear: prune libp2p-tls / upstream bump
+    # owner: @Gruver87 | reachability: optional tls lock edges; Noise+TCP path only
+    # mitigation: tls/quic/websocket features OFF; prod libp2p=false
+    # clear: regenerate lock without libp2p-tls / upstream bump
     # review-by: 2026-12-31
     "RUSTSEC-2025-0009",
     "RUSTSEC-2026-0098",
     "RUSTSEC-2026-0099",
     "RUSTSEC-2026-0104",
 
-    # RUSTSEC-2026-0258 — h2 0.3.27 via hyper 0.14 / igd-next (UPnP)
-    # owner: @Gruver87 | reachability: UPnP lock edge only (not required for docker mesh)
-    # mitigation: no UPnP on prod mesh compose | clear: libp2p drops hyper 0.14
+    # RUSTSEC-2026-0258 — h2 0.3.27 via hyper 0.14 / igd-next (UPnP lab)
+    # owner: @Gruver87 | reachability: libp2p UPnP lab only
+    # mitigation: prod feature_libp2p=false | clear: libp2p drops hyper 0.14
     # review-by: 2026-12-31
     "RUSTSEC-2026-0258",
+
+    # RUSTSEC-2026-0382 — rustls-webpki via stale libp2p-tls (quic) 0.101.x
+    # owner: @Gruver87 | reachability: optional quic/tls lock edge only
+    # mitigation: primary rustls path on rustls-webpki>=0.103.16; Noise+TCP mesh
+    # clear: prune libp2p-quic/tls or upstream libp2p-tls bump
+    # review-by: 2026-12-31
+    "RUSTSEC-2026-0382",
+
+    # RUSTSEC-2026-0381 — webpki-roots 0.25.x via libp2p-websocket
+    # owner: @Gruver87 | reachability: websocket lab feature only
+    # mitigation: prod mesh Noise+TCP (no websocket CA roots path)
+    # clear: libp2p-websocket → webpki-roots>=1.0.10
+    # review-by: 2026-12-31
+    "RUSTSEC-2026-0381",
+
+    # hickory-proto / hickory-resolver 0.24.x via libp2p-mdns / dns (2026-10/11 wave)
+    # owner: @Gruver87 | reachability: libp2p DNS/mDNS lock edges only
+    # mitigation: pin mesh uses Noise+TCP; clear via libp2p bump
+    # clear: libp2p → hickory>=0.26.2 (and DNSSEC advisories without fix need upstream)
+    # review-by: 2026-12-31
+    "RUSTSEC-2026-0487",
+    "RUSTSEC-2026-0489",
+    "RUSTSEC-2026-0490",
+    "RUSTSEC-2026-0491",
+    "RUSTSEC-2026-0505",
+    "RUSTSEC-2026-0511",
+    "RUSTSEC-2026-0512",
+    "RUSTSEC-2026-0514",
+    "RUSTSEC-2026-0530",
+    "RUSTSEC-2026-0531",
+    "RUSTSEC-2026-0550",
+    "RUSTSEC-2026-0551",
+
+    # libp2p-gossipsub 0.47 via libp2p 0.54
+    # owner: @Gruver87 | reachability: gossipsub lab/mesh feature
+    # mitigation: topic allow-lists / rate limits in swarm; clear: libp2p-gossipsub>=0.50.1
+    # review-by: 2026-12-31
+    "RUSTSEC-2026-0534",
+    "RUSTSEC-2026-0535",
+    "RUSTSEC-2026-0536",
+    "RUSTSEC-2026-0537",
+
+    # libp2p-quic / rendezvous (optional transports; not Noise+TCP mesh path)
+    # owner: @Gruver87 | reachability: quic/rendezvous lab features
+    # mitigation: docker prod mesh uses TCP+Noise; clear: libp2p-quic>=0.13.1 / rendezvous>=0.17.1
+    # review-by: 2026-12-31
+    "RUSTSEC-2026-0525",
+    "RUSTSEC-2026-0526",
+    "RUSTSEC-2026-0527",
 ]

@@ -1,7 +1,15 @@
 # Dependabot triage (industrial harden)
 
-**Updated:** 2026-10-02  
+**Updated:** 2026-11-18  
 **Rule:** no kitchen-sink merges — only bumps that keep CI green and reduce risk.
+
+## Closed on pin (2026-11-18) — Security checks cargo-audit
+
+| Item | Action |
+|------|--------|
+| `RUSTSEC-2026-0387` crypto-bigint | Bumped **k256 0.13 → 0.14** (crypto-bigint 0.7.11) |
+| rustls-webpki / rustls / libz-sys / quinn / zstd-sys | Patched to advisory floors |
+| libp2p transitive wave | Scoped ignores in `.cargo/audit.toml`; clear via libp2p bump |
 
 ## Closed on Experimental + pin (2026-10-02)
 
